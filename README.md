@@ -1,51 +1,21 @@
-# ConSpace
+# CONSPACE — Infrastructure-first rebuild
 
-**Construction knowledge, built by the field.**
+CONSPACE là nền tảng tri thức và nội dung ngành xây dựng. Repository này đang được khởi động lại thành dự án full-stack độc lập theo quy trình **hạ tầng trước, sản phẩm sau**.
 
-ConSpace là một nền tảng tri thức ngành xây dựng theo hướng bách khoa mở + cộng đồng nghề. Mục tiêu không phải chỉ đăng tin, mà kết nối kiến thức chuẩn với kinh nghiệm hiện trường thực tế.
+## Trạng thái
 
-## V1 hiện có
+- Giai đoạn 0 (đang thực hiện): kiểm kê VPS, môi trường Node.js/PostgreSQL/PostGIS/Nginx/PM2, DNS, TLS và thử nghiệm tên miền.
+- Giai đoạn 1 (chưa bắt đầu): frontend React + Vite + JSX, backend Node.js + Express, PostgreSQL và CMS.
+- Các tệp src/*.tsx cùng cấu hình Vite ở thư mục gốc là **prototype V0 cũ**. Không chạy hoặc triển khai prototype này lên tên miền production. Chúng sẽ được thay thế sau khi giai đoạn 0 đạt yêu cầu.
 
-- Bách khoa theo vòng đời công trình: chuẩn bị/pháp lý → móng/kết cấu → MEP → hoàn thiện → vận hành/sửa chữa.
-- Từ điển nghề A–Z với giải thích ngắn, dễ tra cứu.
-- “Hiện trường hôm nay”: ca thực tế, ảnh lỗi, cách xử lý, phản biện từ người trong nghề.
-- Ngách thầu theo chuyên môn thay vì danh bạ chung chung.
-- Bàn nghề / hỏi đáp chuyên môn.
-- Tin ngành theo hướng chọn lọc và có tính ứng dụng.
-- Tìm kiếm ngay trên hero (demo lọc một số thuật ngữ trong dữ liệu mẫu).
-- Responsive desktop / tablet / mobile.
+Công nghệ tham chiếu: hoanglamvu04/bandohoalac (Hola Maps). Dùng lại mô hình công nghệ và cách vận hành, KHÔNG sao chép tính năng bản đồ hay cơ sở dữ liệu thật.
 
-## Hướng sản phẩm tiếp theo
+## Bắt đầu kiểm tra VPS
 
-1. Hệ thống tài khoản và hồ sơ nghề nghiệp (kỹ sư, KTS, nhà thầu, đội thợ, sinh viên...).
-2. CMS cho bài bách khoa, thuật ngữ, tin ngành.
-3. UGC hiện trường: upload ảnh, khoanh vùng, chú thích, tag giai đoạn/hạng mục/lỗi.
-4. Hỏi đáp có vote, phản biện, câu trả lời được xác minh bởi cộng đồng.
-5. Hồ sơ ngách thầu với khu vực hoạt động, năng lực, dự án, bài chia sẻ và đánh giá.
-6. Search toàn văn theo thuật ngữ, lỗi, vật liệu, hạng mục và câu hỏi.
-7. Bộ “Mẹo hiện trường” ngắn, checklist, biểu mẫu và bảng tra cứu nhanh.
+1. Đọc ops/VPS_SETUP.md.
+2. Kiểm tra VPS, các cổng đang sử dụng và hostname thực tế bằng bash ops/vps-audit.sh.
+3. Chỉ khi DNS, Nginx, PostgreSQL, Node.js và chứng chỉ HTTPS sẵn sàng mới chuyển qua phần code ứng dụng.
 
-## Chạy local
+**Lưu ý:** Không đưa mật khẩu database, SSH private key, API key hoặc file .env thật vào GitHub. Không sửa Nginx/PM2 của các dự án khác để CONSPACE chạy được.
 
-```bash
-npm install
-npm run dev
-```
-
-Build production:
-
-```bash
-npm run build
-npm run preview
-```
-
-## Design direction
-
-- Editorial + công trường, tránh cảm giác SaaS/card template.
-- Nền concrete sáng, charcoal, safety orange.
-- Grid/bản vẽ kỹ thuật dùng như texture, không lạm dụng.
-- Ưu tiên typography, phân cấp thông tin, dữ liệu nghề và media thật từ cộng đồng.
-
----
-
-V0.1 là concept frontend để chốt product direction trước khi tách backend/CMS/community thành các module riêng.
+Tài liệu: docs/ARCHITECTURE.md; ops/VPS_SETUP.md.

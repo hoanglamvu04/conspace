@@ -1,0 +1,32 @@
+# Stage 0: HTTP-only vhost. Install ONLY after checking other Nginx server_name entries.
+# Document root intentionally points to the holding page, not the old TSX prototype.
+server {
+    listen 80;
+    listen [::]:80;
+    server_name conspace.vn www.conspace.vn;
+
+    root /var/www/conspace/ops/holding;
+    index index.html;
+
+    location ^~ /.well-known/acme-challenge/ {
+        default_type text/plain;
+        try_files $uri =404;
+    }
+
+    location = /__infra/health {
+        default_type application/json;
+        add_header Cache-Control "no-store" always;
+        return 200 '{"ok":true,"service":"conspace-edge","stage":"infrastructure"}';
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location ~ /\.(?!well-known/) {
+        return 404;
+    }
+}
+
+# After DNS works, use certbot --nginx -d conspace.vn -d www.conspace.vn.
+# Do NOT add an /api/ proxy until the real Express backend exists.
