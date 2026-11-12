@@ -37,7 +37,7 @@ export const ROLES = {
   EDITOR: 'Biên tập viên',
   TECHNICAL_REVIEWER: 'Duyệt kỹ thuật',
   EDITOR_IN_CHIEF: 'Chủ bút',
-  ADMIN: 'Quản trị viên',
+  ADMIN: 'Quản trị hệ thống',
 };
 
 export const READER_OPTIONS = [
