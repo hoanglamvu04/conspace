@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { pool } from '../database/pool.js';
 import { RequestError, validate } from '../http/validation.js';
 const published="a.status='PUBLISHED' AND a.approved_by IS NOT NULL AND a.approved_at IS NOT NULL AND a.published_at<=now() AND (a.content_type<>'FIELD_CASE' OR EXISTS(SELECT 1 FROM conspace.field_notes f WHERE f.article_id=a.id AND f.unit_anonymized=true AND f.address_anonymized=true AND f.photo_rights_confirmed=true))";
-const schema=z.strictObject({q:z.string().trim().min(2).max(120),type:z.enum(['all','article','niche','term','chapter','field_note']).default('all'),role:z.enum(['homeowner','architect','contractor']).optional(),niche:z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).max(120).optional(),limit:z.coerce.number().int().min(1).max(50).default(20),page:z.coerce.number().int().min(1).max(1000).default(1)});
+const schema=z.strictObject({q:z.string().trim().min(2).max(120),type:z.enum(['all','article','niche','term','chapter','field_note']).default('all'),role:z.enum(['homeowner','architect','contractor']).default('homeowner'),niche:z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).max(120).optional(),limit:z.coerce.number().int().min(1).max(50).default(20),page:z.coerce.number().int().min(1).max(1000).default(1)});
 const sql=[
  'WITH matches AS (',
  'SELECT a.id,a.slug,a.title,a.excerpt AS snippet,',

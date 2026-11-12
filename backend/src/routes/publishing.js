@@ -12,7 +12,7 @@ export function createPublishingRouter(db=pool){
  const router=Router();
  if(!db){router.use((_req,_res,next)=>next(new RequestError(503,'DATABASE_UNAVAILABLE','Publishing database is unavailable')));return router;}
  router.get('/feed',handle(async(req,res)=>{
-  const {limit,role:readerLens}=validate(z.strictObject({limit:z.coerce.number().int().min(1).max(20).default(6),role:role.optional()}),req.query);
+  const {limit,role:readerLens}=validate(z.strictObject({limit:z.coerce.number().int().min(1).max(20).default(6),role:role.default('homeowner')}),req.query);
   const [books,articles,fieldNotes,questions]=await Promise.all([
    db.query('SELECT bc.id,bc.chapter_no AS "chapterNo",bc.display_label AS "displayLabel",bc.title AS "chapterTitle",b.title AS "bookTitle",b.slug AS "bookSlug",b.content_label AS "contentLabel",b.content_label_vi AS "contentLabelVi",a.title AS "articleTitle",a.slug AS "articleSlug",a.published_at AS "publishedAt" FROM conspace.book_chapters bc JOIN conspace.books b ON b.id=bc.book_id JOIN conspace.articles a ON a.id=bc.article_id WHERE b.is_active=true AND '+publishedArticle+' ORDER BY CASE WHEN $2::text IS NOT NULL AND b.audience_role=$2 THEN 0 ELSE 1 END,a.published_at DESC,bc.id DESC LIMIT $1',[limit,readerLens]),
    db.query('SELECT a.id,a.slug,a.title,a.excerpt,a.audience_role AS "audienceRole",a.published_at AS "publishedAt",au.display_name AS "authorName" FROM conspace.articles a JOIN conspace.authors au ON au.id=a.author_id WHERE '+publishedArticle+" AND a.content_type<>'FIELD_CASE' ORDER BY CASE WHEN $2::text IS NOT NULL AND a.audience_role=$2 THEN 0 ELSE 1 END,a.published_at DESC,a.id DESC LIMIT $1",[limit,readerLens]),
@@ -22,7 +22,7 @@ export function createPublishingRouter(db=pool){
   res.json({ok:true,data:{books:books.rows,articles:articles.rows,fieldNotes:fieldNotes.rows,questions:questions.rows},meta:{preferredAudienceRole:readerLens??'homeowner'}});
  }));
  router.get('/books',handle(async(req,res)=>{
-  const {role:lens}=validate(z.strictObject({role:role.optional()}),req.query);
+  const {role:lens}=validate(z.strictObject({role:role.default('homeowner')}),req.query);
   const r=await db.query('SELECT b.id,b.slug,b.title,b.audience_role AS "audienceRole",b.content_label AS "contentLabel",b.content_label_vi AS "contentLabelVi",b.expected_chapter_count AS "expectedChapterCount",COUNT(a.id)::integer AS "publishedChapterCount",MAX(a.published_at) AS "latestPublishedAt" FROM conspace.books b LEFT JOIN conspace.book_chapters bc ON bc.book_id=b.id LEFT JOIN conspace.articles a ON a.id=bc.article_id AND '+publishedArticle+' WHERE b.is_active=true GROUP BY b.id ORDER BY CASE WHEN $1::text IS NOT NULL AND b.audience_role=$1 THEN 0 ELSE 1 END,b.title,b.id',[lens??null]);
   res.json({ok:true,data:r.rows,meta:{total:r.rows.length,preferredAudienceRole:lens??'homeowner'}});
  }));
