@@ -6,7 +6,7 @@ import { useArticles, useNiches } from '../hooks/useResources.js';
 import { ArticleCard, NicheCard, SectionHeading, StatusPanel } from '../components/UI.jsx';
 import { Icon } from '../components/Icons.jsx';
 
-function ConstructionDrawing() {
+export function ConstructionDrawing() {
   return <div className="hero-art" aria-label="Minh họa đường nét một công trình nhìn từ ba phía" role="img">
     <div className="hero-art-grid" aria-hidden="true" />
     <span className="art-label art-label--top">CONSPACE / 001</span>
