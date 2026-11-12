@@ -4,7 +4,7 @@ import { formatDate, safeMediaUrl } from '../config.js';
 import { useReader } from '../context/ReaderContext.jsx';
 import { useFieldNotes, useNiches, useQuestions, useResource } from '../hooks/useResources.js';
 import { apiUrl, getJson, postJson } from '../lib/api.js';
-import { chapterPath } from '../lib/contentModel.js';
+import { chapterPath, chapterDisplayLabel } from '../lib/contentModel.js';
 import { sortByLens } from '../lib/readerLens.js';
 import { Markdown } from '../components/Markdown.jsx';
 import { ArticleCard, Breadcrumbs, PageIntro, SectionHeading, StatusPanel } from '../components/UI.jsx';
@@ -112,7 +112,7 @@ export function BookDetail() {
       <div className="public-book-detail-head"><BookLabel value={data.contentLabelVi}/><p>Đối tượng đọc chính: {data.audienceRole === 'homeowner' ? 'Chủ nhà' : data.audienceRole === 'architect' ? 'Kiến trúc sư' : 'Nhà thầu'}</p></div>
       {chapters.length ? <div className="public-chapter-list">{chapters.map((item) => <Link className="public-chapter-row" key={item.chapterNo} to={chapterPath(data.slug, item.chapterNo)}>
         <span className="public-chapter-number">{String(item.chapterNo).padStart(2, '0')}</span>
-        <span><strong>{item.title || item.displayLabel}</strong>{item.excerpt && <small>{item.excerpt}</small>}<small>{formatDate(item.publishedAt)}</small></span>
+        <span><strong>{chapterDisplayLabel(data.slug, item.chapterNo, item.title || item.displayLabel)}</strong>{item.excerpt && <small>{item.excerpt}</small>}<small>{formatDate(item.publishedAt)}</small></span>
         <Icon name="arrow" size={19}/>
       </Link>)}</div> : <StatusPanel status="empty" title="Chưa có chương được xuất bản" description="Các vị trí chương chưa công bố không được hiển thị nội dung hoặc ngày đăng giả."/>}
       <Link className="text-link" to="/tu-sach"><Icon name="arrow" size={16}/> Trở về tủ sách</Link>
