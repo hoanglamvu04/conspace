@@ -7,7 +7,7 @@ import { inTransaction, writeAudit } from '../../services/audit.js';
 const uuid=z.string().uuid(),slug=z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).max(120);
 const groupSchema=z.strictObject({slug,name:z.string().trim().min(1).max(120),sourceRef:z.string().trim().min(3).max(500),sortOrder:z.number().int().min(0).max(1000).optional()});
 const nicheSchema=z.strictObject({slug,name:z.string().trim().min(1).max(160),groupType:z.enum(['design','construction']),code:z.string().trim().max(30).nullable().optional(),summary:z.string().max(2000).optional(),sourceRef:z.string().trim().min(3).max(500),groupId:uuid.nullable().optional(),sortOrder:z.number().int().min(0).max(1000).optional(),isActive:z.boolean().optional()});
-const sectionSchema=z.strictObject({audienceRole:z.enum(['homeowner','architect','contractor']).nullable().optional(),content:z.string().max(50000),sourceRef:z.string().max(1000).nullable().optional(),status:z.enum(['DRAFT','IN_REVIEW']).optional()});
+const sectionSchema=z.strictObject({audienceRole:z.enum(['homeowner','architect','contractor']).nullable().optional(),content:z.string().max(50000),sourceRef:z.string().max(1000).nullable().optional(),sensitivityAssessed:z.boolean().default(false),sensitivityFlags:z.array(z.enum(['INDUSTRY_DARK_SIDE','PRICE_OR_RATE','WARRANTY_PERIOD','IDENTIFIABLE_ENTITY_RISK','LEGAL_CONTENT'])).max(5).default([])});
 async function assertDifferentPeople(client,authorId,reviewerId){
  if(!authorId)return;
  const r=await client.query('SELECT a.person_id AS author_person_id,v.person_id AS reviewer_person_id FROM conspace.cms_users a JOIN conspace.cms_users v ON v.id=$2 WHERE a.id=$1',[authorId,reviewerId]);
@@ -57,10 +57,10 @@ export function createNichesRouter(db=pool){
   const id=validate(z.strictObject({id:uuid}),req.params).id;
   const niche=await db.query('SELECT template_key FROM conspace.niches WHERE id=$1',[id]);if(!niche.rows[0])throw new RequestError(404,'NOT_FOUND','Niche not found');
   if(niche.rows[0].template_key==='TEMPLATE_B'){
-   const r=await db.query('SELECT b.section_no AS "sectionNo",b.block_key AS "blockKey",b.title,b.source_description AS "sourceDescription",s.content,s.source_ref AS "sourceRef",s.status,s.updated_by_user_id AS "updatedByUserId" FROM conspace.architectural_template_blocks b LEFT JOIN conspace.architectural_sections s ON s.niche_id=$1 AND s.section_no=b.section_no ORDER BY b.section_no',[id]);
+   const r=await db.query('SELECT b.section_no AS "sectionNo",b.block_key AS "blockKey",b.title,b.source_description AS "sourceDescription",s.content,s.source_ref AS "sourceRef",s.status,s.updated_by_user_id AS "updatedByUserId",s.sensitivity_assessed AS "sensitivityAssessed",s.sensitivity_flags AS "sensitivityFlags",s.requires_chief_review AS "requiresChiefReview" FROM conspace.architectural_template_blocks b LEFT JOIN conspace.architectural_sections s ON s.niche_id=$1 AND s.section_no=b.section_no ORDER BY b.section_no',[id]);
    return res.json({ok:true,data:{templateType:'TEMPLATE_B',expectedSectionCount:7,sections:r.rows}});
   }
-  const r=await db.query('SELECT b.section_no AS "sectionNo",b.block_key AS "blockKey",b.title,b.source_description AS "sourceDescription",l.audience_role AS "audienceRole",s.content,s.source_ref AS "sourceRef",s.status,s.updated_by_user_id AS "updatedByUserId",(s.audience_role IS NULL) AS "sharedContent" FROM conspace.niche_template_blocks b LEFT JOIN conspace.niche_template_layers l ON l.section_no=b.section_no LEFT JOIN LATERAL(SELECT ns.content,ns.source_ref,ns.status,ns.updated_by_user_id,ns.audience_role FROM conspace.niche_sections ns WHERE ns.niche_id=$1 AND ns.section_no=b.section_no AND (ns.audience_role=l.audience_role OR ns.audience_role IS NULL) ORDER BY CASE WHEN ns.audience_role=l.audience_role THEN 0 ELSE 1 END LIMIT 1)s ON true ORDER BY b.section_no,l.audience_role',[id]);
+  const r=await db.query('SELECT b.section_no AS "sectionNo",b.block_key AS "blockKey",b.title,b.source_description AS "sourceDescription",l.audience_role AS "audienceRole",s.content,s.source_ref AS "sourceRef",s.status,s.updated_by_user_id AS "updatedByUserId",s.sensitivity_assessed AS "sensitivityAssessed",s.sensitivity_flags AS "sensitivityFlags",s.requires_chief_review AS "requiresChiefReview",(s.audience_role IS NULL) AS "sharedContent" FROM conspace.niche_template_blocks b LEFT JOIN conspace.niche_template_layers l ON l.section_no=b.section_no LEFT JOIN LATERAL(SELECT ns.content,ns.source_ref,ns.status,ns.updated_by_user_id,ns.audience_role FROM conspace.niche_sections ns WHERE ns.niche_id=$1 AND ns.section_no=b.section_no AND (ns.audience_role=l.audience_role OR ns.audience_role IS NULL) ORDER BY CASE WHEN ns.audience_role=l.audience_role THEN 0 ELSE 1 END LIMIT 1)s ON true ORDER BY b.section_no,l.audience_role',[id]);
   res.json({ok:true,data:{templateType:'TEMPLATE_A',expectedSectionCount:12,sections:r.rows}});
  }));
  router.put('/:id/sections/:sectionNo',requireRoles('EDITOR'),asyncHandler(async(req,res)=>{
@@ -69,12 +69,34 @@ export function createNichesRouter(db=pool){
   if(niche.rows[0].template_key==='TEMPLATE_B'){
    if(p.sectionNo>7)throw new RequestError(404,'NOT_FOUND','Architectural template has seven sections');
    if(x.audienceRole!==undefined&&x.audienceRole!==null)throw new RequestError(400,'TEMPLATE_LAYER_NOT_SUPPORTED','Template B uses shared sections only');
-   const r=await db.query('INSERT INTO conspace.architectural_sections(niche_id,section_no,content,source_ref,status,updated_by_user_id) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(niche_id,section_no) DO UPDATE SET content=EXCLUDED.content,source_ref=EXCLUDED.source_ref,status=EXCLUDED.status,updated_by_user_id=EXCLUDED.updated_by_user_id,updated_at=now() RETURNING *',[p.id,p.sectionNo,x.content,x.sourceRef??null,x.status??'DRAFT',req.auth.id]);
+   const r=await db.query('INSERT INTO conspace.architectural_sections(niche_id,section_no,content,source_ref,status,updated_by_user_id,sensitivity_assessed,sensitivity_flags,requires_chief_review) VALUES($1,$2,$3,$4,'DRAFT',$5,$6,$7,$8) ON CONFLICT(niche_id,section_no) DO UPDATE SET content=EXCLUDED.content,source_ref=EXCLUDED.source_ref,status='DRAFT',updated_by_user_id=EXCLUDED.updated_by_user_id,sensitivity_assessed=EXCLUDED.sensitivity_assessed,sensitivity_flags=EXCLUDED.sensitivity_flags,requires_chief_review=EXCLUDED.requires_chief_review,updated_at=now() RETURNING *',[p.id,p.sectionNo,x.content,x.sourceRef??null,req.auth.id,x.sensitivityAssessed,x.sensitivityFlags,x.sensitivityFlags.length>0]);
    return res.json({ok:true,data:{...r.rows[0],templateType:'TEMPLATE_B'}});
   }
-  const r=await db.query('INSERT INTO conspace.niche_sections(niche_id,section_no,audience_role,content,source_ref,status,updated_by_user_id) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(niche_id,section_no,audience_role) DO UPDATE SET content=EXCLUDED.content,source_ref=EXCLUDED.source_ref,status=EXCLUDED.status,updated_by_user_id=EXCLUDED.updated_by_user_id,updated_at=now() RETURNING *',[p.id,p.sectionNo,x.audienceRole??null,x.content,x.sourceRef??null,x.status??'DRAFT',req.auth.id]);
+  const r=await db.query('INSERT INTO conspace.niche_sections(niche_id,section_no,audience_role,content,source_ref,status,updated_by_user_id,sensitivity_assessed,sensitivity_flags,requires_chief_review) VALUES($1,$2,$3,$4,$5,'DRAFT',$6,$7,$8,$9) ON CONFLICT(niche_id,section_no,audience_role) DO UPDATE SET content=EXCLUDED.content,source_ref=EXCLUDED.source_ref,status='DRAFT',updated_by_user_id=EXCLUDED.updated_by_user_id,sensitivity_assessed=EXCLUDED.sensitivity_assessed,sensitivity_flags=EXCLUDED.sensitivity_flags,requires_chief_review=EXCLUDED.requires_chief_review,updated_at=now() RETURNING *',[p.id,p.sectionNo,x.audienceRole??null,x.content,x.sourceRef??null,req.auth.id,x.sensitivityAssessed,x.sensitivityFlags,x.sensitivityFlags.length>0]);
   res.json({ok:true,data:{...r.rows[0],templateType:'TEMPLATE_A'}});
  }));
+
+ router.post('/:id/sections/:sectionNo/submit',requireRoles('EDITOR'),asyncHandler(async(req,res)=>{
+  const p=validate(z.strictObject({id:uuid,sectionNo:z.coerce.number().int().min(1).max(12)}),req.params);
+  const x=validate(z.strictObject({audienceRole:z.enum(['homeowner','architect','contractor']).nullable().optional(),reason:z.string().trim().min(3).max(1000)}),req.body);
+  const result=await inTransaction(db,async(client)=>{
+   const niche=await client.query('SELECT template_key FROM conspace.niches WHERE id=$1',[p.id]);if(!niche.rows[0])throw new RequestError(404,'NOT_FOUND','Niche not found');
+   const isB=niche.rows[0].template_key==='TEMPLATE_B';if(isB&&p.sectionNo>7)throw new RequestError(404,'NOT_FOUND','Architectural template has seven sections');if(isB&&x.audienceRole)throw new RequestError(400,'TEMPLATE_LAYER_NOT_SUPPORTED','Template B has shared content only');
+   const table=isB?'conspace.architectural_sections':'conspace.niche_sections';
+   const q=isB?await client.query('SELECT * FROM '+table+' WHERE niche_id=$1 AND section_no=$2 FOR UPDATE',[p.id,p.sectionNo]):await client.query('SELECT * FROM '+table+' WHERE niche_id=$1 AND section_no=$2 AND audience_role IS NOT DISTINCT FROM $3::text FOR UPDATE',[p.id,p.sectionNo,x.audienceRole??null]);
+   const section=q.rows[0];if(!section)throw new RequestError(404,'NOT_FOUND','Niche section not found');
+   if(!['DRAFT','NEEDS_CHANGES'].includes(section.status))throw new RequestError(409,'INVALID_STATE','Only draft or returned sections can be submitted');
+   if(!section.sensitivity_assessed)throw new RequestError(409,'SENSITIVITY_ASSESSMENT_REQUIRED','Editor must assess sensitivity before submission');
+   if(!section.content.trim()||!section.source_ref)throw new RequestError(409,'SOURCE_REQUIRED','Section content and source are required before technical review');
+   const updated=await client.query("UPDATE "+table+" SET status='SUBMITTED',submitted_at=now(),updated_at=now() WHERE id=$1 RETURNING *",[section.id]);
+   const entityType=isB?'ARCHITECTURAL_SECTION':'NICHE_SECTION';
+   await writeWorkflowEvent(client,{entityType,entityId:section.id,fromStatus:section.status,toStatus:'SUBMITTED',action:'SUBMIT_FOR_TECHNICAL_REVIEW',reason:x.reason,actorUserId:req.auth.id});
+   await writeAudit(client,{actorUserId:req.auth.id,action:'NICHE_SECTION_SUBMITTED',entityType,entityId:section.id,before:{status:section.status},after:{status:'SUBMITTED',reason:x.reason},req});
+   return updated.rows[0];
+  });
+  res.json({ok:true,data:result});
+ }));
+
  router.post('/:id/sections/:sectionNo/publish',requireRolesOrPermissions(['EDITOR_IN_CHIEF'],['CONTENT_PUBLISH']),asyncHandler(async(req,res)=>{
   const p=validate(z.strictObject({id:uuid,sectionNo:z.coerce.number().int().min(1).max(12)}),req.params),x=validate(z.strictObject({audienceRole:z.enum(['homeowner','architect','contractor']).nullable().optional(),reason:z.string().trim().min(3).max(1000)}),req.body);
   const result=await inTransaction(db,async(client)=>{
@@ -84,12 +106,12 @@ export function createNichesRouter(db=pool){
     ? await client.query('SELECT * FROM conspace.architectural_sections WHERE niche_id=$1 AND section_no=$2 FOR UPDATE',[p.id,p.sectionNo])
     : await client.query('SELECT * FROM conspace.niche_sections WHERE niche_id=$1 AND section_no=$2 AND audience_role IS NOT DISTINCT FROM $3::text FOR UPDATE',[p.id,p.sectionNo,x.audienceRole??null]);
    const section=q.rows[0];if(!section)throw new RequestError(404,'NOT_FOUND','Niche section not found');
-   if(section.status!=='IN_REVIEW')throw new RequestError(409,'INVALID_STATE','Section must be submitted for review before publication');
+   if(section.status!=='APPROVED'||!section.approved_by_user_id||!section.approved_at)throw new RequestError(409,'INVALID_STATE','Section must pass technical and required chief review before publication');
    await assertDifferentPeople(client,section.updated_by_user_id,req.auth.id);
    if(!section.content.trim()||!section.source_ref)throw new RequestError(409,'SOURCE_REQUIRED','A section requires content and a source before publication');
    const updated=isB
-    ? await client.query("UPDATE conspace.architectural_sections SET status='PUBLISHED',updated_at=now() WHERE id=$1 RETURNING *",[section.id])
-    : await client.query("UPDATE conspace.niche_sections SET status='PUBLISHED',updated_at=now() WHERE id=$1 RETURNING *",[section.id]);
+    ? await client.query("UPDATE conspace.architectural_sections SET status='PUBLISHED',published_by_user_id=$2,published_at=now(),updated_at=now() WHERE id=$1 RETURNING *",[section.id,req.auth.id])
+    : await client.query("UPDATE conspace.niche_sections SET status='PUBLISHED',published_by_user_id=$2,published_at=now(),updated_at=now() WHERE id=$1 RETURNING *",[section.id,req.auth.id]);
    await client.query("INSERT INTO conspace.workflow_events(entity_type,entity_id,from_status,to_status,action,reason,actor_user_id) VALUES($1,$2,$3,'PUBLISHED','APPROVE_AND_PUBLISH',$4,$5)",[isB?'ARCHITECTURAL_SECTION':'NICHE_SECTION',section.id,section.status,x.reason,req.auth.id]);
    await writeAudit(client,{actorUserId:req.auth.id,action:isB?'ARCHITECTURAL_SECTION_PUBLISHED':'NICHE_SECTION_PUBLISHED',entityType:isB?'ARCHITECTURAL_SECTION':'NICHE_SECTION',entityId:section.id,before:{status:section.status},after:{status:'PUBLISHED',reason:x.reason},req});
    return {...updated.rows[0],templateType:isB?'TEMPLATE_B':'TEMPLATE_A'};
