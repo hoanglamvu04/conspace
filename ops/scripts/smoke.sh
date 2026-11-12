@@ -21,9 +21,13 @@ for HOST in conspace.vn www.conspace.vn; do
     301\|https://*|302\|https://*|307\|https://*|308\|https://*) echo "HTTP->HTTPS: $REDIRECT" ;;
     *) echo "FAIL: Unexpected redirect: $REDIRECT" >&2; exit 1 ;;
   esac
+  echo "CHECK: https://$HOST/__infra/health"
   curl --noproxy '*' --fail --silent --show-error --max-time 15 "https://$HOST/__infra/health" | check_json conspace-edge
+  echo "CHECK: https://$HOST/api/health"
   curl --noproxy '*' --fail --silent --show-error --max-time 15 "https://$HOST/api/health" | check_json conspace-api
+  echo "CHECK: https://$HOST/api/ready"
   curl --noproxy '*' --fail --silent --show-error --max-time 15 "https://$HOST/api/ready" | check_json conspace-api ready
+  echo "CHECK: https://$HOST/ (Vite HTML)"
   HTML="$(curl --noproxy '*' --fail --silent --show-error --max-time 15 "https://$HOST/")"
   ASSET="$(printf '%s' "$HTML" | grep -oE '/assets/[^" ]+\.(js|css)' | head -n 1 || true)"
   [[ -n "$ASSET" ]] || { echo "FAIL: No Vite asset link in $HOST HTML." >&2; exit 1; }

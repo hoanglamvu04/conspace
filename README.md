@@ -41,10 +41,10 @@ Lưu ý: `/api/ready` trả HTTP 503 cho đến khi backend có DATABASE_URL đ�
 
 ## Quy trình Git cho 3 chat
 
-Base: `bootstrap/gate1-base`; nhánh chat: `work/backend`, `work/frontend`, `work/ops`. **Không 3 chat cùng push main.** Mỗi chat chỉ sửa phạm vi thư mục mình sở hữu, mở PR hướng về `bootstrap/gate1-base`. Xem `docs/WORKSTREAMS.md`, `docs/API_CONTRACT.md`.
+Nhánh chính duy nhất: `main`. Ba chat Backend, Frontend và DevOps commit/push **trực tiếp vào main** nhưng mỗi chat chỉ sửa phần thư mục được giao và đồng bộ code trước khi push. Không force-push. Xem `docs/WORKSTREAMS.md`, `docs/API_CONTRACT.md`.
 
 ## Hạ tầng production
 
-Trên VPS hiện hữu, không chạy ngay bộ khung mới lên `conspace.vn` nếu chưa kiểm thử build, API DB, PM2 và cấu hình Nginx. Trang Gate 0 hiện đang hoạt động trên HTTPS; nhóm Ops có trách nhiệm chuyển từ holding page sang build sau khi kiểm tra và có rollback.
+Trên VPS, `git pull --ff-only origin main` chỉ cập nhật source, KHÔNG tự restart PM2, sửa Nginx hoặc chạy DB migrations. Sử dụng `ops/scripts/diagnose-live.sh` để xác định lỗi HTTP 500 và `ops/scripts/go-live.sh` để deploy sau khi kiểm tra tình trạng rollback; tránh chạy lại khi chưa rõ trạng thái.
 
 **Không chạy `pm2 update`, `pm2 kill`, `pm2 restart all` hoặc reboot VPS chỉ để thử CONSPACE.**

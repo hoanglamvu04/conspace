@@ -5,7 +5,7 @@ umask 022
 
 REPO=/var/www/conspace
 RELEASES=/var/www/conspace-releases
-BRANCH=bootstrap/gate1-base
+BRANCH=main
 SHA="${1:-}"
 
 if (( EUID != 0 )); then echo 'FAIL: Run as root for the existing deployment layout.' >&2; exit 1; fi

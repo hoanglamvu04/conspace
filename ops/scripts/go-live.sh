@@ -9,10 +9,10 @@ cd "$REPO"
 die() { printf 'STOP: %s\n' "$*" >&2; exit 1; }
 
 [[ "$EUID" == 0 ]] || die 'Run as root (matching existing pm2-root service).'
-[[ "$(git branch --show-current)" == 'bootstrap/gate1-base' ]] || die 'Switch to approved bootstrap/gate1-base before running.'
+[[ "$(git branch --show-current)" == 'main' ]] || die 'Switch to approved main before running.'
 [[ -z "$(git status --porcelain --untracked-files=no)" ]] || die 'Tracked working tree has local modifications; inspect before deploying.'
 SHA="$(git rev-parse HEAD)"
-REMOTE="$(git rev-parse refs/remotes/origin/bootstrap/gate1-base)"
+REMOTE="$(git rev-parse refs/remotes/origin/main)"
 [[ "$SHA" == "$REMOTE" ]] || die "Local SHA differs from remote integration; git pull --ff-only first."
 [[ "$(node -v)" == 'v22.23.2' ]] || die 'Expected Node.js 22.23.2.'
 test -f backend/package-lock.json || die 'Backend lockfile missing.'

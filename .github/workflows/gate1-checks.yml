@@ -3,11 +3,9 @@ name: CONSPACE Gate 1 checks
 on:
   push:
     branches:
-      - bootstrap/gate1-base
-      - 'work/**'
+      - main
   pull_request:
     branches:
-      - bootstrap/gate1-base
       - main
 
 permissions:

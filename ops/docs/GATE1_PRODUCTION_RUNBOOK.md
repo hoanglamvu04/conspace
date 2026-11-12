@@ -2,7 +2,7 @@
 
 ## Scope and hard stop conditions
 
-Use only after backend, frontend and ops PR review + merge into `bootstrap/gate1-base`, successful CI checks, and explicit production approval. Never deploy `work/backend`, `work/frontend`, `work/ops`, or old `main` directly. VPS is shared with other websites. Do not modify unrelated vhosts, certificates, existing PM2 processes, roles or databases. Never run `pm2 update`, `pm2 restart all`, `pm2 kill`, `git reset --hard`, or reboot.
+Use only after the latest `main` commit has passed CI and deployment was explicitly approved. Backend, Frontend and DevOps now commit directly to `main` with path ownership; do not deploy arbitrary untested commits. VPS is shared with other websites. Do not modify unrelated vhosts, certificates, existing PM2 processes, roles or databases. Never run `pm2 update`, `pm2 restart all`, `pm2 kill`, `git reset --hard`, or reboot.
 
 The Gate 0 production Nginx holding page is the documented baseline, **not live-verified by this PR**. Nginx `/__infra/health` is independent of backend `/api/health` and PostgreSQL `/api/ready`.
 
@@ -41,8 +41,8 @@ Check the Git working tree first; if dirty, stop (do not discard local changes).
 cd /var/www/conspace
 git status --short
 git fetch origin
-git switch bootstrap/gate1-base
-git pull --ff-only origin bootstrap/gate1-base
+git switch main
+git pull --ff-only origin main
 APPROVED_SHA="$(git rev-parse HEAD)"
 printf 'Candidate SHA: %s\n' "$APPROVED_SHA"
 ```
