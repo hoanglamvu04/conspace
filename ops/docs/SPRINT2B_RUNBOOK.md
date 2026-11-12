@@ -2,11 +2,14 @@
 
 Status: **code prepared in Git only**. No SSH was available during authoring. The real VPS/Nginx/PM2/media/backup state remains unverified. Do **not** treat a CI syntax PASS as a production acceptance PASS.
 
-## 1. CI dependency blocker and Frontend handoff
+## 1. Dependency audit status
 
-GitHub Actions run [43167636931](https://github.com/hoanglamvu04/conspace/actions/runs/43167636931) failed **Frontend full dependency audit**. Current frontend pins `vite@5.4.19` with transitive `esbuild@0.21.5`. npm audit reported **1 moderate and 1 high** (esbuild dev-server issue: GHSA-67mh-4wv8-2f99; vulnerable Vite dependency chain). Full audit must remain. npm audit suggested Vite 5.4.21; have Frontend owner validate the patched candidate and update BOTH frontend/package.json and frontend/package-lock.json. Ops does not edit frontend.
+The previous Frontend audit blocker is resolved in Git:
+- Vite is pinned to `6.4.6`; the lockfile resolves esbuild to `0.25.5`.
+- The high-severity Picomatch advisory is resolved with `picomatch@4.0.4`.
+- GitHub Actions run [43259620334](https://github.com/hoanglamvu04/conspace/actions/runs/43259620334) passed both `backend-and-frontend` and `ops-static` for commit `8d2bb11331c911b5819460cefd1f8a1253409bf3`.
 
-Backend also has lower-severity Morgan advisories; Backend owns any package changes. A successful `npm ci`/test/build does NOT override failed dependency audit.
+The Backend audit still reports lower-severity Morgan/on-headers advisories below the configured high threshold. Keep the full audit mandatory; Backend owns any dependency change. A successful `npm ci`/test/build does NOT override a failed dependency audit. A later commit must receive its own green checks before release.
 
 ## 2. HTTP routing and HTTPS
 
@@ -114,7 +117,7 @@ For an approved *public-only* release, use `public` instead of `cms` and DO NOT 
 
 ### Operational blockers
 
-- Run 43167636931 failed full Frontend audit; Frontend must fix Vite/esbuild and generate passing CI.
-- Actual CMS login/RBAC/CSRF/upload functionality is owned by Backend and not yet proven in main.
+- Frontend dependency audit is green on commit 8d2bb11331c911b5819460cefd1f8a1253409bf3; any later main commit must also pass both required CI jobs.
+- Backend login, RBAC, CSRF, uploads, niche-section review/publication and delegated publishing have CI integration coverage. Staging authorization/cookie acceptance and live production configuration remain unverified.
 - No SSH evidence was available to validate live Nginx, cookie, media permissions, backups, restore or other sites.
 - All production changes require owner approval. Never claim deployment or final acceptance from source review alone.
