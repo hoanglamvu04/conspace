@@ -2,30 +2,33 @@ import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { ReaderProvider } from './context/ReaderContext.jsx';
 import { Footer, Header } from './components/UI.jsx';
-import Home from './pages/Home.jsx';
-import { NicheDetail, NicheDirectory } from './pages/Niches.jsx';
+import HomeV1 from './pages/HomeV1.jsx';
+import { NicheDirectory } from './pages/Niches.jsx';
+import NicheDetailV1 from './pages/NicheDetailV1.jsx';
 import { ArticleDetail, ArticleIndex } from './pages/Articles.jsx';
-import { About, Dictionary, FieldNotes, Library, Lookup, NotFound, Principles } from './pages/Sections.jsx';
+import { About, NotFound, Principles } from './pages/Sections.jsx';
+import { BookIndex, BookDetail, ChapterDetail, FieldNotes, FieldNoteDetail, Questions, QuestionDetail, QuestionForm, Lookup } from './pages/PublicPages.jsx';
 
 // Separate route bundle: readers never download the private CMS application.
 const AdminApp = lazy(() => import('./admin/AdminApp.jsx'));
 
 const META = {
   '/': ['Một công trình. Ba góc nhìn.', 'Nơi chủ nhà, kiến trúc sư và nhà thầu đọc được câu chuyện của nhau.'],
-  '/ngach': ['Kho 38 ngách', 'Bản đồ 8 mảng kiến trúc và 30 ngách thi công CONSPACE.'],
-  '/tu-sach': ['Tủ sách', 'Ba đầu sách — ba góc nhìn về nghề xây dựng.'],
-  '/hien-truong': ['Hiện trường', 'Cách CONSPACE ghi nhận và phân tích những tình huống ngoài công trường.'],
-  '/tu-dien': ['Từ điển nghề', 'Tra thuật ngữ chuyên môn từ kho kiến thức được biên tập.'],
+  '/ngach': ['Kho 38 ngách', 'Bản đồ lĩnh vực kiến trúc và thi công đã được xác minh.'],
+  '/tu-sach': ['Tủ sách', 'Ba đầu sách và những chương đã được biên tập, duyệt và xuất bản.'],
+  '/hien-truong': ['Hiện trường', 'Ca hiện trường đã ẩn danh và xác nhận quyền tư liệu.'],
+  '/hoi-dap': ['Hỏi đáp', 'Câu hỏi ẩn danh và câu trả lời đã qua kiểm duyệt.'],
+  '/tra-nhanh': ['Tra nhanh', 'Tìm trong bài viết, ngách, chương sách, hiện trường và thuật ngữ đã xuất bản.'],
   '/ban-nghe': ['Bàn nghề', 'Đọc chuyện nghề xây dựng từ chủ nhà, kiến trúc sư và nhà thầu.'],
   '/bai-viet': ['Bài viết', 'Những bài đã xuất bản tại CONSPACE.'],
-  '/tra-cuu': ['Tra cứu', 'Tra cứu thuật ngữ và lĩnh vực xây dựng.'],
   '/ve-conspace': ['Về CONSPACE', 'Định vị và tư cách biên tập độc lập của CONSPACE.'],
   '/quy-tac-noi-dung': ['Quy tắc nội dung', 'Các nguyên tắc biên tập công khai của CONSPACE.'],
 };
 function DocumentMeta() {
   const { pathname } = useLocation();
   useEffect(() => {
-    const info = META[pathname] || (pathname.startsWith('/ngach/') ? ['Lĩnh vực chuyên môn', 'Tìm hiểu danh mục nghề xây dựng.'] : pathname.startsWith('/bai-viet/') ? ['Đọc bài viết', 'Bài viết từ CONSPACE.'] : ['Không tìm thấy trang', 'CONSPACE — Sự thật ngành Xây.']);
+    const canonicalPath = ['/tra-cuu', '/tu-dien'].includes(pathname) ? '/tra-nhanh' : pathname;
+    const info = META[canonicalPath] || (pathname.startsWith('/ngach/') ? ['Lĩnh vực chuyên môn', 'Tìm hiểu lĩnh vực nghề xây dựng.'] : pathname.startsWith('/bai-viet/') ? ['Đọc bài viết', 'Bài viết đã xuất bản từ CONSPACE.'] : pathname.startsWith('/hien-truong/') ? ['Ca hiện trường', 'Hồ sơ hiện trường đã được ẩn danh và xuất bản.'] : pathname.startsWith('/hoi-dap/') ? ['Hỏi đáp', 'Câu hỏi và câu trả lời đã xuất bản.'] : pathname.startsWith('/tu-sach/') ? ['Chương sách', 'Chương sách đã được duyệt và xuất bản.'] : ['CONSPACE', 'Sự thật ngành Xây.']);
     document.title = `${info[0]} | CONSPACE · Sự thật ngành Xây`;
     const meta = document.querySelector('meta[name="description"]');
     if (meta) meta.setAttribute('content', info[1]);
@@ -33,7 +36,7 @@ function DocumentMeta() {
     if (ogTitle) ogTitle.setAttribute('content', document.title);
     const canonical = document.querySelector('link[rel="canonical"]') || document.createElement('link');
     canonical.rel = 'canonical';
-    canonical.href = `${window.location.origin}${pathname}`;
+    canonical.href = `${window.location.origin}${canonicalPath}`;
     if (!canonical.isConnected) document.head.appendChild(canonical);
   }, [pathname]);
   return null;
@@ -49,17 +52,25 @@ function Site() {
     return <Suspense fallback={<div role="status" aria-live="polite" style={{ padding: 48, fontFamily: 'sans-serif' }}>Đang tải tòa soạn CONSPACE…</div>}><AdminApp/></Suspense>;
   }
   return <><DocumentMeta/><ScrollManager/><a className="skip-link" href="#main-content">Bỏ qua điều hướng, đến nội dung</a><Header/><div id="main-content"><Routes>
-    <Route path="/" element={<Home/>}/>
+    <Route path="/" element={<HomeV1/>}/>
+    <Route path="/tu-sach" element={<BookIndex/>}/>
+    <Route path="/tu-sach/:slug" element={<BookDetail/>}/>
+    <Route path="/cam-nang/:part/:item" element={<ChapterDetail bookSlug="cam-nang-kien-truc-hoa-lac"/>}/>
+    <Route path="/phan-nha-thau/:chapter" element={<ChapterDetail bookSlug="phan-nha-thau-xay-dung"/>}/>
+    <Route path="/quan-quanh-kts/:chapter" element={<ChapterDetail bookSlug="quan-quanh-kts"/>}/>
     <Route path="/ngach" element={<NicheDirectory/>}/>
-    <Route path="/ngach/:slug" element={<NicheDetail/>}/>
+    <Route path="/ngach/:slug" element={<NicheDetailV1/>}/>
+    <Route path="/hien-truong" element={<FieldNotes/>}/>
+    <Route path="/hien-truong/:id" element={<FieldNoteDetail/>}/>
+    <Route path="/hoi-dap" element={<Questions/>}/>
+    <Route path="/hoi-dap/gui-cau-hoi" element={<QuestionForm/>}/>
+    <Route path="/hoi-dap/:id" element={<QuestionDetail/>}/>
+    <Route path="/tra-nhanh" element={<Lookup/>}/>
+    <Route path="/tra-cuu" element={<Lookup/>}/>
+    <Route path="/tu-dien" element={<Lookup/>}/>
     <Route path="/bai-viet" element={<ArticleIndex/>}/>
     <Route path="/bai-viet/:slug" element={<ArticleDetail/>}/>
     <Route path="/ban-nghe" element={<ArticleIndex isWorkbench/>}/>
-    <Route path="/tu-sach" element={<Library/>}/>
-    <Route path="/hien-truong" element={<FieldNotes/>}/>
-    <Route path="/tu-dien" element={<Dictionary/>}/>
-    <Route path="/tra-cuu" element={<Lookup/>}/>
-    <Route path="/tra-nhanh" element={<Lookup/>}/>
     <Route path="/ve-conspace" element={<About/>}/>
     <Route path="/quy-tac-noi-dung" element={<Principles/>}/>
     <Route path="*" element={<NotFound/>}/>
