@@ -106,6 +106,10 @@ test('real PostgreSQL flow: login -> create -> technical review -> chief review 
   const chiefApi=api(base,chief);
   const reviewerAliasApi=api(base,reviewerAlias);
   const publisherApi=api(base,publisher);
+  for(const path of ['/api/admin/terms/','/api/admin/questions/','/api/admin/niches/']){
+    const readable=await publisherApi('GET',path);
+    assert.equal(readable.status,200,JSON.stringify(readable.body));
+  }
 
   const slug='ci-reviewed-'+uuidSuffix;
   const created=await editorApi('POST','/api/admin/articles/',{
@@ -185,6 +189,25 @@ test('real PostgreSQL flow: login -> create -> technical review -> chief review 
   const delegatedWithdraw=await publisherApi('POST','/api/admin/articles/'+secondId+'/withdraw',{reason:'Requires separate withdrawal grant'});
   assert.equal(delegatedWithdraw.status,403);
 
+  // Explicit CONTENT_PUBLISH delegates publication only; ADMIN without that grant cannot publish.
+  const termDraft=await editorApi('POST','/api/admin/terms/',{
+    term:'CI term '+uuidSuffix,slug:'ci-term-'+uuidSuffix,
+    definition:'Định nghĩa kiểm chứng dành riêng cho kiểm thử CI.',
+    sourceRef:'CI fixture: verified term source',
+  });
+  assert.equal(termDraft.status,201,JSON.stringify(termDraft.body));
+  const termId=termDraft.body.data.id;
+  assert.equal((await editorApi('POST','/api/admin/terms/'+termId+'/submit',{})).status,200);
+  assert.equal((await reviewerApi('POST','/api/admin/reviews/terms/'+termId+'/start',{})).status,200);
+  const termDecision=await reviewerApi('POST','/api/admin/reviews/terms/'+termId+'/decision',{
+    decision:'APPROVED',reason:'Định nghĩa và nguồn đạt yêu cầu',
+  });
+  assert.equal(termDecision.status,200,JSON.stringify(termDecision.body));
+  const adminTermPublish=await adminApi('POST','/api/admin/terms/'+termId+'/publish',{});
+  assert.equal(adminTermPublish.status,403);
+  const delegatedTermPublish=await publisherApi('POST','/api/admin/terms/'+termId+'/publish',{});
+  assert.equal(delegatedTermPublish.status,200,JSON.stringify(delegatedTermPublish.body));
+
   const lensArticles=await api(base)('GET','/api/v1/articles?role=homeowner&limit=50');
   assert.equal(lensArticles.status,200,JSON.stringify(lensArticles.body));
   assert.ok(lensArticles.body.data.some(a=>a.slug===slug));
@@ -252,7 +275,7 @@ test('real PostgreSQL flow: login -> create -> technical review -> chief review 
   });
   assert.equal(sectionDecision.status,200,JSON.stringify(sectionDecision.body));
   assert.equal(sectionDecision.body.data.status,'APPROVED');
-  const sectionPublished=await chiefApi('POST','/api/admin/niches/'+constructionNicheId+'/sections/1/publish',{
+  const sectionPublished=await publisherApi('POST','/api/admin/niches/'+constructionNicheId+'/sections/1/publish',{
     audienceRole:'homeowner',reason:'Xuất bản khối đã qua duyệt kỹ thuật',
   });
   assert.equal(sectionPublished.status,200,JSON.stringify(sectionPublished.body));

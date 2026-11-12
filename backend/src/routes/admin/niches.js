@@ -14,7 +14,7 @@ async function assertDifferentPeople(client,authorId,reviewerId){
  if(r.rows[0]?.author_person_id===r.rows[0]?.reviewer_person_id)throw new RequestError(403,'AUTHOR_CANNOT_APPROVE','The section author and reviewer must be different people');
 }
 export function createNichesRouter(db=pool){
- const router=Router();router.use(requireRoles('ADMIN','EDITOR','TECHNICAL_REVIEWER','EDITOR_IN_CHIEF'));
+ const router=Router();router.use(requireRolesOrPermissions(['ADMIN','EDITOR','TECHNICAL_REVIEWER','EDITOR_IN_CHIEF'],['CONTENT_PUBLISH']));
  router.get('/',asyncHandler(async(_req,res)=>{
   const r=await db.query('SELECT n.id,n.slug,n.name,n.group_type AS "groupType",n.template_key AS "templateType",CASE n.template_key WHEN \'TEMPLATE_A\' THEN 12 ELSE 7 END AS "expectedSectionCount",n.code,n.summary,n.source_ref AS "sourceRef",n.sort_order AS "sortOrder",n.is_active AS "isActive",n.niche_group_id AS "groupId",g.name AS "groupName" FROM conspace.niches n LEFT JOIN conspace.niche_groups g ON g.id=n.niche_group_id ORDER BY CASE n.group_type WHEN \'design\' THEN 0 ELSE 1 END,n.sort_order,n.name');
   res.json({ok:true,data:r.rows,meta:{total:r.rows.length,designLimit:8,constructionLimit:30}});

@@ -41,7 +41,7 @@ const reasonSchema=z.strictObject({reason:z.string().trim().min(3).max(1000)});
 
 export function createArticlesRouter(db=pool, editorial=createEditorialService(db)){
   const router=Router();
-  router.use(requireRoles('ADMIN','EDITOR','TECHNICAL_REVIEWER','EDITOR_IN_CHIEF'));
+  router.use(requireRolesOrPermissions(['ADMIN','EDITOR','TECHNICAL_REVIEWER','EDITOR_IN_CHIEF'],['CONTENT_PUBLISH','CONTENT_WITHDRAW']));
 
   router.get('/',asyncHandler(async(req,res)=>{
     const query=validate(querySchema,req.query);
@@ -107,13 +107,13 @@ export function createArticlesRouter(db=pool, editorial=createEditorialService(d
     res.json({ok:true,data});
   }));
 
-  router.post('/:id/publish',requireRoles('ADMIN','EDITOR_IN_CHIEF'),asyncHandler(async(req,res)=>{
+  router.post('/:id/publish',requireRolesOrPermissions(['EDITOR_IN_CHIEF'],['CONTENT_PUBLISH']),asyncHandler(async(req,res)=>{
     const {id}=validate(idSchema,req.params);
     const data=await editorial.publishArticle(req.auth,id,req);
     res.json({ok:true,data});
   }));
 
-  router.post('/:id/withdraw',requireRoles('ADMIN','EDITOR_IN_CHIEF'),asyncHandler(async(req,res)=>{
+  router.post('/:id/withdraw',requireRolesOrPermissions(['EDITOR_IN_CHIEF'],['CONTENT_WITHDRAW']),asyncHandler(async(req,res)=>{
     const {id}=validate(idSchema,req.params);
     const {reason}=validate(reasonSchema,req.body);
     const data=await editorial.withdrawArticle(req.auth,id,reason,req);

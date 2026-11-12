@@ -114,7 +114,11 @@ export function hasPermission(user, permission) {
       delegatedUi.add('niches:publish');
       delegatedUi.add('questions:publish');
       delegatedUi.add('dictionary:publish');
+      delegatedUi.add('niches:read');
+      delegatedUi.add('questions:read');
+      delegatedUi.add('dictionary:read');
     } else if (grant === 'CONTENT_WITHDRAW') {
+      delegatedUi.add('articles:read');
       delegatedUi.add('articles:withdraw');
     } else if (typeof grant === 'string') {
       delegatedUi.add(grant);

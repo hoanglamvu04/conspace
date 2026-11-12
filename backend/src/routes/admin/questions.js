@@ -20,7 +20,7 @@ const questionPatch=z.strictObject({
 
 export function createQuestionsRouter(db=pool,config){
   const router=Router();
-  router.use(requireRoles('ADMIN','EDITOR','TECHNICAL_REVIEWER','EDITOR_IN_CHIEF'));
+  router.use(requireRolesOrPermissions(['ADMIN','EDITOR','TECHNICAL_REVIEWER','EDITOR_IN_CHIEF'],['CONTENT_PUBLISH']));
 
   router.get('/',asyncHandler(async(req,res)=>{
     const query=validate(z.strictObject({
@@ -137,7 +137,7 @@ export function createQuestionsRouter(db=pool,config){
     res.json({ok:true,data:result});
   }));
 
-  router.post('/:id/answer/publish',requireRoles('ADMIN','EDITOR_IN_CHIEF'),asyncHandler(async(req,res)=>{
+  router.post('/:id/answer/publish',requireRolesOrPermissions(['EDITOR_IN_CHIEF'],['CONTENT_PUBLISH']),asyncHandler(async(req,res)=>{
     const id=validate(z.strictObject({id:uuid}),req.params).id;
     const result=await inTransaction(db,async(client)=>{
       const current=await client.query('SELECT * FROM conspace.question_answers WHERE question_id=$1 FOR UPDATE',[id]);

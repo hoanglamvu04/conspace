@@ -29,7 +29,7 @@ async function replaceNiches(client,termId,nicheIds){
 
 export function createTermsRouter(db=pool){
   const router=Router();
-  router.use(requireRoles('EDITOR','TECHNICAL_REVIEWER','EDITOR_IN_CHIEF'));
+  router.use(requireRolesOrPermissions(['EDITOR','TECHNICAL_REVIEWER','EDITOR_IN_CHIEF'],['CONTENT_PUBLISH']));
 
   router.get('/',asyncHandler(async(req,res)=>{
     const query=validate(z.strictObject({
@@ -127,7 +127,7 @@ export function createTermsRouter(db=pool){
     res.json({ok:true,data:result});
   }));
 
-  router.post('/:id/publish',requireRoles('ADMIN','EDITOR_IN_CHIEF'),asyncHandler(async(req,res)=>{
+  router.post('/:id/publish',requireRolesOrPermissions(['EDITOR_IN_CHIEF'],['CONTENT_PUBLISH']),asyncHandler(async(req,res)=>{
     const id=validate(z.strictObject({id:uuid}),req.params).id;
     const result=await inTransaction(db,async(client)=>{
       const current=await client.query('SELECT * FROM conspace.terms WHERE id=$1 FOR UPDATE',[id]);

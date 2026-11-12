@@ -104,6 +104,10 @@ test('primary role permissions remain available when delegated grants are empty'
 test('delegated backend permissions add only their mapped UI capabilities', () => {
   assert.equal(hasPermission({ role: 'ADMIN', permissions: ['CONTENT_PUBLISH'] }, 'articles:publish'), true);
   assert.equal(hasPermission({ role: 'ADMIN', permissions: ['CONTENT_PUBLISH'] }, 'niches:publish'), true);
+  assert.equal(hasPermission({ role: 'ADMIN', permissions: ['CONTENT_PUBLISH'] }, 'niches:read'), true);
+  assert.equal(hasPermission({ role: 'ADMIN', permissions: ['CONTENT_PUBLISH'] }, 'questions:read'), true);
+  assert.equal(hasPermission({ role: 'ADMIN', permissions: ['CONTENT_PUBLISH'] }, 'dictionary:read'), true);
+  assert.equal(hasPermission({ role: 'ADMIN', permissions: ['CONTENT_WITHDRAW'] }, 'articles:read'), true);
   assert.equal(hasPermission({ role: 'ADMIN', permissions: ['CONTENT_WITHDRAW'] }, 'articles:withdraw'), true);
   assert.equal(hasPermission({ role: 'ADMIN', grants: ['users:write'] }, 'users:write'), true);
 });
