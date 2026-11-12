@@ -15,12 +15,12 @@ function StatCard({title,icon,source,to,extra=0}) {
 }
 export default function Dashboard(){
   const {user,can}=useSession();
-  const drafts=useAdminList('/articles',{status:'DRAFT',page:1,limit:1});
-  const submitted=useAdminList('/articles',{status:'SUBMITTED',page:1,limit:1});
-  const technical=useAdminList('/articles',{status:'TECHNICAL_REVIEW',page:1,limit:1});
-  const chief=useAdminList('/articles',{status:'EDITOR_IN_CHIEF_REVIEW',page:1,limit:1});
-  const published=useAdminList('/articles',{status:'PUBLISHED',page:1,limit:1});
-  const scheduled=useAdminList('/articles',{status:'SCHEDULED',page:1,limit:20});
+  const drafts=useAdminList('/articles',{status:'DRAFT',page:1,limit:1},can('articles:write'));
+  const submitted=useAdminList('/articles',{status:'SUBMITTED',page:1,limit:1},can('reviews:read'));
+  const technical=useAdminList('/articles',{status:'TECHNICAL_REVIEW',page:1,limit:1},can('reviews:read'));
+  const chief=useAdminList('/articles',{status:'EDITOR_IN_CHIEF_REVIEW',page:1,limit:1},can('reviews:read'));
+  const published=useAdminList('/articles',{status:'PUBLISHED',page:1,limit:1},can('articles:publish')||can('articles:write'));
+  const scheduled=useAdminList('/articles',{status:'SCHEDULED',page:1,limit:20},can('articles:schedule'));
   const changed=useAdminList('/articles',{page:1,limit:8});
   const users=useAdminList('/users',{},can('users:read'));
   const queue=useAdminObject(adminPath('/reviews/queue',{stage:can('reviews:chief:decide')&&!can('reviews:technical:decide')?'EDITOR_IN_CHIEF':'TECHNICAL'}),can('reviews:read'));
