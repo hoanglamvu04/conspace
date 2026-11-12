@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { formatDate, safeMediaUrl } from '../config.js';
 import { useReader } from '../context/ReaderContext.jsx';
 import { useFieldNotes, useNiches, useQuestions, useResource } from '../hooks/useResources.js';
@@ -212,12 +212,13 @@ export function QuestionForm() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const fileInputRef = useRef(null);
 
   function chooseFiles(event) {
     const selected = Array.from(event.target.files || []);
-    if (selected.length > 5) { setError('Bạn chỉ có thể gửi tối đa năm ảnh.'); setFiles([]); return; }
+    if (selected.length > 5) { setError('Bạn chỉ có thể gửi tối đa năm ảnh.'); setFiles([]); if (fileInputRef.current) fileInputRef.current.value = ''; return; }
     const invalid = selected.find((file) => !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024);
-    if (invalid) { setError('Mỗi ảnh phải là JPEG, PNG hoặc WebP và không quá 5 MB.'); setFiles([]); return; }
+    if (invalid) { setError('Mỗi ảnh phải là JPEG, PNG hoặc WebP và không quá 5 MB.'); setFiles([]); if (fileInputRef.current) fileInputRef.current.value = ''; return; }
     setError('');
     setFiles(selected);
   }
@@ -245,7 +246,7 @@ export function QuestionForm() {
       setFiles([]);
       setPrivateReply(false);
       setPhone('');
-      event.currentTarget.reset();
+      if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (requestError) {
       setError(requestError.message || 'Chưa thể gửi câu hỏi.');
     } finally {
@@ -268,7 +269,7 @@ export function QuestionForm() {
         </select>
         {niches.status === 'error' && <p className="public-form-hint" role="status">Danh mục tạm thời chưa tải được; bạn vẫn có thể gửi câu hỏi mà không chọn ngách.</p>}
         <label htmlFor="question-images">Ảnh minh họa (tối đa 5 ảnh, mỗi ảnh 5 MB)</label>
-        <input id="question-images" type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={chooseFiles}/>
+        <input id="question-images" ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={chooseFiles}/>
         {files.length > 0 && <ul className="public-file-list">{files.map((file) => <li key={file.name + file.size}>{file.name} · {(file.size / 1024 / 1024).toFixed(2)} MB</li>)}</ul>}
         <label className="public-consent-check"><input type="checkbox" checked={privateReply} onChange={(event) => { setPrivateReply(event.target.checked); if (!event.target.checked) setPhone(''); }}/><span>Tôi muốn CONSPACE liên hệ riêng để trả lời câu hỏi này.</span></label>
         {privateReply && <div className="public-private-contact"><label htmlFor="question-phone">Số điện thoại nhận phản hồi <span aria-hidden="true">*</span></label><input id="question-phone" type="tel" autoComplete="tel" minLength={6} maxLength={40} required value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="Số điện thoại của bạn"/><p>Thông tin được mã hóa khi lưu và chỉ nhân sự được cấp quyền mới có thể xem. Nếu không chọn mục này, số điện thoại không được gửi.</p></div>}
