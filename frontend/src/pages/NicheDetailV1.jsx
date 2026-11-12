@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { READERS } from '../config.js';
 import { useReader } from '../context/ReaderContext.jsx';
@@ -9,9 +9,9 @@ import { Markdown } from '../components/Markdown.jsx';
 import { ArticleCard, Breadcrumbs, PageIntro, ReaderSwitch, SectionHeading, StatusPanel } from '../components/UI.jsx';
 import { Icon } from '../components/Icons.jsx';
 
-function LayerAccordion({ role, sections, selected }) {
+function LayerAccordion({ role, sections, open, onToggle }) {
   const content = nicheLayersForRole(sections, role.id);
-  return <details className="public-layer-accordion" open={selected}>
+  return <details className="public-layer-accordion" open={open} onToggle={(event) => onToggle(role.id, event.currentTarget.open)}>
     <summary>
       <span className="public-layer-icon"><Icon name={role.icon} size={22}/></span>
       <span><strong>{role.label}</strong><small>{role.detail}</small></span>
@@ -32,6 +32,10 @@ function LayerAccordion({ role, sections, selected }) {
 export default function NicheDetailV1() {
   const { slug } = useParams();
   const { reader } = useReader();
+  const [openRoles, setOpenRoles] = useState(() => [reader]);
+  useEffect(() => {
+    setOpenRoles((current) => current.includes(reader) ? current : [...current, reader]);
+  }, [reader]);
   const validSlug = typeof slug === 'string' && /^[a-z0-9][a-z0-9-]*$/.test(slug);
   const resource = useResource(validSlug ? apiUrl('/niches/' + slug) : null, { list: false, enabled: validSlug });
   const niche = resource.status === 'success' ? resource.data : null;
@@ -74,7 +78,7 @@ export default function NicheDetailV1() {
 
       {isConstruction ? <section className="public-layers-section">
         <SectionHeading eyebrow="TEMPLATE A / 12 KHỐI" title="Ba lớp nội dung cùng một trang" description="Chỉ các khối đã có nội dung, nguồn và trạng thái xuất bản mới được hiển thị. Mở thêm góc nhìn khác mà không đổi URL."/>
-        <div className="public-layer-stack">{READERS.map((role) => <LayerAccordion key={role.id} role={role} sections={niche.sections || []} selected={reader === role.id}/>)}</div>
+        <div className="public-layer-stack">{READERS.map((role) => <LayerAccordion key={role.id} role={role} sections={niche.sections || []} open={openRoles.includes(role.id)} onToggle={(id, open) => setOpenRoles((current) => open ? (current.includes(id) ? current : [...current, id]) : current.filter((value) => value !== id))}/>)}</div>
       </section> : <section className="public-design-note">
         <span className="eyebrow">TEMPLATE B / MẢNG KIẾN TRÚC</span>
         <h2>Hồ sơ mảng kiến trúc có cấu trúc riêng</h2>
