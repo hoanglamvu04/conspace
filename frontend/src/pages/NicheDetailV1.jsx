@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
 import { READERS } from '../config.js';
 import { useReader } from '../context/ReaderContext.jsx';
 import { useResource } from '../hooks/useResources.js';
@@ -32,6 +32,7 @@ function LayerAccordion({ role, sections, open, onToggle }) {
 
 export default function NicheDetailV1() {
   const { slug } = useParams();
+  const location = useLocation();
   const { reader } = useReader();
   const [openRoles, setOpenRoles] = useState(() => [reader]);
   useEffect(() => {
@@ -54,6 +55,8 @@ export default function NicheDetailV1() {
   if (resource.status === 'error') return <main className="container content-page"><StatusPanel status="error" onRetry={resource.retry} title={resource.error?.status === 404 ? 'Không tìm thấy lĩnh vực' : 'Chưa thể tải lĩnh vực'} description={resource.error?.status === 404 ? 'Lĩnh vực chưa được kích hoạt hoặc không tồn tại.' : resource.error?.message}/></main>;
   if (!niche) return <main className="container content-page"><StatusPanel status="empty" title="Không tìm thấy lĩnh vực"/></main>;
 
+  if (niche.group === 'design' && location.pathname.startsWith('/ngach/')) return <Navigate to={'/mang/' + encodeURIComponent(niche.slug)} replace/>;
+  if (niche.group === 'construction' && location.pathname.startsWith('/mang/')) return <Navigate to={'/ngach/' + encodeURIComponent(niche.slug)} replace/>;
   const isConstruction = niche.group === 'construction';
   const articles = Array.isArray(niche.articles) ? niche.articles : [];
   const fieldNotes = Array.isArray(niche.fieldNotes) ? niche.fieldNotes : [];
@@ -102,7 +105,7 @@ export default function NicheDetailV1() {
         </section>
       </div>
 
-      {related.length > 0 && <section className="public-related-niches"><SectionHeading eyebrow="LIÊN KẾT CHÉO" title="Lĩnh vực có liên quan"/><div className="niche-directory-grid">{related.map((item, index) => <Link className="niche-card" to={'/ngach/' + encodeURIComponent(item.slug)} key={item.id}><span className="niche-card-top"><span className="niche-card-code">{item.group === 'design' ? 'MẢNG KIẾN TRÚC' : 'NGÁCH THI CÔNG'} / {String(index + 1).padStart(2, '0')}</span><Icon name="upRight" size={18}/></span><span className="niche-card-main"><span className="niche-card-icon"><Icon name={item.group === 'design' ? 'draft' : 'hardhat'} size={24}/></span><strong>{item.name}</strong></span><span className="niche-card-bottom">Mở lĩnh vực <Icon name="arrow" size={15}/></span></Link>)}</div></section>}
+      {related.length > 0 && <section className="public-related-niches"><SectionHeading eyebrow="LIÊN KẾT CHÉO" title="Lĩnh vực có liên quan"/><div className="niche-directory-grid">{related.map((item, index) => <Link className="niche-card" to={(item.group === 'design' ? '/mang/' : '/ngach/') + encodeURIComponent(item.slug)} key={item.id}><span className="niche-card-top"><span className="niche-card-code">{item.group === 'design' ? 'MẢNG KIẾN TRÚC' : 'NGÁCH THI CÔNG'} / {String(index + 1).padStart(2, '0')}</span><Icon name="upRight" size={18}/></span><span className="niche-card-main"><span className="niche-card-icon"><Icon name={item.group === 'design' ? 'draft' : 'hardhat'} size={24}/></span><strong>{item.name}</strong></span><span className="niche-card-bottom">Mở lĩnh vực <Icon name="arrow" size={15}/></span></Link>)}</div></section>}
     </main>
   </>;
 }
