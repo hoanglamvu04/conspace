@@ -25,13 +25,14 @@
     {
       "id": "reviewer_escalation_forbidden",
       "method": "PATCH",
-      "path": "/api/admin/users/TEST_USER_ID/role",
+      "path": "/api/admin/users/TEST_USER_ID",
       "expect": [
         403
       ],
       "headers": {
         "Cookie": "REPLACE_WITH_STAGING_REVIEWER_COOKIE",
-        "X-CSRF-Token": "REPLACE_WITH_VALID_REVIEWER_CSRF"
+        "X-CSRF-Token": "REPLACE_WITH_VALID_REVIEWER_CSRF",
+        "Origin": "https://cms-staging.example.invalid"
       },
       "body": {
         "role": "admin"
@@ -40,16 +41,19 @@
     {
       "id": "sensitive_publish_forbidden",
       "method": "POST",
-      "path": "/api/admin/articles/TEST_SENSITIVE_ID/approve",
+      "path": "/api/admin/reviews/articles/TEST_SENSITIVE_ID/decision",
       "expect": [
         403
       ],
       "headers": {
         "Cookie": "REPLACE_WITH_UNAUTHORIZED_USER_COOKIE",
-        "X-CSRF-Token": "REPLACE_WITH_VALID_USER_CSRF"
+        "X-CSRF-Token": "REPLACE_WITH_VALID_USER_CSRF",
+        "Origin": "https://cms-staging.example.invalid"
       },
       "body": {
-        "decision": "approve"
+        "stage": "TECHNICAL",
+        "decision": "APPROVED",
+        "reason": "Staging test only"
       }
     },
     {
@@ -63,7 +67,8 @@
       ],
       "headers": {
         "Cookie": "REPLACE_WITH_STAGING_PUBLISHER_COOKIE",
-        "X-CSRF-Token": "REPLACE_WITH_VALID_PUBLISHER_CSRF"
+        "X-CSRF-Token": "REPLACE_WITH_VALID_PUBLISHER_CSRF",
+        "Origin": "https://cms-staging.example.invalid"
       },
       "body": {}
     },
@@ -76,7 +81,8 @@
       ],
       "headers": {
         "Cookie": "REPLACE_WITH_STAGING_PUBLISHER_COOKIE",
-        "X-CSRF-Token": "INVALID_STAGING_CSRF"
+        "X-CSRF-Token": "INVALID_STAGING_CSRF",
+        "Origin": "https://cms-staging.example.invalid"
       },
       "body": {}
     },
@@ -91,10 +97,13 @@
       ],
       "headers": {
         "Cookie": "REPLACE_WITH_STAGING_ADMIN_COOKIE",
-        "X-CSRF-Token": "REPLACE_WITH_VALID_ADMIN_CSRF"
+        "X-CSRF-Token": "REPLACE_WITH_VALID_ADMIN_CSRF",
+        "Origin": "https://cms-staging.example.invalid"
       },
       "body": {
-        "title": "STAGING ONLY acceptance canary draft"
+        "slug": "sprint2b-staging-canary-unique",
+        "title": "STAGING ONLY acceptance canary draft",
+        "body": "Temporary test record"
       }
     },
     {
@@ -106,11 +115,15 @@
         201,
         204
       ],
-      "headers": {},
+      "headers": {
+        "Origin": "https://cms-staging.example.invalid"
+      },
       "body": {
-        "username": "REPLACE_STAGING_ADMIN_ACCOUNT",
-        "password": "REPLACE_STAGING_PASSWORD"
+        "email": "REPLACE_WITH_STAGING_ADMIN_EMAIL",
+        "password": "REPLACE_WITH_STAGING_PASSWORD"
       }
     }
-  ]
+  ],
+  "sessionCookieName": "conspace_admin_session",
+  "sessionCookiePath": "/api/admin"
 }

@@ -15,7 +15,7 @@ The existing public `/api/` proxy and SPA fallback already carry `/api/admin/...
 - Use `ops/nginx/conspace-rate-limit-http.conf.example` for three uniquely named **http-level** zones: login, admin API, media upload. Do not set a global `limit_req_status` on this shared VPS.
 - Manually merge `ops/nginx/conspace-cms-https-locations.conf.example` into the *existing CONSPACE HTTPS* server block only. Includes `/admin/` SPA (not an auth boundary), exact login rate limit, scoped `/api/admin/` and `/api/admin/media/` proxies, same-origin HTTPS headers and strict upload body limit. Confirm Backend route names first.
 - Never alias `/var/lib/conspace/media/private` or `/var/lib/conspace/media/staging`. Keep the approved random-ID public-only media alias and deny fallback `/media/`.
-- Backend must set `__Host-conspace_admin` cookie: `Secure; HttpOnly; SameSite=Strict` or reviewed Lax; `Path=/`; no Domain. It must rotate/revoke sessions, check CSRF on state-changing requests, enforce role permissions **server-side**, and trust proxy only for the reviewed loopback Nginx hop. Nginx headers/rate limits are defense in depth, not auth/CSRF implementation.
+- The current Backend issues `conspace_admin_session` with `Secure` (when `NODE_ENV=production`), `HttpOnly`, `SameSite=Strict`, `Path=/api/admin`, and no Domain. Staging acceptance checks these **implemented** attributes. Optional `__Host-` hardening would require a coordinated Backend change to `Path=/` and cookie name; do not rewrite Nginx cookies blindly. It must rotate/revoke sessions, check CSRF on state-changing requests, enforce role permissions **server-side**, and trust proxy only for the reviewed loopback Nginx hop. Nginx headers/rate limits are defense in depth, not auth/CSRF implementation.
 - Do not set CSP without checking frontend assets and Nginx header inheritance. Preserve the current certificates, redirects, `/__infra/health`, `/api/health`, `/api/ready` and other vhosts.
 
 On VPS, owner reviews configuration and takes a backup *before the first edit*:
@@ -40,7 +40,7 @@ Do not paste full `nginx -T` output to chat: it may contain other tenants' confi
 
 Existing Ops scripts implement `MEDIA_ROOT=/var/lib/conspace/media` outside Git, with private/staging root:root 0700, published directory root:www-data 2750, database/media combined backup and isolated restore drill. The expected PM2 runtime is root, so changing it to an unprivileged service account requires revisiting ownership/ACLs before uploads. Do **not** chmod the whole source tree.
 
-After inspecting actual runtime user/group and filesystem, owner can run:
+**Backend integration confirmed:** it reads `MEDIA_STORAGE_DIR`, **not** `MEDIA_ROOT`. For real production add `MEDIA_STORAGE_DIR=/var/lib/conspace/media/private`, `PUBLIC_ORIGIN=https://conspace.vn`, and a 64-hex `CONTACT_ENCRYPTION_KEY` to private `backend/.env` (0600); do not print or commit their values. `MEDIA_ROOT` is used by Ops backup/storage scripts. The public URL currently supported by Backend is `GET /api/v1/media/:id`, which checks database publication/rights; do not move private uploads into the legacy Nginx `/media/` public alias without an explicitly reviewed publication workflow. Leave that direct-public directory empty until then.\n\nAfter inspecting actual runtime user/group and filesystem, owner can run:
 
 ```bash
 cd /var/www/conspace
@@ -59,7 +59,7 @@ logrotate -d /etc/logrotate.d/conspace-api
 
 ## 4. Isolated staging authz / CSRF / cookie acceptance (MUST run before CMS approval)
 
-Backend must supply exact route paths, role accounts, and disposable test records. Copy only the **example shape** into a root-protected path OUTSIDE Git; replace all placeholders with staging-only data. Do not store real cookie/token/password in repository, CI secrets or shell history.
+Backend now exposes `/api/admin/auth/login`, `/api/admin/users/:id`, `/api/admin/articles/:id/publish`, `/api/admin/reviews/articles/:id/decision`, and `/api/admin/media`. Backend must supply role-specific accounts and disposable test UUIDs for the staging scenarios. Copy only the **example shape** into a root-protected path OUTSIDE Git; replace all placeholders with staging-only data. Do not store real cookie/token/password in repository, CI secrets or shell history.
 
 ```bash
 install -d -m 0700 /var/lib/conspace-ops/acceptance
@@ -74,7 +74,7 @@ node ops/scripts/cms-authz-acceptance.mjs \
   /var/lib/conspace-ops/acceptance/cms-private.json --confirm-isolated
 ```
 
-Script requires all: unauthenticated admin denied, Editor forbidden, Technical Reviewer cannot escalate role, unauthorized sensitive approval denied, publish without required approvals denied, CSRF-invalid write denied, valid Admin permitted on **staging disposable data**, and login cookie flags. It refuses production hosts and example placeholders. It prints only case IDs/statuses. Backend must also provide integration tests for session revocation and rate-limiting. Do not repeatedly brute-force login as a monitoring check.
+The Backend requires a trusted `Origin` matching `PUBLIC_ORIGIN` (or reviewed CORS_ORIGIN) on HTTPS login and state-changing requests, even when a valid CSRF token is present. Set the staging application's `PUBLIC_ORIGIN` to its isolated HTTPS hostname and update the fixture Origin headers. Ensure cookie is `Secure` in staging. The valid Admin case creates a disposable draft; use a unique slug and remove the canary after evidence capture.\n\nScript requires all: unauthenticated admin denied, Editor forbidden, Technical Reviewer cannot escalate role, unauthorized sensitive approval denied, publish without required approvals denied, CSRF-invalid write denied, valid Admin permitted on **staging disposable data**, and login cookie flags. It refuses production hosts and example placeholders. It prints only case IDs/statuses. Backend must also provide integration tests for session revocation and rate-limiting. Do not repeatedly brute-force login as a monitoring check.
 
 ## 5. Production acceptance: read-only by default
 

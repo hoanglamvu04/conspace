@@ -10,11 +10,13 @@ need() {
 need '^[[:space:]]*server_name[[:space:]].*conspace\.vn.*www\.conspace\.vn' 'both domain names'
 need '^[[:space:]]*location[[:space:]]*=[[:space:]]*/__infra/health' 'edge health'
 need '^[[:space:]]*location[[:space:]]*=[[:space:]]*/api/admin/auth/login' 'login limiter location'
+need '^[[:space:]]*location[[:space:]]*=[[:space:]]*/api/admin/media' 'exact upload rate-limited endpoint'
 need '^[[:space:]]*location[[:space:]]*\^~[[:space:]]*/api/admin/' 'admin API scoped proxy'
 need '^[[:space:]]*location[[:space:]]*\^~[[:space:]]*/admin/' 'admin frontend SPA'
 need '^[[:space:]]*location[[:space:]]*/media/' 'non-published media deny'
 need '^[[:space:]]*limit_req[[:space:]]+zone=conspace_admin_login' 'login limiter'
 need '^[[:space:]]*limit_req[[:space:]]+zone=conspace_admin_api' 'admin API limiter'
+need '^[[:space:]]*limit_req[[:space:]]+zone=conspace_media_upload' 'media upload limiter'
 need '^[[:space:]]*proxy_pass[[:space:]]+http://127\.0\.0\.1:5088;' 'loopback Express proxy'
 if grep -Eq '^[[:space:]]*(alias|root)[[:space:]]+[^;]*(/media/(private|staging)|/media;)' "$VHOST"; then
   echo 'BLOCKED: Nginx exposes private/staging or all media root' >&2; exit 1;

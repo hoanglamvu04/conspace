@@ -32,6 +32,25 @@ location = /api/admin/auth/login {
     add_header Cache-Control "no-store" always;
 }
 
+# Backend currently handles POST /api/admin/media (no trailing slash).
+# This exact location is necessary: a prefix /api/admin/media/ does not match it.
+location = /api/admin/media {
+    limit_req zone=conspace_media_upload burst=5 nodelay;
+    limit_req_status 429;
+    client_max_body_size 25m;
+    proxy_request_buffering on;
+    proxy_pass http://127.0.0.1:5088;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_connect_timeout 5s;
+    proxy_read_timeout 60s;
+    proxy_no_cache 1;
+    proxy_cache_bypass 1;
+    add_header Cache-Control "no-store" always;
+}
+
 # Narrower prefix must win over /api/admin/ (longest prefix match).
 location ^~ /api/admin/media/ {
     limit_req zone=conspace_media_upload burst=5 nodelay;

@@ -29,6 +29,10 @@ const cfg=JSON.parse(fs.readFileSync(file,'utf8'));
 let base;
 try {base=new URL(cfg.baseUrl)}catch {fail('baseUrl invalid')}
 const host=base.hostname.toLowerCase();
+const cookieName=cfg.sessionCookieName || 'conspace_admin_session';
+const cookiePath=cfg.sessionCookiePath || '/api/admin';
+if(!/^[A-Za-z0-9_-]+$/.test(cookieName) || !['/','/api/admin'].includes(cookiePath))
+  fail('invalid reviewed cookie name/path');
 if(base.protocol!=='https:' || base.username || base.password || base.search ||
    base.hash || base.pathname!=='/' ||
    !/(^|[.-])(staging|sandbox|test)([.-]|$)/.test(host) ||
@@ -49,6 +53,10 @@ for(const item of cfg.cases){
   for (const [k,v] of Object.entries(item.headers)) {
     if(!/^(cookie|authorization|origin|x-csrf-token)$/i.test(k) || typeof v!=='string' || /[\r\n]/.test(v))
       fail('invalid header shape for '+item.id);
+  }
+  if(item.method!=='GET'){
+    const origin=Object.entries(item.headers).find(([k])=>k.toLowerCase()==='origin')?.[1];
+    if(origin!==base.origin) fail('all staging writes/login MUST send the matching Origin header');
   }
   if(item.id==='csrf_invalid' && item.method==='GET') fail('CSRF test must use state-changing request');
   if(item.id==='admin_allowed' && item.method==='GET') fail('admin allowed must exercise safe staging mutation');
@@ -77,13 +85,21 @@ for(const id of REQUIRED){
     status=res.status;
     if(id==='admin_cookie_flags' && item.expect.includes(status)){
       const raw=res.headers.get('set-cookie')||'';
-      const ok=/__Host-conspace_admin=/.test(raw) &&
+      const ok=raw.startsWith(cookieName+'=') &&
         /(?:^|;)\s*Secure(?:;|$)/i.test(raw) &&
         /(?:^|;)\s*HttpOnly(?:;|$)/i.test(raw) &&
         /(?:^|;)\s*SameSite=(Strict|Lax)(?:;|$)/i.test(raw) &&
-        /(?:^|;)\s*Path=\/(?:;|$)/i.test(raw) &&
-        !/(?:^|;)\s*Domain=/i.test(raw);
+        raw.split(';').some(x=>x.trim()==='Path='+cookiePath) &&
+        !/(?:^|;)\s*Domain=/i.test(raw) &&
+        (!cookieName.startsWith('__Host-') || cookiePath==='/');
       if(!ok) {console.error('FAIL: admin cookie flags (content redacted)');failures++;}
+    }
+    if(id==='csrf_invalid' && status===403){
+      const json=await res.json().catch(()=>null);
+      if(json?.error?.code!=='CSRF_INVALID'){
+        console.error('FAIL: CSRF case returned 403 without CSRF_INVALID error code');
+        failures++;
+      }
     }
     if(!item.expect.includes(status)){console.error('FAIL: '+id+' HTTP '+status+' expected '+item.expect.join('/'));failures++;}
     else console.log('PASS: '+id+' HTTP '+status);

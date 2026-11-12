@@ -40,7 +40,8 @@ function fixture(){
     ['csrf_invalid','POST',[403]],
     ['admin_allowed','POST',[200]],
     ['admin_cookie_flags','POST',[200]]
-  ].map(([id,method,expect])=>({id,method,path:'/api/admin/test-'+id,expect,headers:{}}));
+  ].map(([id,method,expect])=>({id,method,path:'/api/admin/test-'+id,expect,
+    headers:method==='GET'?{}:{Origin:'https://cms-staging.conspace.vn'}}));
   return {baseUrl:'https://cms-staging.conspace.vn/',cases};
 }
 function validate(cfg){
@@ -67,5 +68,6 @@ test('CMS Nginx snippets keep intended rate limit and backend proxy',()=>{
     assert.ok(l.includes('zone='+key));
   }
   assert.ok(l.includes('proxy_pass http://127.0.0.1:5088;'));
+  assert.ok(l.includes('location = /api/admin/media {'), 'upload POST without trailing slash must be rate limited');
   assert.ok(!l.includes('alias /var/lib/conspace/media/private'));
 });
