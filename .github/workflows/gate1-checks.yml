@@ -1,0 +1,33 @@
+name: CONSPACE Gate 1 checks
+
+on:
+  push:
+    branches:
+      - bootstrap/gate1-base
+      - 'work/**'
+  pull_request:
+    branches:
+      - bootstrap/gate1-base
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  backend-and-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Install backend deps
+        run: npm install --prefix backend --no-audit --no-fund
+      - name: Backend syntax
+        run: npm run check --prefix backend
+      - name: Backend tests
+        run: npm run test --prefix backend
+      - name: Install frontend deps
+        run: npm install --prefix frontend --no-audit --no-fund
+      - name: Build frontend
+        run: npm run build
