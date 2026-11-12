@@ -284,6 +284,56 @@ test('real PostgreSQL flow: login -> create -> technical review -> chief review 
   assert.equal(publicNiche.body.data.sections[0].layers.find(x=>x.audienceRole==='homeowner').content,'Nội dung lớp chủ nhà đã có nguồn và được kiểm tra.');
   assert.equal(publicNiche.body.data.sections[0].layers.find(x=>x.audienceRole==='contractor').content,null);
 
+  // Sensitive Template A sections require a separate Editor-in-Chief decision.
+  const sensitiveSaved=await editorApi('PUT','/api/admin/niches/'+constructionNicheId+'/sections/6',{
+    audienceRole:'contractor',content:'Cơ chế rủi ro đã được mô tả ẩn danh, có căn cứ.',
+    sourceRef:'CI fixture: verified sensitive source',sensitivityAssessed:true,sensitivityFlags:['INDUSTRY_DARK_SIDE'],
+  });
+  assert.equal(sensitiveSaved.status,200,JSON.stringify(sensitiveSaved.body));
+  const sensitiveId=sensitiveSaved.body.data.id;
+  assert.equal((await editorApi('POST','/api/admin/niches/'+constructionNicheId+'/sections/6/submit',{
+    audienceRole:'contractor',reason:'Gửi nội dung nhạy cảm đi kiểm duyệt',
+  })).status,200);
+  assert.equal((await reviewerApi('POST','/api/admin/reviews/niche-sections/'+sensitiveId+'/start',{templateType:'TEMPLATE_A'})).status,200);
+  const technicalSensitive=await reviewerApi('POST','/api/admin/reviews/niche-sections/'+sensitiveId+'/decision',{
+    templateType:'TEMPLATE_A',stage:'TECHNICAL',decision:'APPROVED',reason:'Đạt kiểm tra kỹ thuật',
+  });
+  assert.equal(technicalSensitive.status,200,JSON.stringify(technicalSensitive.body));
+  assert.equal(technicalSensitive.body.data.status,'EDITOR_IN_CHIEF_REVIEW');
+  const chiefSensitive=await chiefApi('POST','/api/admin/reviews/niche-sections/'+sensitiveId+'/decision',{
+    templateType:'TEMPLATE_A',stage:'EDITOR_IN_CHIEF',decision:'APPROVED',reason:'Đã duyệt nội dung nhạy cảm và ẩn danh',
+  });
+  assert.equal(chiefSensitive.status,200,JSON.stringify(chiefSensitive.body));
+  assert.equal(chiefSensitive.body.data.status,'APPROVED');
+  assert.equal((await publisherApi('POST','/api/admin/niches/'+constructionNicheId+'/sections/6/publish',{
+    audienceRole:'contractor',reason:'Xuất bản sau hai bước duyệt',
+  })).status,200);
+
+  // Template B (eight architectural areas) uses its own seven-block workflow.
+  const designResult=await pool.query("SELECT id,slug FROM conspace.niches WHERE group_type='design' AND is_active=true ORDER BY sort_order LIMIT 1");
+  assert.ok(designResult.rows[0],'Seeded design area required for Template B integration test');
+  const designNiche=designResult.rows[0];
+  const designSaved=await editorApi('PUT','/api/admin/niches/'+designNiche.id+'/sections/1',{
+    content:'Đặc thù loại công trình đã được kiểm chứng.',
+    sourceRef:'CI fixture: verified architectural source',sensitivityAssessed:true,sensitivityFlags:[],
+  });
+  assert.equal(designSaved.status,200,JSON.stringify(designSaved.body));
+  const designSectionId=designSaved.body.data.id;
+  assert.equal((await editorApi('POST','/api/admin/niches/'+designNiche.id+'/sections/1/submit',{
+    reason:'Gửi khối kiến trúc đi duyệt',
+  })).status,200);
+  assert.equal((await reviewerApi('POST','/api/admin/reviews/niche-sections/'+designSectionId+'/start',{templateType:'TEMPLATE_B'})).status,200);
+  const designDecision=await reviewerApi('POST','/api/admin/reviews/niche-sections/'+designSectionId+'/decision',{
+    templateType:'TEMPLATE_B',stage:'TECHNICAL',decision:'APPROVED',reason:'Đã kiểm tra nguồn và nội dung',
+  });
+  assert.equal(designDecision.status,200,JSON.stringify(designDecision.body));
+  assert.equal((await publisherApi('POST','/api/admin/niches/'+designNiche.id+'/sections/1/publish',{
+    reason:'Xuất bản khối kiến trúc đã duyệt',
+  })).status,200);
+  const publicDesign=await api(base)('GET','/api/v1/niches/'+designNiche.slug+'?role=architect');
+  assert.equal(publicDesign.status,200,JSON.stringify(publicDesign.body));
+  assert.equal(publicDesign.body.data.sections[0].content,'Đặc thù loại công trình đã được kiểm chứng.');
+
   const fieldNotes=await api(base)('GET','/api/v1/field-notes');
   assert.equal(fieldNotes.status,200,JSON.stringify(fieldNotes.body));
   assert.deepEqual(fieldNotes.body.data,[]);
