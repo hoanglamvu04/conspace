@@ -1,129 +1,136 @@
-# CONSPACE Gate 1 — manual production runbook (NOT EXECUTED)
+# CONSPACE Gate 1 — main deployment and operations runbook
 
-## Scope and hard stop conditions
+## Scope / hard stops
 
-Use only after the latest `main` commit has passed CI and deployment was explicitly approved. Backend, Frontend and DevOps now commit directly to `main` with path ownership; do not deploy arbitrary untested commits. VPS is shared with other websites. Do not modify unrelated vhosts, certificates, existing PM2 processes, roles or databases. Never run `pm2 update`, `pm2 restart all`, `pm2 kill`, `git reset --hard`, or reboot.
+Deploy only the exact `main` commit whose GitHub Actions checks are all completed/success and whose SHA is explicitly approved by the owner. Do not deploy feature/worker branches or a commit that has not passed CI. VPS is shared. No changes to other vhosts, certificates, PM2 applications, databases or PostgreSQL cluster settings.
 
-The Gate 0 production Nginx holding page is the documented baseline, **not live-verified by this PR**. Nginx `/__infra/health` is independent of backend `/api/health` and PostgreSQL `/api/ready`.
+Never run `pm2 update`, `pm2 kill`, `pm2 restart all`, `git reset --hard`, or reboot. Deployment does not call `pm2 save`.
 
-## 1. Read-only initial evidence
+## 1. Read-only evidence first
 
-SSH using the owner's authorized credentials; use the root account only after confirming it owns `pm2-root`. Do not paste credentials, raw `pm2 jlist`, raw dump, or `.env` into a chat.
+SSH using the owner's existing credentials. Run as the account that owns `pm2-root` (documented as root); do not create a second PM2 daemon.
 
 ```bash
 whoami
 node -v
-pm2 status
-sudo systemctl is-active pm2-root
-sudo systemctl is-enabled pm2-root
-sudo nginx -t
-sudo ss -lntp '( sport = :5088 )'
-sudo pg_isready -h 127.0.0.1 -p 5432 -d conspace
-sudo certbot certificates
-sudo nginx -T 2>/dev/null | grep -n -B 6 -A 28 'server_name .*conspace.vn'
+systemctl is-active nginx postgresql pm2-root
+systemctl is-enabled pm2-root
+nginx -t
+ss -lntp '( sport = :5088 )'
+pg_isready -h /var/run/postgresql -p 5432 -d conspace
+certbot certificates
+nginx -T 2>/dev/null | grep -n -B 8 -A 35 'server_name .*conspace.vn'
+cd /var/www/conspace
+bash ops/scripts/preflight.sh
+pm2 jlist | node ops/scripts/pm2-check.cjs /root/.pm2/dump.pm2 --strict-all --require-online
 ```
 
-Once approved ops scripts exist in the VPS repo, run as root:
+Do not paste raw PM2 JSON/dump, Nginx full config, .env, cookies, keys or database credentials. The PM2 checker prints only process names/status. Stop unless `x-hub-api` is both live and saved and all live apps are online and present in dump. Do not refresh dump automatically.
+
+## 2. Prepare media/log/backup storage once
+
+Inspect Nginx worker group and any existing storage paths first. Then:
 
 ```bash
 cd /var/www/conspace
-bash ops/scripts/preflight.sh
-pm2 jlist | node ops/scripts/pm2-check.cjs /root/.pm2/dump.pm2 --strict-all
+sudo bash ops/scripts/setup-storage.sh --apply
 ```
 
-**Hard stop:** `x-hub-api` absent from either current PM2 or saved dump. PM2 dump previously missed that app. Never run `pm2 save` automatically. First review current/saved inventories with the owner and back up the dump privately. Do not create an empty alternate PM2 daemon. Verify port 5088 is unused or owned by the existing loopback `conspace-api`. `pg_isready` checks server availability only, not app credentials.
+Expected layout: `/var/lib/conspace/media/{staging,private,public}`, `/var/backups/conspace`, `/var/log/conspace`. The script fails closed if an existing path has unexpected ownership/mode. It does not edit backend/.env. Backend must implement MEDIA_ROOT before using uploads; then add `MEDIA_ROOT=/var/lib/conspace/media` to private backend/.env (600).
 
-## 2. Select an approved, immutable integration release
+Install daily backup timer:
 
-Check the Git working tree first; if dirty, stop (do not discard local changes).
+```bash
+sudo install -o root -g root -m 0644 ops/systemd/conspace-backup.service /etc/systemd/system/
+sudo install -o root -g root -m 0644 ops/systemd/conspace-backup.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now conspace-backup.timer
+systemctl list-timers conspace-backup.timer
+```
+
+## 3. Verify CI and select immutable SHA
+
+Ensure the checkout is clean. Deployment script will fetch and fast-forward main; it refuses local modifications.
 
 ```bash
 cd /var/www/conspace
 git status --short
-git fetch origin
-git switch main
+git fetch --no-tags origin main
 git pull --ff-only origin main
-APPROVED_SHA="$(git rev-parse HEAD)"
-printf 'Candidate SHA: %s\n' "$APPROVED_SHA"
+git rev-parse HEAD
 ```
 
-The owner must confirm that exact commit and CI results. Both `backend/package-lock.json` and `frontend/package-lock.json` must be reviewed and committed. Store the real `backend/.env` only at `/var/www/conspace/backend/.env`, mode 600, with a separate `conspace_app` account. Never print it or commit it. Ensure Node 22.23.2 matches existing PM2 runtime.
+Open GitHub Actions for that exact commit and confirm all check-runs succeeded. Set the approval variable only after verifying:
 
 ```bash
-bash ops/scripts/stage.sh "$APPROVED_SHA"
+export CONSPACE_CI_APPROVED_SHA=<40-character-main-SHA>
 ```
 
-Stage uses a detached worktree under `/var/www/conspace-releases/<SHA>`, `npm ci --ignore-scripts`, backend syntax/tests and Vite build. It does not modify live PM2, database or Nginx. Any future database migration must have its own reviewed backup, backward-compatible migration plan and explicit approval.
+The script independently queries GitHub's public check-runs API and fails on missing, pending, failed or cancelled checks.
 
-## 3. Activate application (only during approved change window)
+## 4. Deploy (explicit apply)
+
+Confirm private `backend/.env` exists, is not tracked, has mode 600, and uses the dedicated `conspace_app` credential/database. Never print it. Node must be exactly 22.23.2.
 
 ```bash
-bash ops/scripts/preflight.sh
-bash ops/scripts/activate.sh --apply "$APPROVED_SHA"
+cd /var/www/conspace
+sudo --preserve-env=CONSPACE_CI_APPROVED_SHA bash ops/scripts/go-live.sh --apply <same-main-SHA>
 ```
 
-Activation verifies loopback port ownership, `pm2-root`, saved `x-hub-api`, staged SHA, current Nginx syntax, and DB readiness. It privately backs up `dump.pm2` and the CONSPACE vhost in `/var/lib/conspace-ops/backups/`. It updates only `conspace-api` using `CONSPACE_API_CWD` and switches a managed `frontend/dist` symlink atomically. A pre-existing real dist directory causes a safe stop. The script **does not edit/reload Nginx**, and does not call `pm2 save`.
+The script performs, in order:
 
-## 4. Nginx: manual, CONSPACE-only modification
+1. Verify clean `main`, fetch/pull --ff-only, local SHA = origin/main = approved SHA.
+2. Verify all GitHub check-runs success.
+3. Check all live PM2 processes are online and saved, including `x-hub-api`.
+4. Prepare storage/log directories.
+5. Stage a detached immutable worktree; `npm ci`, backend syntax/tests, frontend tests/build.
+6. Back up only `conspace` database and media; verify archive structure/checksums.
+7. Run the current transactional migration runner and seed against `conspace` only.
+8. Reload only `conspace-api` with the immutable release cwd; wait for local health and DB readiness; atomically switch frontend dist symlink.
+9. Apply Nginx change only to the existing CONSPACE HTTPS server block after backup and `nginx -t`; preserve Certbot, both hostnames, redirect and `/__infra/health`.
+10. Public smoke and operational monitor.
 
-Confirm actual vhost path and HTTPS server layout; stop if the file belongs to other hosts or differs from expected.
+If the database migration fails, stop; the current migration runner uses a transaction and rolls back. Do not continue to PM2/Nginx. If activation or public smoke fails, the script attempts only CONSPACE rollback and reports any manual recovery needed.
 
-```bash
-sudo readlink -f /etc/nginx/sites-enabled/conspace.conf
-sudo nginx -t
-VHOST=/etc/nginx/sites-available/conspace.conf
-VHOST_BACKUP="${VHOST}.pre-gate1.$(date -u +%Y%m%dT%H%M%SZ)"
-sudo cp -a "$VHOST" "$VHOST_BACKUP"
-sudo nginx -t
-printf 'Rollback vhost backup: %s\n' "$VHOST_BACKUP"
-```
+## 5. Nginx / media behavior
 
-Only after those checks, use `sudoedit "$VHOST"` and manually merge the **locations**, not a whole server block, from `ops/nginx/conspace-app-locations.conf.example`. Preserve all Certbot HTTPS blocks, existing HTTP-to-HTTPS redirect, `server_name conspace.vn www.conspace.vn`, `/__infra/health`, and ACME behavior. Add `location ^~ /api/` and `location = /api` with `proxy_pass http://127.0.0.1:5088` (no trailing slash: Express must receive `/api/health`). Replace existing `location /` rather than duplicate it; serve `root /var/www/conspace/frontend/dist` and `try_files $uri $uri/ /index.html`.
+The Nginx switch script preserves the existing server block and adds:
+- `/api` and `/api/` proxy to `127.0.0.1:5088` without a URI rewrite.
+- Vite SPA root at `/var/www/conspace/frontend/dist`.
+- `/media/<32-hex>.<jpg|jpeg|png|webp|avif|pdf>` alias to the public media directory; all other media paths return 404.
 
-```bash
-sudo nginx -t
-sudo systemctl reload nginx
-bash /var/www/conspace/ops/scripts/smoke.sh
-```
+Private/staging media are never aliased. Backend must enforce MIME/signature, extension, size, random filename and publication controls before files enter public/. See `CMS_SECURITY_MEDIA_CONTRACT.md`.
 
-`smoke.sh` verifies both hostnames' TLS and redirects, edge health, API live+ready, Vite HTML and asset. On any failure, inspect and restore the correct CONSPACE vhost backup; `nginx -t` must pass before reload. Never overwrite a different website's vhost.
+## 6. Logging and monitoring
 
-## 5. Read logs; PM2 persistence requires separate approval
+PM2 log paths are `/var/log/conspace/api-out.log` and `api-error.log`; logrotate retains 14 daily files. Current Morgan combined logging may include query strings; do not put PII/secrets in URLs. Auth failure and audit-event logging are Backend work and are not present until CMS implementation.
 
 ```bash
 pm2 status
 pm2 describe conspace-api
 pm2 logs conspace-api --lines 40 --nostream
-sudo journalctl -u nginx -n 30 --no-pager
-sudo ss -lntp '( sport = :5088 )'
+sudo journalctl -u nginx -n 40 --no-pager
+sudo bash /var/www/conspace/ops/scripts/monitor.sh
 ```
 
-Review output locally, redact sensitive data. Check previously existing websites using their documented health URLs, without modifying them. Only if owner separately approves PM2 persistence, back up `/root/.pm2/dump.pm2`, confirm every live app including `x-hub-api` is healthy, then consider `pm2 save`; re-run `pm2-check.cjs --strict-all`. No reboot in this sprint.
-
-## 6. Rollback
-
-For a previous Gate 1 release, `/var/lib/conspace-ops/previous.sha` identifies the prior staged SHA:
+## 7. Rollback and migration recovery
 
 ```bash
-bash /var/www/conspace/ops/scripts/rollback.sh --apply
-bash /var/www/conspace/ops/scripts/smoke.sh
+sudo bash /var/www/conspace/ops/scripts/rollback.sh --apply
+sudo bash /var/www/conspace/ops/scripts/smoke.sh
 ```
 
-For **first** Gate 1 activation, previous state is `holding`. First restore *the exact vhost backup recorded in step 4*:
+For a failed Nginx change, use the exact backup path recorded at `/var/lib/conspace-ops/last-vhost-backup.txt`, restore only `/etc/nginx/sites-available/conspace.conf`, run `nginx -t`, then reload. Never guess a backup path or replace an entire vhost.
+
+Database/media restore drill (non-production targets only):
 
 ```bash
-VHOST=/etc/nginx/sites-available/conspace.conf
-sudo cp -a "$VHOST" "${VHOST}.failed-gate1.$(date -u +%Y%m%dT%H%M%SZ)"
-sudo nginx -t
-# Set VHOST_BACKUP to the exact verified pre-change file; do not glob/guess.
-sudo cp -a "$VHOST_BACKUP" "$VHOST"
-sudo nginx -t
-sudo systemctl reload nginx
-bash /var/www/conspace/ops/scripts/rollback.sh --apply
+BACKUP_DIR="$(find /var/backups/conspace -mindepth 2 -maxdepth 2 -name SHA256SUMS -printf '%T@ %h\n' | sort -nr | head -n 1 | cut -d ' ' -f 2-)"
+sudo bash /var/www/conspace/ops/scripts/restore-drill.sh "$BACKUP_DIR"
 ```
 
-Holding rollback validates the HTTPS root's exact holding HTML before removing **only** `conspace-api`. It does not change TLS, DB, other PM2 apps or the PM2 dump. If validation fails, stop instead of removing the API. Keep the backup until the owner signs off.
+Migration history is checksum-locked. Never edit an applied migration. A failed transactional migration should be fixed forward and retried after tests and a fresh backup. Production restore requires a separately approved maintenance plan; no automated script drops/replaces the production database.
 
-## 7. Evidence and release gate
+## 8. PM2 persistence
 
-Record approved commit SHA, backup path, timestamp, `preflight`, `stage`, `activate`, Nginx checks before/after, `smoke`, readiness output and non-secret targeted logs. **No production success claim without this live evidence.**
+The deployment never runs `pm2 save`. After successful verification, the owner may separately back up `/root/.pm2/dump.pm2`, confirm every existing process (including `x-hub-api`) is healthy and saved, and approve a manual `pm2 save`. No reboot in this runbook.
