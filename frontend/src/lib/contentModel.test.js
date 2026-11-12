@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { chapterPath, nicheLayersForRole } from './contentModel.js';
+import { chapterPath, nicheLayersForRole, addOpenLayerRole, toggleOpenLayerRole } from './contentModel.js';
 
 test('book chapters use the canonical IA route families', () => {
   assert.equal(chapterPath('cam-nang-kien-truc-hoa-lac', 3), '/cam-nang/phan-3/muc-3');
@@ -25,4 +25,15 @@ test('niche layers are separated by audience while sharing the same source secti
   assert.deepEqual(nicheLayersForRole(sections, 'architect').map((item) => item.sectionNo), [2]);
   assert.deepEqual(nicheLayersForRole(sections, 'contractor').map((item) => item.sectionNo), [1]);
   assert.deepEqual(nicheLayersForRole(sections, 'unknown'), []);
+});
+
+test('switching the reader opens the new layer without collapsing layers the reader already opened', () => {
+  let open = addOpenLayerRole(['homeowner'], 'architect');
+  assert.deepEqual(open, ['homeowner', 'architect']);
+  open = toggleOpenLayerRole(open, 'contractor', true);
+  assert.deepEqual(open, ['homeowner', 'architect', 'contractor']);
+  open = toggleOpenLayerRole(open, 'architect', false);
+  assert.deepEqual(open, ['homeowner', 'contractor']);
+  open = addOpenLayerRole(open, 'architect');
+  assert.deepEqual(open, ['homeowner', 'contractor', 'architect']);
 });
