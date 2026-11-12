@@ -1,4 +1,4 @@
-# CONSPACE API Contract v0.2 — Public Read API + Internal CMS
+# CONSPACE API Contract v0.3 — Public APIs + Internal CMS + Publishing Engine
 
 Base production URL: `https://conspace.vn/api`. JSON is UTF-8. Backend runtime is Node.js 22.23.2, Express, JavaScript ESM, Zod and PostgreSQL 16. The CMS uses only the dedicated `conspace` database and `conspace_app` role.
 
