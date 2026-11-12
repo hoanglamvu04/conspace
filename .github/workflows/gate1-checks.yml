@@ -29,10 +29,12 @@ jobs:
           done
           node --check ops/scripts/pm2-check.cjs
           node --check ops/ecosystem.config.cjs
+          python3 -m py_compile ops/scripts/switch-nginx-gate1.py
       - name: Test PM2 dump safeguard using fake data
         run: |
           printf '[{"name":"x-hub-api"},{"name":"old-api"}]' > /tmp/pm2-fixture.json
           printf '[{"name":"x-hub-api","pm2_env":{"status":"online"}},{"name":"old-api","pm2_env":{"status":"online"}}]' | node ops/scripts/pm2-check.cjs /tmp/pm2-fixture.json --strict-all
+          printf '\n>>>> In-memory PM2 is out-of-date\nLocal PM2 version: 7.1.2\n[{"name":"x-hub-api"},{"name":"old-api"}]' | node ops/scripts/pm2-check.cjs /tmp/pm2-fixture.json --strict-all
           printf '[{"name":"old-api"}]' > /tmp/pm2-fixture.json
           if printf '[{"name":"x-hub-api"}]' | node ops/scripts/pm2-check.cjs /tmp/pm2-fixture.json; then
             echo 'FAIL: Missing x-hub-api not detected'
