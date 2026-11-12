@@ -49,7 +49,12 @@ export function Header() {
         <div className="container header-inner">
           <Brand />
           <nav className="desktop-nav" aria-label="Điều hướng chính">
-            {PRIMARY_NAV.map((item) => <NavLink key={item.to} to={item.to} end={item.to === '/ngach'} className={({ isActive }) => `nav-link ${isActive ? 'is-active' : ''}`}>{item.label}</NavLink>)}
+            {PRIMARY_NAV.map((item) => <NavLink key={item.to} to={item.to} className={({ isActive }) => {
+              const bookPath = location.pathname.startsWith('/tu-sach/') || location.pathname.startsWith('/cam-nang/') || location.pathname.startsWith('/phan-nha-thau/') || location.pathname.startsWith('/quan-quanh-kts/');
+              const searchAlias = ['/tra-cuu', '/tu-dien'].includes(location.pathname);
+              const active = isActive || (item.to === '/tu-sach' && bookPath) || (item.to === '/tra-nhanh' && searchAlias);
+              return `nav-link ${active ? 'is-active' : ''}`;
+            }}>{item.label}</NavLink>)}
           </nav>
           <div className="header-actions">
             <Link className="header-search" to="/tra-nhanh" aria-label="Mở tra nhanh"><Icon name="search" size={20} /></Link>
@@ -62,7 +67,12 @@ export function Header() {
             <button type="button" className="mobile-menu-button" aria-label={menuOpen ? 'Đóng menu' : 'Mở menu'} aria-controls="mobile-menu" aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)}><Icon name={menuOpen ? 'close' : 'menu'} size={23} /></button>
           </div>
         </div>
-        {menuOpen && <nav className="mobile-nav" id="mobile-menu" aria-label="Điều hướng trên điện thoại"><div className="container">{PRIMARY_NAV.map((item) => <NavLink key={item.to} to={item.to} className={({ isActive }) => `mobile-nav-link ${isActive ? 'is-active' : ''}`}>{item.label}<Icon name="chevron" size={16} /></NavLink>)}<div className="mobile-nav-reader"><p>GÓC NHÌN CỦA BẠN</p><ReaderSwitch variant="compact" /></div></div></nav>}
+        {menuOpen && <nav className="mobile-nav" id="mobile-menu" aria-label="Điều hướng trên điện thoại"><div className="container">{PRIMARY_NAV.map((item) => <NavLink key={item.to} to={item.to} className={({ isActive }) => {
+            const bookPath = location.pathname.startsWith('/tu-sach/') || location.pathname.startsWith('/cam-nang/') || location.pathname.startsWith('/phan-nha-thau/') || location.pathname.startsWith('/quan-quanh-kts/');
+            const searchAlias = ['/tra-cuu', '/tu-dien'].includes(location.pathname);
+            const active = isActive || (item.to === '/tu-sach' && bookPath) || (item.to === '/tra-nhanh' && searchAlias);
+            return `mobile-nav-link ${active ? 'is-active' : ''}`;
+          }}>{item.label}<Icon name="chevron" size={16} /></NavLink>)}<div className="mobile-nav-reader"><p>GÓC NHÌN CỦA BẠN</p><ReaderSwitch variant="compact" /></div></div></nav>}
       </header>
     </>
   );
