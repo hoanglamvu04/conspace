@@ -9,7 +9,7 @@ The previous Frontend audit blocker is resolved in Git:
 - The high-severity Picomatch advisory is resolved with `picomatch@4.0.4`.
 - GitHub Actions run [43259620334](https://github.com/hoanglamvu04/conspace/actions/runs/43259620334) passed both `backend-and-frontend` and `ops-static` for commit `8d2bb11331c911b5819460cefd1f8a1253409bf3`.
 
-The Backend audit still reports lower-severity Morgan/on-headers advisories below the configured high threshold. Keep the full audit mandatory; Backend owns any dependency change. A successful `npm ci`/test/build does NOT override a failed dependency audit. A later commit must receive its own green checks before release.
+Backend has also upgraded Morgan to `1.12.1` and on-headers to `1.1.0`. GitHub Actions run [43261199143](https://github.com/hoanglamvu04/conspace/actions/runs/43261199143) passed both required jobs after the Backend and Frontend dependency updates. Keep the full audits mandatory; a successful `npm ci`/test/build does NOT override a failed dependency audit. Every later commit must receive its own green checks before release.
 
 ## 2. HTTP routing and HTTPS
 
@@ -117,7 +117,7 @@ For an approved *public-only* release, use `public` instead of `cms` and DO NOT 
 
 ### Operational blockers
 
-- Frontend dependency audit is green on commit 8d2bb11331c911b5819460cefd1f8a1253409bf3; any later main commit must also pass both required CI jobs.
+- Frontend and Backend full dependency audits are green on commit 540901207f3a6d290a1894d2bc63d82b8fe4adb7; both required CI jobs passed. Any later main commit must also pass both required CI jobs.
 - Backend login, RBAC, CSRF, uploads, niche-section review/publication and delegated publishing have CI integration coverage. Staging authorization/cookie acceptance and live production configuration remain unverified.
 - No SSH evidence was available to validate live Nginx, cookie, media permissions, backups, restore or other sites.
 - All production changes require owner approval. Never claim deployment or final acceptance from source review alone.
