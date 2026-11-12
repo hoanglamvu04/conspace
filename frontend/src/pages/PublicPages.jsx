@@ -70,6 +70,14 @@ function PublishedQuestionSchema({ data }) {
   return null;
 }
 
+function safeSourceUrl(value) {
+  if (typeof value !== 'string') return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url.href : null;
+  } catch { return null; }
+}
+
 function BookLabel({ value }) {
   return <span className="pill-label">{value || 'Nhãn sách chưa được xác định'}</span>;
 }
@@ -153,7 +161,7 @@ export function ChapterDetail({ bookSlug }) {
         <div className="article-byline"><div className="author-avatar" aria-hidden="true"><Icon name="book" size={20}/></div><div><strong>{data.bookTitle}</strong><span>{formatDate(data.publishedAt)}</span></div></div>
       </div>
       <div className="container article-layout">
-        <article className="article-content"><Markdown body={data.body}/>{Array.isArray(data.sources) && data.sources.length > 0 && <section className="article-sources"><h2>Nguồn tham khảo</h2><ol>{data.sources.map((source, index) => <li key={index}>{source.url ? <a href={source.url} target="_blank" rel="noopener noreferrer">{source.title} <Icon name="upRight" size={14}/></a> : source.title}{source.citation ? ' — ' + source.citation : ''}</li>)}</ol></section>}</article>
+        <article className="article-content"><Markdown body={data.body}/>{Array.isArray(data.sources) && data.sources.length > 0 && <section className="article-sources"><h2>Nguồn tham khảo</h2><ol>{data.sources.map((source, index) => <li key={index}>{safeSourceUrl(source.url) ? <a href={safeSourceUrl(source.url)} target="_blank" rel="noopener noreferrer">{source.title} <Icon name="upRight" size={14}/></a> : source.title}{source.citation ? ' — ' + source.citation : ''}</li>)}</ol></section>}</article>
         <aside className="article-aside"><div className="side-panel"><span className="eyebrow">TỦ SÁCH</span><h3>{data.bookTitle}</h3><BookLabel value={data.contentLabelVi}/><p className="side-caption">Chỉ chương đã được duyệt và xuất bản mới hiển thị tại đây.</p><Link className="text-link" to={'/tu-sach/' + data.bookSlug}>Danh sách chương <Icon name="arrow" size={16}/></Link></div></aside>
       </div>
       <div className="container public-chapter-navigation">
