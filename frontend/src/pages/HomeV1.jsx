@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { READERS, SECTION_LINKS } from '../config.js';
 import { useReader } from '../context/ReaderContext.jsx';
 import { useFeed, useNiches } from '../hooks/useResources.js';
-import { ArticleCard, NicheCard, SectionHeading, StatusPanel } from '../components/UI.jsx';
+import { ArticleCard, SectionHeading, StatusPanel } from '../components/UI.jsx';
 import { Icon } from '../components/Icons.jsx';
 import { ConstructionDrawing } from './Home.jsx';
 import { chapterPath } from '../lib/contentModel.js';
