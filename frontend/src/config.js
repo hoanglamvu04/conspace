@@ -25,9 +25,8 @@ export const PRIMARY_NAV = [
   { to: '/tu-sach', label: 'Tủ sách' },
   { to: '/ngach', label: 'Kho 38 ngách' },
   { to: '/hien-truong', label: 'Hiện trường' },
-  { to: '/tu-dien', label: 'Từ điển nghề' },
-  { to: '/ban-nghe', label: 'Bàn nghề' },
-  { to: '/tra-cuu', label: 'Tra cứu' },
+  { to: '/hoi-dap', label: 'Hỏi đáp' },
+  { to: '/tra-nhanh', label: 'Tra nhanh' },
 ];
 
 export const BOOKS = [
@@ -49,11 +48,11 @@ export const BOOKS = [
 ];
 
 export const SECTION_LINKS = [
-  { to: '/tu-sach', title: 'Tủ sách', eyebrow: 'ĐỌC SÂU', icon: 'book', description: 'Ba đầu sách, ba cách kể về một ngành nghề.' },
-  { to: '/hien-truong', title: 'Hiện trường', eyebrow: 'QUAN SÁT', icon: 'hardhat', description: 'Nhìn hiện tượng, lần về nguyên nhân và mốc kiểm tra.' },
-  { to: '/tu-dien', title: 'Từ điển nghề', eyebrow: 'HIỂU THUẬT NGỮ', icon: 'layers', description: 'Tra thuật ngữ từ nội dung đã được biên tập.' },
-  { to: '/ban-nghe', title: 'Bàn nghề', eyebrow: 'GÓC NHÌN', icon: 'users', description: 'Cùng một nghề, những trải nghiệm khác nhau.' },
-  { to: '/tra-cuu', title: 'Tra cứu', eyebrow: 'TÌM ĐÚNG CHỖ', icon: 'search', description: 'Tìm trong danh mục và từ điển nghề.' },
+  { to: '/tu-sach', title: 'Tủ sách', eyebrow: 'ĐỌC SÂU', icon: 'book', description: 'Ba đầu sách, chỉ mở chương đã xuất bản.' },
+  { to: '/ngach', title: 'Kho 38 ngách', eyebrow: 'PHÂN LOẠI', icon: 'layers', description: 'Bản đồ lĩnh vực theo dữ liệu đã xác minh.' },
+  { to: '/hien-truong', title: 'Hiện trường', eyebrow: 'QUAN SÁT', icon: 'hardhat', description: 'Hiện tượng, nguyên nhân và điểm nghiệm thu.' },
+  { to: '/hoi-dap', title: 'Hỏi đáp', eyebrow: 'ĐỐI THOẠI', icon: 'users', description: 'Câu hỏi ẩn danh và câu trả lời đã duyệt.' },
+  { to: '/tra-nhanh', title: 'Tra nhanh', eyebrow: 'TÌM ĐÚNG CHỖ', icon: 'search', description: 'Tìm trong bài viết, ngách, chương và thuật ngữ.' },
 ];
 
 export function formatDate(value) {
