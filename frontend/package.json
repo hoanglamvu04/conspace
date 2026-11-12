@@ -9,7 +9,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview --host 127.0.0.1"
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "node --test src/lib/*.test.js",
+    "prebuild": "node scripts/export-lock.mjs"
   },
   "dependencies": {
     "react": "18.3.1",
