@@ -14,22 +14,6 @@ export function chapterPath(bookSlug, chapterNo) {
   return '/tu-sach';
 }
 
-export function chapterRouteParams({ part, item, chapter }) {
-  if (part && item) {
-    const match = String(item).match(/^muc-(\\d{1,3})$/);
-    const partMatch = String(part).match(/^phan-(\\d{1,3})$/);
-    if (!match || !partMatch) return null;
-    return { bookSlug: 'cam-nang-kien-truc-hoa-lac', chapterNo: Number(match[1]) };
-  }
-  if (chapter) {
-    const match = String(chapter).match(/^chuong-(\\d{1,3})$/);
-    if (!match) return null;
-    const bookSlug = String(chapter).startsWith('chuong-') ? null : null;
-    return { bookSlug, chapterNo: Number(match[1]) };
-  }
-  return null;
-}
-
 export function nicheLayersForRole(sections, role) {
   if (!Array.isArray(sections)) return [];
   return sections.flatMap((section) => {
@@ -38,10 +22,4 @@ export function nicheLayersForRole(sections, role) {
       : null;
     return layer ? [{ sectionNo: section.sectionNo, key: section.key, title: section.title, content: layer.content, sourceRef: layer.sourceRef || null }] : [];
   });
-}
-
-export function chapterNumberFromPath(pathname) {
-  const value = String(pathname || '');
-  const match = value.match(/\\/(?:muc|chuong)-(\\d{1,3})(?:\\/|$)/);
-  return match ? Number(match[1]) : null;
 }
