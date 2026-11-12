@@ -1,0 +1,73 @@
+# CONSPACE Sprint 2B — HTTPS CMS locations (REVIEWED TEMPLATE, NOT LIVE).
+# Merge ONLY into existing conspace.vn + www.conspace.vn HTTPS server block.
+# Do NOT replace Certbot vhost, /__infra/health, /api or SPA root.
+# FIRST back up CONSPACE vhost and run nginx -t; then update and nginx -t again.
+# Requires http {} zones from ops/nginx/conspace-rate-limit-http.conf.example.
+# A hidden /admin route is NOT security: Backend MUST authenticate and authorize all /api/admin calls.
+
+location = /admin {
+    return 308 /admin/;
+}
+location ^~ /admin/ {
+    # Admin SPA shell only. Protected data must come from authenticated Backend APIs.
+    add_header Cache-Control "no-store" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    try_files $uri $uri/ /index.html;
+}
+
+location = /api/admin/auth/login {
+    limit_req zone=conspace_admin_login burst=3 nodelay;
+    limit_req_status 429;
+    client_max_body_size 32k;
+    proxy_pass http://127.0.0.1:5088;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_connect_timeout 5s;
+    proxy_read_timeout 30s;
+    proxy_no_cache 1;
+    proxy_cache_bypass 1;
+    add_header Cache-Control "no-store" always;
+}
+
+# Narrower prefix must win over /api/admin/ (longest prefix match).
+location ^~ /api/admin/media/ {
+    limit_req zone=conspace_media_upload burst=5 nodelay;
+    limit_req_status 429;
+    client_max_body_size 25m;
+    proxy_request_buffering on;
+    proxy_pass http://127.0.0.1:5088;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_connect_timeout 5s;
+    proxy_read_timeout 60s;
+    proxy_no_cache 1;
+    proxy_cache_bypass 1;
+    add_header Cache-Control "no-store" always;
+}
+
+location ^~ /api/admin/ {
+    limit_req zone=conspace_admin_api burst=20 nodelay;
+    limit_req_status 429;
+    client_max_body_size 256k;
+    proxy_pass http://127.0.0.1:5088;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_connect_timeout 5s;
+    proxy_read_timeout 30s;
+    proxy_no_cache 1;
+    proxy_cache_bypass 1;
+    add_header Cache-Control "no-store" always;
+}
+
+# Existing /media/ fallback MUST deny /media/private/ and /media/staging/.
+# Never alias MEDIA_ROOT root. Only allow 32-hex published files in media/public.
+# Cookie: Backend sets __Host- prefixed HttpOnly, Secure, SameSite and Path=/;
+# Nginx preserves Set-Cookie and X-Forwarded-Proto. Backend MUST defend CSRF.
+# Audit real CSP/Header inheritance before adding other add_header directives.

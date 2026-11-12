@@ -1,8 +1,9 @@
 # REFERENCE ONLY: these limit_req_zone directives belong inside Nginx http {},
 # not inside a server/location block. Check nginx -T and existing zone names first.
 limit_req_zone $binary_remote_addr zone=conspace_admin_login:10m rate=5r/m;
+limit_req_zone $binary_remote_addr zone=conspace_admin_api:10m rate=30r/m;
 limit_req_zone $binary_remote_addr zone=conspace_media_upload:10m rate=10r/m;
-limit_req_status 429;
+# limit_req_status 429; # Set ONLY inside CONSPACE locations, not http{} (shared VPS).
 
 # Once Backend defines the routes, add inside the CONSPACE HTTPS server block:
 #
@@ -17,5 +18,8 @@ limit_req_status 429;
 #     ...same proxy headers and proxy_pass as /api...
 # }
 #
+# Install zones ONCE in the existing http {} context; avoid duplicate zone names.
+# If a CDN is used, verify trusted real-client-IP chain; never trust arbitrary X-Forwarded-For.
+# See conspace-cms-https-locations.conf.example for full scoped location examples.
 # Express must also enforce account+IP rate limits. Nginx limits are an outer layer,
 # not a replacement for application authentication/authorization.

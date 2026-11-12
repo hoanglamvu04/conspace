@@ -56,6 +56,17 @@ jobs:
           grep -q 'preserve at least 7 complete backup sets' ops/scripts/backup-all.sh
           grep -q 'orphan-quarantine' ops/scripts/media-orphan-audit.sh
           ! grep -Eq '^[[:space:]]*rm[[:space:]]+--[[:space:]]+"\\$file"' ops/scripts/media-orphan-audit.sh
+      - name: Sprint 2B CMS safety harness (offline only)
+        run: |
+          set -euo pipefail
+          node --check ops/scripts/verify-ci-checks.cjs
+          node --check ops/scripts/cms-authz-acceptance.mjs
+          node --test ops/tests/*.test.mjs
+      - name: Confirm full dependency audit remains mandatory
+        run: |
+          set -euo pipefail
+          grep -q 'npm audit --prefix frontend --audit-level=high' .github/workflows/gate1-checks.yml
+          grep -q 'npm audit --prefix backend --audit-level=high' .github/workflows/gate1-checks.yml
       - name: Reject committed runtime secrets and backups
         run: |
           if git ls-files | grep -E '(^|/)\.env$|\.(dump|pem|key|p12|pfx)$|(^|/)dump\.pm2$'; then

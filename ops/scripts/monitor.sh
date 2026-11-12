@@ -43,6 +43,21 @@ df -h / /var/backups/conspace
 AVAIL="$(df -P /var/backups/conspace | awk 'NR==2 {gsub(/%/, "", $5); print 100-$5}')"
 if [[ "$AVAIL" =~ ^[0-9]+$ ]] && (( AVAIL < 15 )); then echo "FAIL: Backup filesystem has only ${AVAIL}% free"; failures=$((failures+1)); fi
 
+echo '=== RAM ==='
+# MemAvailable accounts for reclaimable page cache; no process memory/env details printed.
+if command -v free >/dev/null 2>&1; then
+  RAM_USED="$(free -m | awk '/^Mem:/ {if($2>0){printf "%d",100*($2-$7)/$2}}')"
+  if [[ "$RAM_USED" =~ ^[0-9]+$ ]]; then
+    echo "RAM pressure: ${RAM_USED}% (MemTotal - MemAvailable)"
+    if (( RAM_USED >= 95 )); then echo 'FAIL: critical RAM pressure >=95%'; failures=$((failures+1))
+    elif (( RAM_USED >= 85 )); then echo 'WARN: RAM pressure >=85%'; fi
+  else
+    echo 'FAIL: RAM data unavailable'; failures=$((failures+1))
+  fi
+else
+  echo 'FAIL: free command not available'; failures=$((failures+1))
+fi
+
 echo '=== API logs ==='
 for log in /var/log/conspace/api-out.log /var/log/conspace/api-error.log; do
   if [[ -f "$log" ]]; then printf '%s bytes: ' "$log"; stat -c '%s' "$log"; else echo "FAIL: Log file missing: $log"; failures=$((failures+1)); fi

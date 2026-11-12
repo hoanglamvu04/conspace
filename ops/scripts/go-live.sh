@@ -18,7 +18,20 @@ git pull --ff-only origin main
 SHA="$(git rev-parse HEAD)"
 REMOTE="$(git rev-parse refs/remotes/origin/main)"
 [[ "$SHA" == "$REMOTE" && "$SHA" == "$APPROVED_SHA" ]] || die "Local main, origin/main and approved SHA must match. local=$SHA remote=$REMOTE approved=$APPROVED_SHA"
-[[ "${CONSPACE_CI_APPROVED_SHA:-}" == "$SHA" ]] || die 'Set CONSPACE_CI_APPROVED_SHA to this SHA only after verifying all GitHub Actions checks passed.'
+[[ "${CONSPACE_CI_APPROVED_SHA:-}" == "$SHA" ]] || die 'Set CONSPACE_CI_APPROVED_SHA only after reviewing successful CI for this SHA.'
+APPROVAL_DIR=/var/lib/conspace-ops/approvals
+for suffix in approved release-kind; do
+  FILE="$APPROVAL_DIR/$SHA.$suffix"
+  [[ -f "$FILE" && ! -L "$FILE" && "$(stat -c '%u:%a' "$FILE")" == "0:600" ]] ||
+    die "Missing root-owned 0600 owner approval: $FILE"
+done
+RELEASE_KIND="$(cat "$APPROVAL_DIR/$SHA.release-kind")"
+[[ "$RELEASE_KIND" == public || "$RELEASE_KIND" == cms ]] || die 'Release type must be public or cms.'
+if [[ "$RELEASE_KIND" == cms ]]; then
+  FILE="$APPROVAL_DIR/$SHA.cms-approved"
+  [[ -f "$FILE" && ! -L "$FILE" && "$(stat -c '%u:%a' "$FILE")" == "0:600" ]] ||
+    die 'CMS release requires separate staging authz/CSRF/cookie acceptance and explicit owner approval.'
+fi
 [[ "$(node -v)" == 'v22.23.2' ]] || die 'Expected Node.js 22.23.2.'
 for file in backend/package-lock.json frontend/package-lock.json; do test -s "$file" || die "$file missing."; done
 test -f /root/.pm2/dump.pm2 || die 'PM2 saved dump missing.'
@@ -34,24 +47,7 @@ curl --fail --silent --show-error --max-time 20 \
   -H 'Accept: application/vnd.github+json' \
   -H 'X-GitHub-Api-Version: 2022-11-28' \
   "https://api.github.com/repos/hoanglamvu04/conspace/commits/$SHA/check-runs?per_page=100" > "$CHECKS_JSON"
-node - "$CHECKS_JSON" <<'NODE'
-const fs = require('node:fs');
-const data = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
-if (!Array.isArray(data.check_runs) || data.check_runs.length === 0) {
-  console.error('STOP: No GitHub check-runs found for this SHA.');
-  process.exit(1);
-}
-const bad = data.check_runs.filter((check) =>
-  check.status !== 'completed' || check.conclusion !== 'success'
-);
-for (const check of data.check_runs) {
-  console.log((check.conclusion === 'success' ? 'PASS: ' : 'WAIT/FAIL: ') + check.name + ' [' + check.status + '/' + check.conclusion + ']');
-}
-if (bad.length) {
-  console.error('STOP: Every check-run for the approved SHA must be completed/success.');
-  process.exit(1);
-}
-NODE
+node ops/scripts/verify-ci-checks.cjs "$SHA" < "$CHECKS_JSON"
 
 echo '=== 2. Verify existing PM2 apps and saved dump (read-only) ==='
 pm2 jlist | node ops/scripts/pm2-check.cjs /root/.pm2/dump.pm2 --strict-all --require-online
@@ -63,13 +59,24 @@ bash ops/scripts/setup-storage.sh --apply
 echo '=== 4. Stage immutable release and run tests/build ==='
 bash ops/scripts/stage.sh "$SHA"
 RELEASE="/var/www/conspace-releases/$SHA"
+# A public classification may never silently carry new CMS router code.
+if grep -R -Eq '/api/admin|createAdminRouter|admin/auth|adminRouter' "$RELEASE/backend/src"; then
+  [[ "$RELEASE_KIND" == cms ]] || die 'Admin route code detected; release must be classified CMS and independently approved.'
+fi
+if [[ "$RELEASE_KIND" == cms ]]; then
+  bash ops/scripts/cms-nginx-preflight.sh
+fi
 
 echo '=== 5. Back up CONSPACE database + media BEFORE migrations ==='
 bash ops/scripts/backup-all.sh
+# Validate the actual backup by restoring ONLY into temporary scratch DB/media.
+LATEST_BACKUP="$(find /var/backups/conspace -mindepth 2 -maxdepth 2 -type f -name SHA256SUMS -printf '%T@ %h\n' |
+  sort -nr | head -n 1 | cut -d ' ' -f 2-)"
+[[ -n "$LATEST_BACKUP" ]] || die 'No complete CONSPACE backup found for restore verification.'
+bash ops/scripts/restore-drill.sh "$LATEST_BACKUP"
 
-echo '=== 6. Apply transactional CONSPACE migrations and seed ==='
+echo '=== 6. Apply only reviewed transactional CONSPACE migrations (NO automatic seed) ==='
 npm run db:migrate --prefix "$RELEASE/backend"
-npm run db:seed --prefix "$RELEASE/backend"
 
 echo '=== 7. Reload only conspace-api and switch frontend ==='
 if [[ -d frontend/dist && ! -L frontend/dist ]]; then

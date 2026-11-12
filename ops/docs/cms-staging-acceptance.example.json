@@ -1,0 +1,116 @@
+{
+  "baseUrl": "https://cms-staging.example.invalid/",
+  "cases": [
+    {
+      "id": "anonymous_admin",
+      "method": "GET",
+      "path": "/api/admin/users",
+      "expect": [
+        401,
+        403
+      ],
+      "headers": {}
+    },
+    {
+      "id": "editor_forbidden",
+      "method": "GET",
+      "path": "/api/admin/users",
+      "expect": [
+        403
+      ],
+      "headers": {
+        "Cookie": "REPLACE_WITH_STAGING_EDITOR_COOKIE"
+      }
+    },
+    {
+      "id": "reviewer_escalation_forbidden",
+      "method": "PATCH",
+      "path": "/api/admin/users/TEST_USER_ID/role",
+      "expect": [
+        403
+      ],
+      "headers": {
+        "Cookie": "REPLACE_WITH_STAGING_REVIEWER_COOKIE",
+        "X-CSRF-Token": "REPLACE_WITH_VALID_REVIEWER_CSRF"
+      },
+      "body": {
+        "role": "admin"
+      }
+    },
+    {
+      "id": "sensitive_publish_forbidden",
+      "method": "POST",
+      "path": "/api/admin/articles/TEST_SENSITIVE_ID/approve",
+      "expect": [
+        403
+      ],
+      "headers": {
+        "Cookie": "REPLACE_WITH_UNAUTHORIZED_USER_COOKIE",
+        "X-CSRF-Token": "REPLACE_WITH_VALID_USER_CSRF"
+      },
+      "body": {
+        "decision": "approve"
+      }
+    },
+    {
+      "id": "publisher_unreviewed_forbidden",
+      "method": "POST",
+      "path": "/api/admin/articles/TEST_UNREVIEWED_ID/publish",
+      "expect": [
+        403,
+        409,
+        422
+      ],
+      "headers": {
+        "Cookie": "REPLACE_WITH_STAGING_PUBLISHER_COOKIE",
+        "X-CSRF-Token": "REPLACE_WITH_VALID_PUBLISHER_CSRF"
+      },
+      "body": {}
+    },
+    {
+      "id": "csrf_invalid",
+      "method": "POST",
+      "path": "/api/admin/articles/TEST_DRAFT_ID/publish",
+      "expect": [
+        403
+      ],
+      "headers": {
+        "Cookie": "REPLACE_WITH_STAGING_PUBLISHER_COOKIE",
+        "X-CSRF-Token": "INVALID_STAGING_CSRF"
+      },
+      "body": {}
+    },
+    {
+      "id": "admin_allowed",
+      "method": "POST",
+      "path": "/api/admin/articles",
+      "expect": [
+        200,
+        201,
+        204
+      ],
+      "headers": {
+        "Cookie": "REPLACE_WITH_STAGING_ADMIN_COOKIE",
+        "X-CSRF-Token": "REPLACE_WITH_VALID_ADMIN_CSRF"
+      },
+      "body": {
+        "title": "STAGING ONLY acceptance canary draft"
+      }
+    },
+    {
+      "id": "admin_cookie_flags",
+      "method": "POST",
+      "path": "/api/admin/auth/login",
+      "expect": [
+        200,
+        201,
+        204
+      ],
+      "headers": {},
+      "body": {
+        "username": "REPLACE_STAGING_ADMIN_ACCOUNT",
+        "password": "REPLACE_STAGING_PASSWORD"
+      }
+    }
+  ]
+}
