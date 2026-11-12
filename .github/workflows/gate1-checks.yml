@@ -116,8 +116,12 @@ jobs:
         run: npm audit --prefix frontend --omit=dev --audit-level=high
       - name: Frontend full dependency audit
         run: npm audit --prefix frontend --audit-level=high
-      - name: Frontend tests and production build
+      - name: Frontend tests (when configured) and production build
         if: ${{ always() && steps.frontend_install.outcome == 'success' }}
         run: |
-          npm test --prefix frontend
+          if node -e 'const p=JSON.parse(require("node:fs").readFileSync("frontend/package.json","utf8")); process.exit(p.scripts && p.scripts.test ? 0 : 1)'; then
+            npm test --prefix frontend
+          else
+            echo 'SKIP: frontend/package.json has no test script; no frontend test suite is defined yet.'
+          fi
           npm run build

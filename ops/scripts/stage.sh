@@ -49,6 +49,11 @@ npm ci --prefix "$RELEASE/backend" --ignore-scripts --no-audit --no-fund
 npm ci --prefix "$RELEASE/frontend" --ignore-scripts --no-audit --no-fund
 npm run check --prefix "$RELEASE/backend"
 npm run test --prefix "$RELEASE/backend"
+if node -e 'const p=JSON.parse(require("node:fs").readFileSync(process.argv[1],"utf8")); process.exit(p.scripts && p.scripts.test ? 0 : 1)' "$RELEASE/frontend/package.json"; then
+  npm test --prefix "$RELEASE/frontend"
+else
+  echo 'SKIP: frontend package has no test script; production build remains required.'
+fi
 npm run build --prefix "$RELEASE/frontend"
 test -s "$RELEASE/frontend/dist/index.html"
 ln -s "$REPO/backend/.env" "$RELEASE/backend/.env"
