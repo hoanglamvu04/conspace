@@ -84,6 +84,8 @@ function BookLabel({ value }) {
 
 export function BookIndex() {
   const books = useResource(apiUrl('/books'));
+  const { reader } = useReader();
+  const orderedBooks = sortByLens(books.data, reader);
   return <>
     <PageIntro eyebrow="CONSPACE / THƯ VIỆN BIÊN TẬP" title="Tủ sách" description="Ba đầu sách theo đúng nhãn nội dung đã được xác nhận. Chỉ chương đã xuất bản mới có đường dẫn đọc."/>
     <main className="container content-page">
@@ -91,7 +93,7 @@ export function BookIndex() {
       {books.status === 'loading' && <StatusPanel status="loading" kind="articles"/>}
       {books.status === 'error' && <StatusPanel status="error" onRetry={books.retry}/>}
       {books.status === 'success' && !books.data.length && <StatusPanel status="empty" title="Chưa có đầu sách từ API" description="Tủ sách sẽ hiển thị khi Backend trả về hồ sơ sách đã được xác nhận."/>}
-      {books.status === 'success' && books.data.length > 0 && <div className="public-book-grid">{books.data.map((book, index) => <article className="public-book-card" key={book.id}>
+      {books.status === 'success' && books.data.length > 0 && <div className="public-book-grid">{orderedBooks.map((book, index) => <article className="public-book-card" key={book.id}>
         <div className="public-book-cover"><span>CONSPACE / TỦ SÁCH</span><strong>{String(index + 1).padStart(2, '0')}</strong></div>
         <div className="public-book-info"><BookLabel value={book.contentLabelVi}/><h2>{book.title}</h2><p className="public-book-audience">{book.audienceRole === 'homeowner' ? 'Chủ nhà' : book.audienceRole === 'architect' ? 'Kiến trúc sư' : 'Nhà thầu'}</p>
           <p className="public-book-progress">{Number(book.publishedChapterCount || 0).toLocaleString('vi-VN')} / {Number(book.expectedChapterCount || 0).toLocaleString('vi-VN')} chương đã xuất bản</p>
