@@ -34,7 +34,7 @@ export async function seedTaxonomy(db = pool) {
       if (existing.rows.length > 0) continue;
       const result = await client.query(
         'INSERT INTO conspace.niches (slug, name, group_type, template_key, source_ref, sort_order, is_active) ' +
-        'VALUES ($1, $2, $3, 'TEMPLATE_B', $4, $5, true) ON CONFLICT (slug) DO NOTHING',
+        `VALUES ($1, $2, $3, 'TEMPLATE_B', $4, $5, true) ON CONFLICT (slug) DO NOTHING`,
         [category.slug, category.name, 'design', source, index + 1]
       );
       inserted += result.rowCount;
