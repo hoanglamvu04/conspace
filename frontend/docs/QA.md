@@ -1,39 +1,37 @@
-# CONSPACE frontend — Sprint 1 QA and integration notes
+# Frontend QA — Information Architecture & Editorial Governance v1.0
 
-Frontend ownership: `frontend/**` only; React 18 / Vite 5 / JSX (no TSX).
+## Automated checks
 
-## Local workflow
+Run from the repository root:
+- npm test --prefix frontend
+- npm run build --prefix frontend
 
-```sh
-cd frontend
-npm ci
-npm test
-npm run build
-npm run dev
-```
+The frontend test suite covers:
+- API URL allowlisting for feed, books, chapters, field notes, questions and search.
+- Anonymous Q&A JSON submission and API error envelopes.
+- Reader cookie restore, one-year persistence and all-lens visibility.
+- Exact v1.0 niche layer mapping, empty unpublished slots and preservation of open layers when switching lenses.
+- Canonical book chapter paths and chapter labels.
+- Primary routes, legacy aliases, architecture-area routes, contact route, sitemap and robots rules.
+- CMS ADMIN least-privilege UI and explicit Backend grant precedence.
 
-Vite proxies `/api` to `http://127.0.0.1:5088` in development, matching the locked contract. Production uses a relative same-origin `/api/v1` prefix. No environment secrets are needed on the client.
+## Manual localhost smoke checklist
 
-## Public routes
+1. Start Backend and Frontend using the repository's documented local development commands.
+2. Open / at desktop width. Verify the three reader choices are visible in the first screen and the existing architectural drawing remains visible. No carousel should appear.
+3. Select each reader choice. Verify the URL does not change and the conspace_reader cookie changes. Reload and verify the selected choice is restored.
+4. Open /ngach, select an architecture area and verify its canonical URL is /mang/:slug. Open a construction niche and verify /ngach/:slug.
+5. On a construction niche, verify all three role disclosures appear on one URL. The selected lens opens by default. Open another lens, switch the reader, and verify the previously opened lens remains open.
+6. Open /tu-sach. Verify book labels and chapter counts come from /api/v1/books. Open a book and verify only published chapters are listed. Open a chapter and verify previous/next links only reference published chapters.
+7. Open /hien-truong. Verify only published, anonymized records appear. Open a case and verify cost is hidden unless a source is present.
+8. Open /hoi-dap, send an anonymous question, and verify success only after the API accepts it. Verify the phone field is absent from the request unless private reply is explicitly selected.
+9. Open /tra-nhanh, search a term, and verify results come from /api/v1/search. Verify /tra-cuu and /tu-dien remain functional aliases.
+10. Sign in to CMS as each role. ADMIN must see system modules and read-only articles only; EDITOR can author; TECHNICAL_REVIEWER can perform technical review; EDITOR_IN_CHIEF can perform chief review and publication actions.
+11. Check mobile widths, keyboard focus, details/summary keyboard behavior, form labels, loading/empty/error states, canonical tags and sitemap/robots files.
 
-- `/` — 3 reader lenses and editorial home
-- `/ngach`, `/ngach/:slug` — dynamic 8+30 taxonomy from the API and role-aware related articles
-- `/bai-viet`, `/bai-viet/:slug` — published article index and safe Markdown rendering
-- `/tu-sach`, `/hien-truong`, `/tu-dien`, `/ban-nghe`, `/tra-cuu`, `/tra-nhanh` — public knowledge sections
-- `/ve-conspace`, `/quy-tac-noi-dung` — editorial transparency
+## Release boundaries
 
-No fake articles, contractor names, technical definitions, statistics, approval badges, login, uploads or marketplace. The 8 documented architecture-area labels and 3 book names are static **editorial reference data**; all live records come from the API.
-
-## Manual verification checklist
-
-- Responsive: check ~375px, 768px, 1440px; no horizontal overflow; mobile navigation opens and closes; search/form fits.
-- Keyboard: skip link, focus ring, mobile nav, reader switch `aria-pressed`, search input, retry buttons.
-- Frontend/API: unavailable backend shows explanatory retry UI; empty `data: []` is not treated as an error; 404 article shows not-found.
-- Test API: `/api/v1/niches`, `/api/v1/articles?role=...`, `/api/v1/articles/:slug`, `/api/v1/terms?q=...` with the real contract; no alternate keys.
-- Reader lens: select any perspective, navigate and refresh; verify persisted cookie and API `role` filter.
-- Published posts: correct image, author, date, safe Markdown and source list; prevent script/HTML injection.
-- SEO: title, description, canonical; Article JSON-LD only for real article data; semantic headings and image `alt`.
-
-### Deferred by the API contract
-
-The sprint 1 contract does **not** offer dedicated field-case, book chapter, Q&A or full-text search endpoints. These sections provide properly labeled editorial scaffolding and truthful empty states rather than fictional records. No authoring/approval functions are presented as real.
+- Do not deploy to the VPS as part of this task.
+- Do not publish draft or scheduled content.
+- Do not seed placeholder articles, field cases, questions, costs, views or chapter bodies.
+- Frontend-only role hiding does not replace required Backend permission enforcement.
