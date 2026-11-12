@@ -61,6 +61,7 @@ jobs:
           set -euo pipefail
           node --check ops/scripts/verify-ci-checks.cjs
           node --check ops/scripts/cms-authz-acceptance.mjs
+          node --check ops/scripts/local-smoke.mjs
           node --test ops/tests/*.test.mjs
       - name: Confirm full dependency audit remains mandatory
         run: |
