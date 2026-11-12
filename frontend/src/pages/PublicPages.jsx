@@ -23,6 +23,53 @@ function usePageMeta(title, description) {
   }, [title, description]);
 }
 
+
+function PublishedArticleSchema({ data }) {
+  useEffect(() => {
+    if (!data) return undefined;
+    const script = document.createElement('script');
+    script.type = 'application/ld+json';
+    script.dataset.conspaceSchema = 'article';
+    script.textContent = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'Article',
+      headline: data.title,
+      description: data.excerpt || undefined,
+      datePublished: data.publishedAt || undefined,
+      mainEntityOfPage: window.location.href,
+      publisher: { '@type': 'Organization', name: 'CONSPACE' },
+    }).replace(/</g, '\\u003c');
+    document.head.appendChild(script);
+    return () => script.remove();
+  }, [data]);
+  return null;
+}
+
+function PublishedQuestionSchema({ data }) {
+  useEffect(() => {
+    if (!data) return undefined;
+    const script = document.createElement('script');
+    script.type = 'application/ld+json';
+    script.dataset.conspaceSchema = 'qapage';
+    script.textContent = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'QAPage',
+      mainEntity: {
+        '@type': 'Question',
+        name: data.description,
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: data.answer,
+          datePublished: data.publishedAt || undefined,
+        },
+      },
+    }).replace(/</g, '\\u003c');
+    document.head.appendChild(script);
+    return () => script.remove();
+  }, [data]);
+  return null;
+}
+
 function BookLabel({ value }) {
   return <span className="pill-label">{value || 'Nhãn sách chưa được xác định'}</span>;
 }
@@ -96,6 +143,7 @@ export function ChapterDetail({ bookSlug }) {
   const previous = data.previous;
   const next = data.next;
   return <>
+    <PublishedArticleSchema data={data}/>
     <main className="article-page">
       <div className="container article-page-head">
         <Breadcrumbs items={[{ label: 'Tủ sách', to: '/tu-sach' }, { label: data.bookTitle, to: '/tu-sach/' + data.bookSlug }, { label: data.displayLabel || 'Chương ' + data.chapterNo }]}/>
@@ -150,6 +198,7 @@ export function FieldNoteDetail() {
   const data = record.data;
   const images = Array.isArray(data.images) ? data.images : [];
   return <>
+    <PublishedArticleSchema data={data}/>
     <main className="article-page">
       <div className="container article-page-head">
         <Breadcrumbs items={[{ label: 'Hiện trường', to: '/hien-truong' }, { label: data.title }]}/>
@@ -202,6 +251,7 @@ export function QuestionDetail() {
   const data = question.data;
   const images = Array.isArray(data.images) ? data.images : [];
   return <main className="container content-page">
+    <PublishedQuestionSchema data={data}/>
     <Breadcrumbs items={[{ label: 'Hỏi đáp', to: '/hoi-dap' }, { label: 'Câu hỏi đã xuất bản' }]}/>
     <article className="public-question-detail">
       <span className="eyebrow">CÂU HỎI ĐỘC GIẢ · ĐÃ ẨN DANH</span>
