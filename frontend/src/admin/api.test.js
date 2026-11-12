@@ -40,7 +40,11 @@ test('backend errors 401/403/404 never produce simulated success',async t=>{
   }
 });
 test('roles are UI hints based on a real backend session; server is authority',()=>{
-  assert.equal(hasPermission({role:'ADMIN'},'articles:publish'),true);
+  assert.equal(hasPermission({role:'ADMIN'},'articles:publish'),false);
+  assert.equal(hasPermission({role:'ADMIN'},'reviews:read'),false);
+  assert.equal(hasPermission({role:'ADMIN'},'articles:create'),false);
+  assert.equal(hasPermission({role:'ADMIN'},'users:write'),true);
+  assert.equal(hasPermission({role:'EDITOR_IN_CHIEF'},'dictionary:publish'),true);
   assert.equal(hasPermission({role:'EDITOR'},'articles:publish'),false);
   assert.equal(hasPermission({role:'TECHNICAL_REVIEWER'},'reviews:technical:decide'),true);
   assert.equal(hasPermission({role:'EDITOR_IN_CHIEF'},'reviews:chief:decide'),true);
