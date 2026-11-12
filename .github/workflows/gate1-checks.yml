@@ -50,6 +50,12 @@ jobs:
             node ops/scripts/pm2-check.cjs /tmp/pm2-fixture.json --require-online; then
             echo 'FAIL: offline PM2 process was not detected'; exit 1
           fi
+      - name: Verify backup retention and media quarantine safety
+        run: |
+          set -euo pipefail
+          grep -q 'preserve at least 7 complete backup sets' ops/scripts/backup-all.sh
+          grep -q 'orphan-quarantine' ops/scripts/media-orphan-audit.sh
+          ! grep -Eq '^[[:space:]]*rm[[:space:]]+--[[:space:]]+"\\$file"' ops/scripts/media-orphan-audit.sh
       - name: Reject committed runtime secrets and backups
         run: |
           if git ls-files | grep -E '(^|/)\.env$|\.(dump|pem|key|p12|pfx)$|(^|/)dump\.pm2$'; then

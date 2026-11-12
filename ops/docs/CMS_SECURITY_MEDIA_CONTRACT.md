@@ -114,3 +114,8 @@ curl -sSI https://conspace.vn/api/health
 \`\`\`
 
 Never share raw PM2 environment output, backend/.env, session material or user-uploaded personal data.
+
+
+## Orphan cleanup hardening
+
+`ops/scripts/media-orphan-audit.sh` defaults to inventory only. After verifying a fresh conspace-only manifest and a recent checksum-valid media backup, `--apply` **quarantines** candidates under a root-only `orphan-quarantine/<timestamp>` directory rather than permanently deleting them. Review database references, backups, retention and legal holds before separately approving any irreversible purge. Files in quarantine are not served by Nginx.

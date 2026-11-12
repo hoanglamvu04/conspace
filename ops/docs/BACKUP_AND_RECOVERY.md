@@ -10,7 +10,7 @@ This process handles only PostgreSQL database `conspace` and `/var/lib/conspace/
 - Each run creates `/var/backups/conspace/YYYYMMDDTHHMMSSZ/` containing `database.dump`, `media.tar.gz`, and `SHA256SUMS` (0600).
 - Database archive: PostgreSQL custom format from database exactly named `conspace`, via local postgres peer access, with no owner/ACL records. It is not a cluster/global-role dump.
 - Media archive includes private, public and staging trees under MEDIA_ROOT. Symlinks in the media tree are rejected before backup.
-- Daily timer target: 02:30 server local time with up to 15 minutes randomized delay. Retention is 14 days. Timer installation is a one-time owner action.
+- Daily timer target: 02:30 server local time with up to 15 minutes randomized delay. Retention is 14 days, **preserving at least the seven most recent complete backup sets**. Timer installation is a one-time owner action.
 - Backups are not stored in Git. Treat them as sensitive personal/project data. Current plan is local-disk backup only; it is not an offsite disaster-recovery copy. Add encrypted offsite replication only after a destination and key-management policy are approved.
 
 ## One-time setup
@@ -43,7 +43,7 @@ sudo bash /var/www/conspace/ops/scripts/backup-all.sh
 sudo bash /var/www/conspace/ops/scripts/monitor.sh
 ```
 
-The backup script verifies PostgreSQL is ready, checks the selected database name is exactly `conspace`, validates the custom dump with `pg_restore --list`, validates the media archive with `tar -tzf`, writes checksums and applies 14-day retention. A failed backup leaves the incomplete timestamp directory for inspection; it does not prune old backups before a successful archive.
+The backup script verifies PostgreSQL is ready, checks the selected database name is exactly `conspace`, validates the custom dump with `pg_restore --list`, validates the media archive with `tar -tzf`, writes checksums and applies 14-day retention without pruning the most recent seven complete backup sets. A failed backup leaves the incomplete timestamp directory for inspection; it does not prune old backups before a successful archive.
 
 ## Restore drill — safe, non-production target
 

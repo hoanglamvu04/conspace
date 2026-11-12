@@ -34,6 +34,9 @@ if [[ "$APPLY" == true ]]; then
   [[ -n "$LATEST_MEDIA" ]] || die 'A media backup from the last hour is required before deletion.'
   BACKUP_DIR="$(dirname "$LATEST_MEDIA")"
   (cd "$BACKUP_DIR" && sha256sum -c SHA256SUMS) || die 'Recent media backup checksum validation failed.'
+  QUARANTINE="$MEDIA_ROOT/orphan-quarantine/$(date -u +%Y%m%dT%H%M%SZ)"
+  [[ ! -e "$QUARANTINE" ]] || die "Quarantine destination exists; do not overwrite."
+  install -d -m 0700 -o root -g root "$QUARANTINE"
 fi
 
 ORPHANS=0
@@ -45,7 +48,8 @@ while IFS= read -r -d '' file; do
     ORPHANS=$((ORPHANS + 1))
     if [[ "$APPLY" == true ]]; then
       [[ ! -L "$file" && -f "$file" ]] || die "Refusing non-regular file: $file"
-      rm -- "$file"
+      [[ ! -e "$QUARANTINE/$base" ]] || die "Quarantine collision: $base"
+      mv -- "$file" "$QUARANTINE/$base"
     fi
   fi
 done < <(find "$PUBLIC" -mindepth 1 -maxdepth 1 -type f -print0)
@@ -54,8 +58,8 @@ if find "$PUBLIC" -mindepth 1 -maxdepth 1 ! -type f -print -quit | grep -q .; th
   die 'Unexpected directory or symlink in public media root; manual review required.'
 fi
 if [[ "$APPLY" == true ]]; then
-  echo "PASS: Removed $ORPHANS unreferenced public media file(s); backup checksum prerequisite verified."
+  echo "PASS: Quarantined $ORPHANS candidate public media file(s) at $QUARANTINE. No permanent deletion; review DB references before manual purge."
 else
   echo "DRY RUN: $ORPHANS candidate orphan(s). No files deleted."
-  echo 'Review the manifest source and backup before rerunning with --apply.'
+  echo 'Review the manifest source and backup before rerunning with --apply. Apply quarantines files, never permanently deletes them.'
 fi

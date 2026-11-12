@@ -48,8 +48,16 @@ sync
 echo "PASS: CONSPACE database and media backed up to $OUT."
 echo 'Backup files are root-only and contain personal/project data; never commit or share them.'
 
-find "$BACKUP_ROOT" -mindepth 1 -maxdepth 1 -type d -name '20????????T??????Z' -mtime +14 -print0 |
-while IFS= read -r -d '' old; do
-  case "$old" in "$BACKUP_ROOT"/20????????T??????Z) rm -rf -- "$old" ;; *) die "Unexpected prune path: $old" ;; esac
-done
-echo 'Retention: 14 days; older timestamped backup directories pruned after a successful backup.'
+# Keep the latest 7 complete backup sets even when older than 14 days.
+mapfile -t complete < <(find "$BACKUP_ROOT" -mindepth 2 -maxdepth 2 -type f -name SHA256SUMS -printf '%T@ %h\n' | sort -nr | cut -d ' ' -f 2-)
+if (( ${#complete[@]} > 7 )); then
+  for ((i=7; i<${#complete[@]}; i++)); do
+    old="${complete[i]}"
+    [[ "$old" == "$BACKUP_ROOT"/20????????T??????Z ]] || die "Unexpected prune path: $old"
+    [[ -d "$old" && ! -L "$old" ]] || die "Refusing non-directory backup entry: $old"
+    if [[ -n "$(find "$old" -maxdepth 0 -mtime +14 -print)" ]]; then
+      rm -rf -- "$old"
+    fi
+  done
+fi
+echo 'Retention: 14 days; preserve at least 7 complete backup sets.'
