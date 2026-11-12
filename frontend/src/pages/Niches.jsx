@@ -29,7 +29,7 @@ export function NicheDirectory() {
   };
 
   return <>
-    <PageIntro eyebrow="BẢN ĐỒ TRI THỨC / 38 LĨNH VỰC" title="Kho 38 ngách" description="Một bản đồ để tìm đúng loại công trình và đúng chuyên môn thi công. 8 mảng kiến trúc, 30 ngách chuyên môn — nội dung hiển thị theo danh mục API đã được duyệt." />
+    <PageIntro eyebrow="BẢN ĐỒ TRI THỨC / TỐI ĐA 38 LĨNH VỰC" title="Kho 38 ngách" description="Cấu trúc gồm 8 mảng kiến trúc và tối đa 30 ngách thi công. Chỉ hồ sơ đã có nguồn và được kích hoạt mới hiển thị." />
     <main className="container content-page niche-directory"><Breadcrumbs items={[{ label: 'Kho 38 ngách' }]}/>
       <div className="directory-toolbar"><div className="directory-tabs" role="group" aria-label="Lọc nhóm lĩnh vực">{GROUPS.map((item) => <button key={item.id} type="button" className={`directory-tab ${group === item.id ? 'is-active' : ''}`} aria-pressed={group === item.id} onClick={() => update({ group: item.id })}>{item.label}</button>)}</div><div className="filter-input"><Icon name="search" size={19}/><label className="sr-only" htmlFor="niche-search">Tìm theo tên ngách</label><input id="niche-search" type="search" value={query} onChange={(e) => update({ q: e.target.value })} placeholder="Tìm tên lĩnh vực..."/></div></div>
       {niches.status === 'success' && <p className="results-count" role="status">{filtered.length} lĩnh vực phù hợp từ dữ liệu hiện có{query ? ` · “${query}”` : ''}</p>}
