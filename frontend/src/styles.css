@@ -1,0 +1,26 @@
+*{box-sizing:border-box}
+:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;font-synthesis:none;color:#13243a;background:#f5f8fc}
+body{margin:0;min-width:320px}
+a{color:inherit}
+.site-shell{min-height:100vh;display:flex;flex-direction:column}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:22px max(24px,calc((100vw - 1140px)/2));border-bottom:1px solid #dbe5f0;background:#fff;gap:16px}
+.brand{display:flex;align-items:center;gap:12px;text-decoration:none;font-size:20px;font-weight:800;letter-spacing:.04em}
+.brand-glyph{background:#0c568c;color:#fff;border-radius:9px;font-size:18px;padding:7px 12px}
+.stage-tag{font-size:11px;font-weight:700;letter-spacing:.1em;color:#476580}
+.main{width:min(1140px,calc(100% - 48px));margin:0 auto;padding:100px 0 80px;flex:1}
+.eyebrow{color:#12629a;font-size:12px;font-weight:800;letter-spacing:.18em}
+h1{font-size:clamp(48px,8vw,88px);letter-spacing:-.055em;line-height:1.08;margin:20px 0}
+h1 span{color:#07649d}
+.lead{font-size:clamp(17px,2vw,21px);max-width:760px;line-height:1.72;color:#506477;margin:0}
+.status{display:flex;align-items:center;gap:12px;margin-top:36px;flex-wrap:wrap;color:#324c64;font-size:14px}
+.status a{color:#095f91;text-underline-offset:3px;font-weight:700}
+.dot{width:10px;height:10px;border-radius:50%;background:#bdc6ce}
+.dot--connected{background:#159b67}
+.dot--unavailable{background:#d37e34}
+.tracks{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;margin-top:78px}
+.track{border:1px solid #d6e2ef;border-radius:14px;background:#fff;padding:28px;min-height:196px;box-shadow:0 8px 28px #183a5c07}
+.track-state{font-size:11px;font-weight:700;letter-spacing:.1em;color:#6f869b}
+.track h2{margin:20px 0 10px;font-size:22px}
+.track p{color:#587087;line-height:1.65;margin:0}
+.footer{padding:24px;text-align:center;border-top:1px solid #dbe5f0;color:#6c8194;font-size:12px}
+@media(max-width:720px){.topbar{padding:15px 24px}.stage-tag{display:none}.main{padding:70px 0}.tracks{grid-template-columns:1fr;margin-top:48px}.track{min-height:auto}}
