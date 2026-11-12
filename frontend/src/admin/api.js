@@ -91,7 +91,10 @@ export const ROLE_PERMISSIONS = Object.freeze({
   EDITOR_IN_CHIEF: [...EVERYONE,...CHIEF, 'dictionary:publish'],
 });
 export function hasPermission(user, permission) {
-  return Boolean(user && ROLE_PERMISSIONS[user.role]?.includes(permission));
+  if (!user) return false;
+  const serverPermissions = Array.isArray(user.permissions) ? user.permissions : Array.isArray(user.grants) ? user.grants : null;
+  if (serverPermissions) return serverPermissions.includes(permission);
+  return ROLE_PERMISSIONS[user.role]?.includes(permission) || false;
 }
 
 export function isSafeMedia(url) {
