@@ -4,7 +4,7 @@ import { READERS } from '../config.js';
 import { useReader } from '../context/ReaderContext.jsx';
 import { useResource } from '../hooks/useResources.js';
 import { apiUrl } from '../lib/api.js';
-import { nicheLayersForRole, chapterPath } from '../lib/contentModel.js';
+import { nicheLayersForRole, chapterPath, addOpenLayerRole, toggleOpenLayerRole } from '../lib/contentModel.js';
 import { Markdown } from '../components/Markdown.jsx';
 import { ArticleCard, Breadcrumbs, PageIntro, ReaderSwitch, SectionHeading, StatusPanel } from '../components/UI.jsx';
 import { Icon } from '../components/Icons.jsx';
@@ -34,7 +34,7 @@ export default function NicheDetailV1() {
   const { reader } = useReader();
   const [openRoles, setOpenRoles] = useState(() => [reader]);
   useEffect(() => {
-    setOpenRoles((current) => current.includes(reader) ? current : [...current, reader]);
+    setOpenRoles((current) => addOpenLayerRole(current, reader));
   }, [reader]);
   const validSlug = typeof slug === 'string' && /^[a-z0-9][a-z0-9-]*$/.test(slug);
   const resource = useResource(validSlug ? apiUrl('/niches/' + slug) : null, { list: false, enabled: validSlug });
@@ -78,7 +78,7 @@ export default function NicheDetailV1() {
 
       {isConstruction ? <section className="public-layers-section">
         <SectionHeading eyebrow="TEMPLATE A / 12 KHỐI" title="Ba lớp nội dung cùng một trang" description="Chỉ các khối đã có nội dung, nguồn và trạng thái xuất bản mới được hiển thị. Mở thêm góc nhìn khác mà không đổi URL."/>
-        <div className="public-layer-stack">{READERS.map((role) => <LayerAccordion key={role.id} role={role} sections={niche.sections || []} open={openRoles.includes(role.id)} onToggle={(id, open) => setOpenRoles((current) => open ? (current.includes(id) ? current : [...current, id]) : current.filter((value) => value !== id))}/>)}</div>
+        <div className="public-layer-stack">{READERS.map((role) => <LayerAccordion key={role.id} role={role} sections={niche.sections || []} open={openRoles.includes(role.id)} onToggle={(id, open) => setOpenRoles((current) => toggleOpenLayerRole(current, id, open))}/>)}</div>
       </section> : <section className="public-design-note">
         <span className="eyebrow">TEMPLATE B / MẢNG KIẾN TRÚC</span>
         <h2>Hồ sơ mảng kiến trúc có cấu trúc riêng</h2>
