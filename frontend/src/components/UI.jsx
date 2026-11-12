@@ -52,7 +52,8 @@ export function Header() {
             {PRIMARY_NAV.map((item) => <NavLink key={item.to} to={item.to} className={({ isActive }) => {
               const bookPath = location.pathname.startsWith('/tu-sach/') || location.pathname.startsWith('/cam-nang/') || location.pathname.startsWith('/phan-nha-thau/') || location.pathname.startsWith('/quan-quanh-kts/');
               const searchAlias = ['/tra-cuu', '/tu-dien'].includes(location.pathname);
-              const active = isActive || (item.to === '/tu-sach' && bookPath) || (item.to === '/tra-nhanh' && searchAlias);
+              const nichePath = location.pathname.startsWith('/mang/');
+              const active = isActive || (item.to === '/tu-sach' && bookPath) || (item.to === '/ngach' && nichePath) || (item.to === '/tra-nhanh' && searchAlias);
               return `nav-link ${active ? 'is-active' : ''}`;
             }}>{item.label}</NavLink>)}
           </nav>
@@ -70,7 +71,8 @@ export function Header() {
         {menuOpen && <nav className="mobile-nav" id="mobile-menu" aria-label="Điều hướng trên điện thoại"><div className="container">{PRIMARY_NAV.map((item) => <NavLink key={item.to} to={item.to} className={({ isActive }) => {
             const bookPath = location.pathname.startsWith('/tu-sach/') || location.pathname.startsWith('/cam-nang/') || location.pathname.startsWith('/phan-nha-thau/') || location.pathname.startsWith('/quan-quanh-kts/');
             const searchAlias = ['/tra-cuu', '/tu-dien'].includes(location.pathname);
-            const active = isActive || (item.to === '/tu-sach' && bookPath) || (item.to === '/tra-nhanh' && searchAlias);
+            const nichePath = location.pathname.startsWith('/mang/');
+            const active = isActive || (item.to === '/tu-sach' && bookPath) || (item.to === '/ngach' && nichePath) || (item.to === '/tra-nhanh' && searchAlias);
             return `mobile-nav-link ${active ? 'is-active' : ''}`;
           }}>{item.label}<Icon name="chevron" size={16} /></NavLink>)}<div className="mobile-nav-reader"><p>GÓC NHÌN CỦA BẠN</p><ReaderSwitch variant="compact" /></div></div></nav>}
       </header>
