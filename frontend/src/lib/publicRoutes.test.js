@@ -27,7 +27,9 @@ test('homepage keeps the architectural drawing and presents three reader choices
 test('niche detail fetches all public layers from one URL and renders accessible disclosures', () => {
   assert.ok(niche.includes("apiUrl('/niches/' + slug)"));
   assert.match(niche, /<details className="public-layer-accordion"/);
-  assert.match(niche, /selected={reader === role.id}/);
+  assert.match(niche, /open={openRoles.includes\(role.id\)}/);
+  assert.match(niche, /addOpenLayerRole/);
+  assert.match(niche, /toggleOpenLayerRole/);
   assert.match(niche, /READERS\.map/);
 });
 
