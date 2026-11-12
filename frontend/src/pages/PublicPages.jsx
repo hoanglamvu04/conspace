@@ -7,7 +7,7 @@ import { apiUrl, getJson, postJson } from '../lib/api.js';
 import { chapterPath, chapterDisplayLabel } from '../lib/contentModel.js';
 import { sortByLens } from '../lib/readerLens.js';
 import { Markdown } from '../components/Markdown.jsx';
-import { ArticleCard, Breadcrumbs, PageIntro, SectionHeading, StatusPanel } from '../components/UI.jsx';
+import { Breadcrumbs, PageIntro, SectionHeading, StatusPanel } from '../components/UI.jsx';
 import { Icon } from '../components/Icons.jsx';
 
 function usePageMeta(title, description) {
