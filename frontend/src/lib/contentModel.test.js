@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { chapterPath, nicheLayersForRole, addOpenLayerRole, toggleOpenLayerRole } from './contentModel.js';
+import { chapterPath, chapterDisplayLabel, nicheLayersForRole, addOpenLayerRole, toggleOpenLayerRole } from './contentModel.js';
 
 test('book chapters use the canonical IA route families', () => {
   assert.equal(chapterPath('cam-nang-kien-truc-hoa-lac', 3), '/cam-nang/phan-3/muc-3');
@@ -8,6 +8,9 @@ test('book chapters use the canonical IA route families', () => {
   assert.equal(chapterPath('quan-quanh-kts', 5), '/quan-quanh-kts/chuong-5');
   assert.equal(chapterPath('unknown-book', 1), '/tu-sach');
   assert.equal(chapterPath('phan-nha-thau-xay-dung', 0), '/tu-sach');
+  assert.equal(chapterDisplayLabel('cam-nang-kien-truc-hoa-lac', 4, null), 'Phần 4');
+  assert.equal(chapterDisplayLabel('phan-nha-thau-xay-dung', 4, null), 'Chương 4');
+  assert.equal(chapterDisplayLabel('phan-nha-thau-xay-dung', 4, 'Bàn giao'), 'Bàn giao');
 });
 
 test('niche layers follow the exact v1.0 mapping and leave unpublished slots empty', () => {
