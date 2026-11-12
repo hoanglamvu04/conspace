@@ -13,7 +13,32 @@ on:
 permissions:
   contents: read
 
+# No SSH, deployment credentials, or production deploy jobs.
 jobs:
+  ops-static:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - name: Check ops scripts syntax
+        run: |
+          for script in ops/scripts/*.sh ops/vps-audit.sh ops/check-dns.sh ops/check-public.sh; do
+            bash -n "$script"
+          done
+          node --check ops/scripts/pm2-check.cjs
+          node --check ops/ecosystem.config.cjs
+      - name: Test PM2 dump safeguard using fake data
+        run: |
+          printf '[{"name":"x-hub-api"},{"name":"old-api"}]' > /tmp/pm2-fixture.json
+          printf '[{"name":"x-hub-api","pm2_env":{"status":"online"}},{"name":"old-api","pm2_env":{"status":"online"}}]' | node ops/scripts/pm2-check.cjs /tmp/pm2-fixture.json --strict-all
+          printf '[{"name":"old-api"}]' > /tmp/pm2-fixture.json
+          if printf '[{"name":"x-hub-api"}]' | node ops/scripts/pm2-check.cjs /tmp/pm2-fixture.json; then
+            echo 'FAIL: Missing x-hub-api not detected'
+            exit 1
+          fi
+
   backend-and-frontend:
     runs-on: ubuntu-latest
     steps:
@@ -21,13 +46,25 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-      - name: Install backend deps
-        run: npm install --prefix backend --no-audit --no-fund
-      - name: Backend syntax
-        run: npm run check --prefix backend
-      - name: Backend tests
-        run: npm run test --prefix backend
-      - name: Install frontend deps
-        run: npm install --prefix frontend --no-audit --no-fund
+      - name: Install backend dependencies
+        run: |
+          if test -f backend/package-lock.json; then
+            npm ci --prefix backend --ignore-scripts --no-audit --no-fund
+          else
+            echo 'WARNING: backend lockfile missing; production staging will reject commit'
+            npm install --prefix backend --package-lock=false --ignore-scripts --no-audit --no-fund
+          fi
+      - name: Backend checks
+        run: |
+          npm run check --prefix backend
+          npm run test --prefix backend
+      - name: Install frontend dependencies
+        run: |
+          if test -f frontend/package-lock.json; then
+            npm ci --prefix frontend --ignore-scripts --no-audit --no-fund
+          else
+            echo 'WARNING: frontend lockfile missing; production staging will reject commit'
+            npm install --prefix frontend --package-lock=false --ignore-scripts --no-audit --no-fund
+          fi
       - name: Build frontend
         run: npm run build
