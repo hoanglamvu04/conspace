@@ -246,18 +246,33 @@ export function FieldNoteDetail() {
 }
 
 export function Questions() {
-  const questions = useQuestions();
+  const [page, setPage] = useState(1);
+  const [items, setItems] = useState([]);
+  const questions = useQuestions(page, 30);
+  useEffect(() => {
+    if (questions.status !== 'success' || questions.meta?.page !== page) return;
+    setItems((current) => page === 1
+      ? questions.data
+      : [...current, ...questions.data.filter((item) => !current.some((old) => old.id === item.id))]);
+  }, [questions.status, questions.data, questions.meta, page]);
+  const hasMore = questions.status === 'success' && Number(questions.meta?.total || 0) > page * Number(questions.meta?.limit || 30);
+
   return <>
     <PageIntro eyebrow="CONSPACE / HỎI ĐÁP" title="Hỏi đáp" description="Câu hỏi được gửi ẩn danh. Chỉ câu hỏi có câu trả lời đã duyệt và xuất bản mới xuất hiện công khai."/>
     <main className="container content-page">
       <Breadcrumbs items={[{ label: 'Hỏi đáp' }]}/>
       <div className="public-qa-actions"><div><span className="eyebrow">BẠN ĐANG GẶP VƯỚNG MẮC?</span><h2>Gửi câu hỏi cho tòa soạn</h2><p>Không cần tạo tài khoản. Bạn có thể chọn ngách phỏng đoán và gửi tối đa năm ảnh.</p></div><Link to="/hoi-dap/gui-cau-hoi" className="button button--primary">Gửi câu hỏi <Icon name="arrow" size={17}/></Link></div>
-      {questions.status === 'loading' && <StatusPanel status="loading" kind="articles"/>}
-      {questions.status === 'error' && <StatusPanel status="error" onRetry={questions.retry}/>}
-      {questions.status === 'success' && questions.data.length > 0 && <div className="public-content-grid">{questions.data.map((item) => <Link className="public-question-card" to={'/hoi-dap/' + item.id} key={item.id}>
-        <span className="eyebrow">ĐÃ CÓ CÂU TRẢ LỜI · {formatDate(item.publishedAt)}</span><h2>{item.description}</h2><p>{item.answer}</p>{item.niche && <small>Ngách: {item.niche}</small>}<span className="text-link">Đọc trả lời <Icon name="arrow" size={16}/></span>
-      </Link>)}</div>}
-      {questions.status === 'success' && !questions.data.length && <StatusPanel status="empty" title="Chưa có câu trả lời công khai" description="Câu hỏi chưa được trả lời hoặc chưa qua kiểm duyệt sẽ không xuất hiện trên trang này."/>}
+      {questions.status === 'loading' && page === 1 && <StatusPanel status="loading" kind="articles"/>}
+      {questions.status === 'error' && page === 1 && <StatusPanel status="error" onRetry={questions.retry}/>}
+      {items.length > 0 && <>
+        <p className="results-count" role="status">{items.length} / {questions.meta?.total ?? items.length} câu hỏi đã có câu trả lời công khai</p>
+        <div className="public-content-grid">{items.map((item) => <Link className="public-question-card" to={'/hoi-dap/' + item.id} key={item.id}>
+          <span className="eyebrow">ĐÃ CÓ CÂU TRẢ LỜI · {formatDate(item.publishedAt)}</span><h2>{item.description}</h2><p>{item.answer}</p>{item.niche && <small>Ngách: {item.niche}</small>}<span className="text-link">Đọc trả lời <Icon name="arrow" size={16}/></span>
+        </Link>)}</div>
+      </>}
+      {questions.status === 'success' && page === 1 && !questions.data.length && <StatusPanel status="empty" title="Chưa có câu trả lời công khai" description="Câu hỏi chưa được trả lời hoặc chưa qua kiểm duyệt sẽ không xuất hiện trên trang này."/>}
+      {questions.status === 'error' && page > 1 && <p className="inline-error" role="alert">{questions.error?.message || 'Chưa thể tải thêm câu hỏi.'} <button type="button" onClick={questions.retry}>Thử lại</button></p>}
+      {hasMore && <div className="pagination-actions"><button type="button" className="button button--outline" disabled={questions.status === 'loading'} onClick={() => setPage((value) => value + 1)}>{questions.status === 'loading' ? 'Đang tải...' : 'Xem thêm câu hỏi'} <Icon name="arrow" size={17}/></button></div>}
     </main>
   </>;
 }
