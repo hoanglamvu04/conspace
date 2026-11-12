@@ -11,20 +11,21 @@ import { Icon } from '../components/Icons.jsx';
 
 function LayerAccordion({ role, sections, open, onToggle }) {
   const content = nicheLayersForRole(sections, role.id);
+  const publishedCount = content.filter((item) => item.published).length;
   return <details className="public-layer-accordion" open={open} onToggle={(event) => onToggle(role.id, event.currentTarget.open)}>
     <summary>
       <span className="public-layer-icon"><Icon name={role.icon} size={22}/></span>
       <span><strong>{role.label}</strong><small>{role.detail}</small></span>
-      <span className="public-layer-count">{content.length} khối đã xuất bản</span>
+      <span className="public-layer-count">{publishedCount}/{content.length} khối đã xuất bản</span>
       <Icon name="chevronDown" size={18}/>
     </summary>
     <div className="public-layer-body">
       {content.length ? content.map((section) => <section className="public-layer-section" key={section.sectionNo}>
         <span className="eyebrow">KHỐI {String(section.sectionNo).padStart(2, '0')}</span>
         <h3>{section.title || 'Nội dung chuyên môn'}</h3>
-        <Markdown body={section.content}/>
+        {section.published ? <Markdown body={section.content}/> : <p className="public-layer-unpublished">Đang biên tập — chưa có nội dung đủ nguồn để xuất bản.</p>}
         {section.sourceRef && <p className="public-layer-source"><Icon name="info" size={14}/> Nguồn: {section.sourceRef}</p>}
-      </section>) : <div className="public-layer-empty"><Icon name="book" size={25}/><p>Chưa có khối nội dung được xuất bản cho góc nhìn này. Khi có nội dung đủ nguồn và được duyệt, phần này sẽ tự xuất hiện.</p></div>}
+      </section>) : <div className="public-layer-empty"><Icon name="book" size={25}/><p>Chưa có khối nội dung theo cấu trúc này trong dữ liệu công khai.</p></div>}
     </div>
   </details>;
 }
