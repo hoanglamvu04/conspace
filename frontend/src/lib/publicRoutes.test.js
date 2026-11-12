@@ -48,6 +48,7 @@ test('robots and sitemap expose only stable canonical public pages', () => {
   assert.ok(sitemap.includes('https://conspace.vn/'));
   assert.ok(sitemap.includes('https://conspace.vn/tu-sach'));
   assert.ok(sitemap.includes('https://conspace.vn/ngach'));
+  assert.ok(sitemap.includes('https://conspace.vn/lien-he'));
   assert.ok(!sitemap.includes('/tra-cuu'));
   assert.ok(!sitemap.includes('/tu-dien'));
   assert.ok(!sitemap.includes('/tra-nhanh'));
