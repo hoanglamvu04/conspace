@@ -1,80 +1,67 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
+import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { ReaderProvider } from './context/ReaderContext.jsx';
+import { Footer, Header } from './components/UI.jsx';
+import Home from './pages/Home.jsx';
+import { NicheDetail, NicheDirectory } from './pages/Niches.jsx';
+import { ArticleDetail, ArticleIndex } from './pages/Articles.jsx';
+import { About, Dictionary, FieldNotes, Library, Lookup, NotFound, Principles } from './pages/Sections.jsx';
 
-const tracks = [
-  { title: 'Kho tri thức', desc: 'Bách khoa xây dựng, 38 ngách và tra cứu chuyên môn.' },
-  { title: 'Hiện trường', desc: 'Ghi chép, minh chứng và phân tích các ca công trình thật.' },
-  { title: 'Bàn nghề', desc: 'Góc nhìn chủ nhà, kiến trúc sư và nhà thầu.' },
-];
+const META = {
+  '/': ['Một công trình. Ba góc nhìn.', 'Nơi chủ nhà, kiến trúc sư và nhà thầu đọc được câu chuyện của nhau.'],
+  '/ngach': ['Kho 38 ngách', 'Bản đồ 8 mảng kiến trúc và 30 ngách thi công CONSPACE.'],
+  '/tu-sach': ['Tủ sách', 'Ba đầu sách — ba góc nhìn về nghề xây dựng.'],
+  '/hien-truong': ['Hiện trường', 'Cách CONSPACE ghi nhận và phân tích những tình huống ngoài công trường.'],
+  '/tu-dien': ['Từ điển nghề', 'Tra thuật ngữ chuyên môn từ kho kiến thức được biên tập.'],
+  '/ban-nghe': ['Bàn nghề', 'Đọc chuyện nghề xây dựng từ chủ nhà, kiến trúc sư và nhà thầu.'],
+  '/bai-viet': ['Bài viết', 'Những bài đã xuất bản tại CONSPACE.'],
+  '/tra-cuu': ['Tra cứu', 'Tra cứu thuật ngữ và lĩnh vực xây dựng.'],
+  '/ve-conspace': ['Về CONSPACE', 'Định vị và tư cách biên tập độc lập của CONSPACE.'],
+  '/quy-tac-noi-dung': ['Quy tắc nội dung', 'Các nguyên tắc biên tập công khai của CONSPACE.'],
+};
 
-function useApiHealth() {
-  const [status, setStatus] = useState('checking');
-
+function DocumentMeta() {
+  const { pathname } = useLocation();
   useEffect(() => {
-    const controller = new AbortController();
-    fetch('/api/health', { cache: 'no-store', signal: controller.signal })
-      .then((response) => {
-        if (!response.ok) throw new Error('API unavailable');
-        return response.json();
-      })
-      .then((data) => {
-        if (!controller.signal.aborted) {
-          setStatus(data.ok && data.service === 'conspace-api' ? 'connected' : 'unavailable');
-        }
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setStatus('unavailable');
-      });
-    return () => controller.abort();
-  }, []);
+    const info = META[pathname] || (pathname.startsWith('/ngach/') ? ['Lĩnh vực chuyên môn', 'Tìm hiểu danh mục nghề xây dựng.'] : pathname.startsWith('/bai-viet/') ? ['Đọc bài viết', 'Bài viết từ CONSPACE.'] : ['Không tìm thấy trang', 'CONSPACE — Sự thật ngành Xây.']);
+    document.title = `${info[0]} | CONSPACE · Sự thật ngành Xây`;
+    const meta = document.querySelector('meta[name="description"]');
+    if (meta) meta.setAttribute('content', info[1]);
+    const ogTitle = document.querySelector('meta[property="og:title"]');
+    if (ogTitle) ogTitle.setAttribute('content', document.title);
+    const canonical = document.querySelector('link[rel="canonical"]') || document.createElement('link');
+    canonical.rel = 'canonical';
+    canonical.href = `${window.location.origin}${pathname}`;
+    if (!canonical.isConnected) document.head.appendChild(canonical);
+  }, [pathname]);
+  return null;
+}
 
-  return status;
+function ScrollManager() {
+  const { pathname } = useLocation();
+  useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }); }, [pathname]);
+  return null;
+}
+
+function Site() {
+  return <><DocumentMeta/><ScrollManager/><a className="skip-link" href="#main-content">Bỏ qua điều hướng, đến nội dung</a><Header/><div id="main-content"><Routes>
+    <Route path="/" element={<Home/>}/>
+    <Route path="/ngach" element={<NicheDirectory/>}/>
+    <Route path="/ngach/:slug" element={<NicheDetail/>}/>
+    <Route path="/bai-viet" element={<ArticleIndex/>}/>
+    <Route path="/bai-viet/:slug" element={<ArticleDetail/>}/>
+    <Route path="/ban-nghe" element={<ArticleIndex isWorkbench/>}/>
+    <Route path="/tu-sach" element={<Library/>}/>
+    <Route path="/hien-truong" element={<FieldNotes/>}/>
+    <Route path="/tu-dien" element={<Dictionary/>}/>
+    <Route path="/tra-cuu" element={<Lookup/>}/>
+    <Route path="/tra-nhanh" element={<Lookup/>}/>
+    <Route path="/ve-conspace" element={<About/>}/>
+    <Route path="/quy-tac-noi-dung" element={<Principles/>}/>
+    <Route path="*" element={<NotFound/>}/>
+  </Routes></div><Footer/></>;
 }
 
 export default function App() {
-  const apiStatus = useApiHealth();
-
-  return (
-    <div className="site-shell">
-      <header className="topbar">
-        <a className="brand" href="/" aria-label="CONSPACE trang chủ">
-          <span className="brand-glyph" aria-hidden="true">C</span>
-          <span>CONSPACE</span>
-        </a>
-        <span className="stage-tag">GATE 1 / TECHNICAL FOUNDATION</span>
-      </header>
-
-      <main className="main">
-        <p className="eyebrow">CONSTRUCTION KNOWLEDGE PLATFORM</p>
-        <h1>Sự thật ngành <span>Xây.</span></h1>
-        <p className="lead">
-          Nền tảng tri thức và cộng đồng ngành xây dựng đang được phát triển.
-          Đây là trang kiểm thử bộ khung React JSX, chưa phải giao diện sản phẩm chính thức.
-        </p>
-
-        <div className="status" role="status" aria-live="polite">
-          <span className={'dot dot--' + apiStatus} aria-hidden="true" />
-          <span>
-            Backend API: {apiStatus === 'checking'
-              ? 'đang kiểm tra'
-              : apiStatus === 'connected'
-                ? 'đã kết nối'
-                : 'chưa kết nối'}
-          </span>
-          <a href="/api/health" target="_blank" rel="noreferrer">Kiểm tra API</a>
-        </div>
-
-        <section className="tracks" aria-label="Các khối dự kiến">
-          {tracks.map((track) => (
-            <article className="track" key={track.title}>
-              <span className="track-state">DỰ KIẾN</span>
-              <h2>{track.title}</h2>
-              <p>{track.desc}</p>
-            </article>
-          ))}
-        </section>
-      </main>
-
-      <footer className="footer">CONSPACE · Engineering bootstrap · Nội dung thực tế sẽ được quản lý qua CMS</footer>
-    </div>
-  );
+  return <BrowserRouter><ReaderProvider><Site/></ReaderProvider></BrowserRouter>;
 }
