@@ -127,7 +127,7 @@ export function createEditorialService(db = pool) {
           'INSERT INTO conspace.articles ' +
           '(slug,title,excerpt,body,cover_image_url,author_id,audience_role,content_type,status,' +
           'created_by_user_id,updated_by_user_id,requires_chief_review,sensitivity_assessed,sensitivity_flags) ' +
-          "VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'DRAFT',$9,$9,$10,$11) RETURNING *",
+          "VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'DRAFT',$9,$9,$10,$11,$12) RETURNING *",
           [input.slug,input.title,input.excerpt ?? '',input.body ?? '',input.coverImageUrl ?? null,
             authorId,input.audienceRole ?? null,input.contentType ?? 'EDITORIAL',actor.id,requiresChief,input.sensitivityAssessed ?? false,flags]
         );
