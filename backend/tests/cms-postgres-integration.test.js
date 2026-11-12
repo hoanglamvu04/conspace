@@ -105,7 +105,7 @@ test('real PostgreSQL flow: login -> create -> technical review -> chief review 
   const slug='ci-reviewed-'+uuidSuffix;
   const created=await editorApi('POST','/api/admin/articles/',{
     slug,title:'Ghi chép được kiểm chứng',excerpt:'Nội dung có nguồn',
-    body:'Ghi chép thử nghiệm từ CI, không có tên đơn vị.',
+    body:'Ghi chép thử nghiệm từ CI về một công trình, không có tên đơn vị.',
     audienceRole:'homeowner',contentType:'EDITORIAL',
     sensitivityAssessed:true,sensitivityFlags:['INDUSTRY_DARK_SIDE'],
     sources:[{title:'Nguồn kỹ thuật thử nghiệm',citation:'CI test only'}],
@@ -156,7 +156,7 @@ test('real PostgreSQL flow: login -> create -> technical review -> chief review 
   assert.equal(published.body.data.status,'PUBLISHED');
   const visible=await api(base)('GET','/api/v1/articles/'+slug);
   assert.equal(visible.status,200,JSON.stringify(visible.body));
-  assert.equal(visible.body.data.body,'Ghi chép thử nghiệm từ CI, không có tên đơn vị.');
+  assert.equal(visible.body.data.body,'Ghi chép thử nghiệm từ CI về một công trình, không có tên đơn vị.');
 
   const secondSlug='ci-contractor-'+uuidSuffix;
   const secondDraft=await editorApi('POST','/api/admin/articles/',{
