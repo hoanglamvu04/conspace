@@ -39,3 +39,16 @@ test('books, field notes, reader questions and quick search use real public API 
   assert.ok(publicPages.includes('publishedChapterCount'));
   assert.ok(publicPages.includes('repairCostSource'));
 });
+
+test('robots and sitemap expose only stable canonical public pages', () => {
+  const sitemap = readFileSync(new URL('../../public/sitemap.xml', import.meta.url), 'utf8');
+  const robots = readFileSync(new URL('../../public/robots.txt', import.meta.url), 'utf8');
+  assert.ok(sitemap.includes('https://conspace.vn/'));
+  assert.ok(sitemap.includes('https://conspace.vn/tu-sach'));
+  assert.ok(sitemap.includes('https://conspace.vn/ngach'));
+  assert.ok(!sitemap.includes('/tra-cuu'));
+  assert.ok(!sitemap.includes('/tu-dien'));
+  assert.ok(!sitemap.includes('/tra-nhanh'));
+  assert.ok(robots.includes('Disallow: /admin/'));
+  assert.ok(robots.includes('Sitemap: https://conspace.vn/sitemap.xml'));
+});
