@@ -14,7 +14,7 @@ const AdminApp = lazy(() => import('./admin/AdminApp.jsx'));
 
 const META = {
   '/': ['Một công trình. Ba góc nhìn.', 'Nơi chủ nhà, kiến trúc sư và nhà thầu đọc được câu chuyện của nhau.'],
-  '/ngach': ['Kho 38 ngách', 'Bản đồ lĩnh vực kiến trúc và thi công đã được xác minh.'],
+  '/ngach': ['Kho 38 ngách', 'Bản đồ ngách thi công và mảng kiến trúc đã được xác minh.'],
   '/tu-sach': ['Tủ sách', 'Ba đầu sách và những chương đã được biên tập, duyệt và xuất bản.'],
   '/hien-truong': ['Hiện trường', 'Ca hiện trường đã ẩn danh và xác nhận quyền tư liệu.'],
   '/hoi-dap': ['Hỏi đáp', 'Câu hỏi ẩn danh và câu trả lời đã qua kiểm duyệt.'],
@@ -28,7 +28,7 @@ function DocumentMeta() {
   const { pathname } = useLocation();
   useEffect(() => {
     const canonicalPath = ['/tra-cuu', '/tu-dien'].includes(pathname) ? '/tra-nhanh' : pathname;
-    const info = META[canonicalPath] || (pathname.startsWith('/ngach/') ? ['Lĩnh vực chuyên môn', 'Tìm hiểu lĩnh vực nghề xây dựng.'] : pathname.startsWith('/bai-viet/') ? ['Đọc bài viết', 'Bài viết đã xuất bản từ CONSPACE.'] : pathname.startsWith('/hien-truong/') ? ['Ca hiện trường', 'Hồ sơ hiện trường đã được ẩn danh và xuất bản.'] : pathname.startsWith('/hoi-dap/') ? ['Hỏi đáp', 'Câu hỏi và câu trả lời đã xuất bản.'] : pathname.startsWith('/tu-sach/') ? ['Đầu sách', 'Danh sách chương đã được duyệt và xuất bản.'] : pathname.startsWith('/cam-nang/') || pathname.startsWith('/phan-nha-thau/') || pathname.startsWith('/quan-quanh-kts/') ? ['Chương sách', 'Chương sách đã được duyệt và xuất bản.'] : ['CONSPACE', 'Sự thật ngành Xây.']);
+    const info = META[canonicalPath] || (pathname.startsWith('/ngach/') ? ['Ngách thi công', 'Hồ sơ ngách thi công đã có nguồn.'] : pathname.startsWith('/mang/') ? ['Mảng kiến trúc', 'Hồ sơ mảng kiến trúc theo cấu trúc riêng.'] : pathname.startsWith('/bai-viet/') ? ['Đọc bài viết', 'Bài viết đã xuất bản từ CONSPACE.'] : pathname.startsWith('/hien-truong/') ? ['Ca hiện trường', 'Hồ sơ hiện trường đã được ẩn danh và xuất bản.'] : pathname.startsWith('/hoi-dap/') ? ['Hỏi đáp', 'Câu hỏi và câu trả lời đã xuất bản.'] : pathname.startsWith('/tu-sach/') ? ['Đầu sách', 'Danh sách chương đã được duyệt và xuất bản.'] : pathname.startsWith('/cam-nang/') || pathname.startsWith('/phan-nha-thau/') || pathname.startsWith('/quan-quanh-kts/') ? ['Chương sách', 'Chương sách đã được duyệt và xuất bản.'] : ['CONSPACE', 'Sự thật ngành Xây.']);
     document.title = `${info[0]} | CONSPACE · Sự thật ngành Xây`;
     const meta = document.querySelector('meta[name="description"]');
     if (meta) meta.setAttribute('content', info[1]);
@@ -62,6 +62,7 @@ function Site() {
     <Route path="/quan-quanh-kts/:chapter" element={<ChapterDetail bookSlug="quan-quanh-kts"/>}/>
     <Route path="/ngach" element={<NicheDirectory/>}/>
     <Route path="/ngach/:slug" element={<NicheDetailV1/>}/>
+    <Route path="/mang/:slug" element={<NicheDetailV1/>}/>
     <Route path="/hien-truong" element={<FieldNotes/>}/>
     <Route path="/hien-truong/:id" element={<FieldNoteDetail/>}/>
     <Route path="/hoi-dap" element={<Questions/>}/>
