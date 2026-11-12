@@ -8,6 +8,7 @@ Run from the repository root:
 
 The frontend test suite covers:
 - API URL allowlisting for feed, books, chapters, field notes, questions and search.
+- A Vite localhost smoke test for all canonical and legacy public route families.
 - Anonymous Q&A JSON submission and API error envelopes.
 - Reader cookie restore, one-year persistence and all-lens visibility.
 - Exact v1.0 niche layer mapping, empty unpublished slots and preservation of open layers when switching lenses.
