@@ -85,6 +85,9 @@ fi
 echo '=== 7. Activate isolated API and React release ==='
 bash ops/scripts/activate.sh --apply "$SHA"
 
+echo '=== 7b. Grant Nginx access to compiled public Vite assets ==='
+bash ops/scripts/fix-static-access.sh
+
 echo '=== 8. Switch only CONSPACE HTTPS vhost ==='
 if ! python3 ops/scripts/switch-nginx-gate1.py; then
   echo 'Nginx switch failed; API/frontend revert to previous state.' >&2
