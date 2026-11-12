@@ -16,7 +16,7 @@ async function assertDifferentPeople(client,authorId,reviewerId){
 export function createNichesRouter(db=pool){
  const router=Router();router.use(requireRoles('ADMIN','EDITOR','TECHNICAL_REVIEWER','EDITOR_IN_CHIEF'));
  router.get('/',asyncHandler(async(_req,res)=>{
-  const r=await db.query('SELECT n.id,n.slug,n.name,n.group_type AS "groupType",n.template_key AS "templateType",CASE n.template_key WHEN \\'TEMPLATE_A\\' THEN 12 ELSE 7 END AS "expectedSectionCount",n.code,n.summary,n.source_ref AS "sourceRef",n.sort_order AS "sortOrder",n.is_active AS "isActive",n.niche_group_id AS "groupId",g.name AS "groupName" FROM conspace.niches n LEFT JOIN conspace.niche_groups g ON g.id=n.niche_group_id ORDER BY CASE n.group_type WHEN \\'design\\' THEN 0 ELSE 1 END,n.sort_order,n.name');
+  const r=await db.query('SELECT n.id,n.slug,n.name,n.group_type AS "groupType",n.template_key AS "templateType",CASE n.template_key WHEN \'TEMPLATE_A\' THEN 12 ELSE 7 END AS "expectedSectionCount",n.code,n.summary,n.source_ref AS "sourceRef",n.sort_order AS "sortOrder",n.is_active AS "isActive",n.niche_group_id AS "groupId",g.name AS "groupName" FROM conspace.niches n LEFT JOIN conspace.niche_groups g ON g.id=n.niche_group_id ORDER BY CASE n.group_type WHEN \'design\' THEN 0 ELSE 1 END,n.sort_order,n.name');
   res.json({ok:true,data:r.rows,meta:{total:r.rows.length,designLimit:8,constructionLimit:30}});
  }));
  router.get('/groups',asyncHandler(async(_req,res)=>{
@@ -25,7 +25,7 @@ export function createNichesRouter(db=pool){
  }));
  router.post('/groups',requireRoles('EDITOR','EDITOR_IN_CHIEF'),asyncHandler(async(req,res)=>{
   const x=validate(groupSchema,req.body),r=await db.query('INSERT INTO conspace.niche_groups(slug,name,source_ref,sort_order) VALUES($1,$2,$3,$4) RETURNING *',[x.slug,x.name,x.sourceRef,x.sortOrder??0]);
-  await db.query('INSERT INTO conspace.audit_logs(actor_user_id,action,entity_type,entity_id,after_data) VALUES($1,\\'NICHE_GROUP_CREATED\\',\\'NICHE_GROUP\\',$2,$3::jsonb)',[req.auth.id,r.rows[0].id,JSON.stringify(r.rows[0])]);
+  await db.query('INSERT INTO conspace.audit_logs(actor_user_id,action,entity_type,entity_id,after_data) VALUES($1,\'NICHE_GROUP_CREATED\',\'NICHE_GROUP\',$2,$3::jsonb)',[req.auth.id,r.rows[0].id,JSON.stringify(r.rows[0])]);
   res.status(201).json({ok:true,data:r.rows[0]});
  }));
  router.post('/',requireRoles('EDITOR','EDITOR_IN_CHIEF'),asyncHandler(async(req,res)=>{
@@ -44,7 +44,7 @@ export function createNichesRouter(db=pool){
   if(group==='design'&&groupId)throw new RequestError(400,'INVALID_GROUP','Design categories do not use construction groups');
   const key=group==='design'?'TEMPLATE_B':'TEMPLATE_A';
   const r=await db.query('UPDATE conspace.niches SET slug=COALESCE($2,slug),name=COALESCE($3,name),group_type=$4,template_key=$5,code=COALESCE($6,code),summary=COALESCE($7,summary),source_ref=COALESCE($8,source_ref),sort_order=COALESCE($9,sort_order),is_active=COALESCE($10,is_active),niche_group_id=$11,updated_at=now() WHERE id=$1 RETURNING *',[id,x.slug??null,x.name??null,group,key,x.code??null,x.summary??null,x.sourceRef??null,x.sortOrder??null,x.isActive??null,groupId]);
-  await db.query('INSERT INTO conspace.audit_logs(actor_user_id,action,entity_type,entity_id,before_data,after_data) VALUES($1,\\'NICHE_UPDATED\\',\\'NICHE\\',$2,$3::jsonb,$4::jsonb)',[req.auth.id,id,JSON.stringify(before),JSON.stringify(r.rows[0])]);
+  await db.query('INSERT INTO conspace.audit_logs(actor_user_id,action,entity_type,entity_id,before_data,after_data) VALUES($1,\'NICHE_UPDATED\',\'NICHE\',$2,$3::jsonb,$4::jsonb)',[req.auth.id,id,JSON.stringify(before),JSON.stringify(r.rows[0])]);
   res.json({ok:true,data:r.rows[0]});
  }));
  router.delete('/:id',requireRoles('EDITOR','EDITOR_IN_CHIEF'),asyncHandler(async(req,res)=>{

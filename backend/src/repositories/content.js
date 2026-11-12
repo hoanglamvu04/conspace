@@ -24,7 +24,7 @@ export function createContentRepository(db=pool){
     "LEFT JOIN conspace.articles a ON a.id=an.article_id AND a.status='PUBLISHED' AND a.approved_by IS NOT NULL AND a.approved_at IS NOT NULL AND a.published_at<=now()",
     "AND (a.content_type<>'FIELD_CASE' OR EXISTS(SELECT 1 FROM conspace.field_notes f WHERE f.article_id=a.id AND f.unit_anonymized=true AND f.address_anonymized=true AND f.photo_rights_confirmed=true))",
     'WHERE n.is_active=true AND ($1::text IS NULL OR n.group_type=$1)',
-    'GROUP BY n.id ORDER BY CASE n.group_type WHEN \\'design\\' THEN 0 ELSE 1 END,n.sort_order,n.name,n.id',
+    'GROUP BY n.id ORDER BY CASE n.group_type WHEN \'design\' THEN 0 ELSE 1 END,n.sort_order,n.name,n.id',
    ].join(' ');
    return (await query(sql,[group??null])).rows;
   },
