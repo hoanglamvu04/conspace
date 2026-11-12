@@ -138,6 +138,32 @@ test('real PostgreSQL flow: login -> create -> technical review -> chief review 
   assert.equal(visible.status,200,JSON.stringify(visible.body));
   assert.equal(visible.body.data.body,'Ghi chép thử nghiệm từ CI, không có tên đơn vị.');
 
+  const feed=await api(base)('GET','/api/v1/feed?limit=10');
+  assert.equal(feed.status,200,JSON.stringify(feed.body));
+  assert.ok(feed.body.data.articles.some(a=>a.slug===slug));
+
+  const search=await api(base)('GET','/api/v1/search?q=Ghi%20ch%C3%A9p&type=article&limit=10');
+  assert.equal(search.status,200,JSON.stringify(search.body));
+  assert.ok(search.body.data.some(a=>a.slug===slug));
+
+  const books=await api(base)('GET','/api/v1/books');
+  assert.equal(books.status,200,JSON.stringify(books.body));
+  assert.equal(books.body.data.length,3);
+  assert.ok(books.body.data.some(b=>b.contentLabel==='FICTIONALIZED'));
+  const oneBook=await api(base)('GET','/api/v1/books/cam-nang-kien-truc-hoa-lac');
+  assert.equal(oneBook.status,200,JSON.stringify(oneBook.body));
+  assert.deepEqual(oneBook.body.data.chapters,[]);
+
+  const niche=await api(base)('GET','/api/v1/niches/house?role=homeowner');
+  assert.equal(niche.status,200,JSON.stringify(niche.body));
+  assert.equal(niche.body.data.sections.length,12);
+  assert.ok(niche.body.data.sections.every(s=>Array.isArray(s.layers)));
+
+  const fieldNotes=await api(base)('GET','/api/v1/field-notes');
+  assert.equal(fieldNotes.status,200,JSON.stringify(fieldNotes.body));
+  assert.deepEqual(fieldNotes.body.data,[]);
+
+
   const history=await editorApi('GET','/api/admin/articles/'+id+'/revisions');
   assert.equal(history.status,200);
   assert.ok(history.body.data.length>=2);

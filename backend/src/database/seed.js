@@ -25,8 +25,13 @@ export async function seedTaxonomy(db = pool) {
   try {
     await client.query('BEGIN');
     await assertDedicatedDatabase(client);
+    await client.query('SELECT pg_advisory_xact_lock($1, $2)', [19027, 4]);
     let inserted = 0;
     for (const [index, category] of confirmedDesignCategories.entries()) {
+      // BEFORE INSERT capacity triggers run even when ON CONFLICT would skip a duplicate.
+      // Check existing slugs first to make the documented taxonomy seed safely repeatable.
+      const existing = await client.query('SELECT id FROM conspace.niches WHERE slug = $1 LIMIT 1', [category.slug]);
+      if (existing.rows.length > 0) continue;
       const result = await client.query(
         'INSERT INTO conspace.niches (slug, name, group_type, source_ref, sort_order, is_active) ' +
         'VALUES ($1, $2, $3, $4, $5, true) ON CONFLICT (slug) DO NOTHING',
