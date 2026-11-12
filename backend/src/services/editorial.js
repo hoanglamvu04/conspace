@@ -337,7 +337,7 @@ export function createEditorialService(db = pool) {
         const due=await client.query(
           "SELECT * FROM conspace.articles WHERE status='SCHEDULED' AND scheduled_at<=now() " +
           'AND approved_by IS NOT NULL AND approved_at IS NOT NULL ORDER BY scheduled_at ' +
-          'FOR UPDATE SKIP LOCKED LIMIT 25'
+          'LIMIT 25 FOR UPDATE SKIP LOCKED'
         );
         for(const article of due.rows){
           await assertArticleMediaRights(client,article.id);

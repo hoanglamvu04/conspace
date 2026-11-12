@@ -296,4 +296,3 @@ Data array: {id,slug,title,snippet,type,publishedAt,audienceRole,bookSlug,chapte
 - Niche section: PUT /api/admin/niches/:id/sections/:sectionNo {audienceRole,content,sourceRef,status:"IN_REVIEW"}, followed by POST /api/admin/niches/:id/sections/:sectionNo/publish {audienceRole,reason}, ADMIN/EDITOR_IN_CHIEF and different editor, with source required. Only published sections are public.
 
 Errors: 400 VALIDATION_ERROR, 401 UNAUTHENTICATED/INVALID_CREDENTIALS, 403 FORBIDDEN/CSRF_INVALID/AUTHOR_CANNOT_APPROVE, 404 NOT_FOUND, 409 INVALID_STATE/CONFLICT/MEDIA_RIGHTS_REQUIRED, 413 PAYLOAD_TOO_LARGE, 415 UNSUPPORTED_MEDIA_TYPE, 429 RATE_LIMITED, 503 DATABASE_UNAVAILABLE/PRIVATE_REPLY_UNAVAILABLE, 500 INTERNAL_ERROR. Never expose connection strings or user secrets.
-

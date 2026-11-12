@@ -414,4 +414,3 @@ ALTER TABLE conspace.terms
   ADD COLUMN IF NOT EXISTS submitted_at timestamptz;
 CREATE INDEX IF NOT EXISTS terms_editorial_queue_idx
   ON conspace.terms (status, updated_at DESC);
-

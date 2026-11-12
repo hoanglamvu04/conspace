@@ -134,7 +134,7 @@ export function createAuthService(db = pool, config = env) {
         );
         await client.query(
           "INSERT INTO conspace.audit_logs (actor_user_id,action,entity_type,entity_id,after_data) " +
-          "VALUES ($1,'BOOTSTRAP_ADMIN','CMS_USER',$1,jsonb_build_object('email',$2,'role','ADMIN'))",
+          "VALUES ($1,'BOOTSTRAP_ADMIN','CMS_USER',$1,jsonb_build_object('email',$2::text,'role','ADMIN'))",
           [user.id, user.email]
         );
         await client.query('COMMIT');

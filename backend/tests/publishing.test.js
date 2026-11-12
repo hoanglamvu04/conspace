@@ -126,6 +126,6 @@ test('publishing scheduler commits only due, reviewed articles and writes an aud
   const total=await createEditorialService(db).publishDueArticles();
   assert.equal(total,1);
   assert.ok(calls.some(c=>c.sql.includes("SET status='PUBLISHED',published_at=now()")));
-  assert.ok(calls.some(c=>c.sql.includes("'SYSTEM_AUTO_PUBLISH'")));
+  assert.ok(calls.some(c=>c.params?.includes("SYSTEM_AUTO_PUBLISH")));
   assert.equal(calls.at(-1).sql,'COMMIT');
 });
