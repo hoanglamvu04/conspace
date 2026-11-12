@@ -1,0 +1,38 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+
+const app = readFileSync(new URL('../App.jsx', import.meta.url), 'utf8');
+const home = readFileSync(new URL('../pages/HomeV1.jsx', import.meta.url), 'utf8');
+const niche = readFileSync(new URL('../pages/NicheDetailV1.jsx', import.meta.url), 'utf8');
+const publicPages = readFileSync(new URL('../pages/PublicPages.jsx', import.meta.url), 'utf8');
+
+test('IA public routes include the new sections and keep legacy aliases working', () => {
+  for (const route of ['/tu-sach', '/ngach', '/hien-truong', '/hoi-dap', '/tra-nhanh', '/tra-cuu', '/tu-dien', '/ban-nghe']) {
+    assert.ok(app.includes('path="' + route + '"'), 'Missing public route ' + route);
+  }
+  assert.ok(app.includes('path="/cam-nang/:part/:item"'));
+  assert.ok(app.includes('path="/phan-nha-thau/:chapter"'));
+  assert.ok(app.includes('path="/quan-quanh-kts/:chapter"'));
+  assert.ok(app.includes('path="/hoi-dap/gui-cau-hoi"'));
+});
+
+test('homepage keeps the architectural drawing and presents three reader choices without a carousel', () => {
+  for (const label of ['Tôi sắp xây nhà', 'Tôi là kiến trúc sư', 'Tôi là nhà thầu']) assert.ok(home.includes(label));
+  assert.match(home, /ConstructionDrawing/);
+  assert.doesNotMatch(home, /carousel/i);
+});
+
+test('niche detail fetches all public layers from one URL and renders accessible disclosures', () => {
+  assert.ok(niche.includes("apiUrl('/niches/' + slug)"));
+  assert.match(niche, /<details className="public-layer-accordion"/);
+  assert.match(niche, /selected={reader === role.id}/);
+  assert.match(niche, /READERS\.map/);
+});
+
+test('books, field notes, reader questions and quick search use real public API resources', () => {
+  for (const endpoint of ["apiUrl('/books')", "apiUrl('/field-notes/", "apiUrl('/questions", "apiUrl('/search'"]) assert.ok(publicPages.includes(endpoint), 'Missing API use ' + endpoint);
+  assert.ok(publicPages.includes("postJson('/questions', payload)"));
+  assert.ok(publicPages.includes('publishedChapterCount'));
+  assert.ok(publicPages.includes('repairCostSource'));
+});
