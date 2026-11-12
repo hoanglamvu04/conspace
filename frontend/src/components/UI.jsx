@@ -52,7 +52,7 @@ export function Header() {
             {PRIMARY_NAV.map((item) => <NavLink key={item.to} to={item.to} end={item.to === '/ngach'} className={({ isActive }) => `nav-link ${isActive ? 'is-active' : ''}`}>{item.label}</NavLink>)}
           </nav>
           <div className="header-actions">
-            <Link className="header-search" to="/tra-cuu" aria-label="Mở tra cứu"><Icon name="search" size={20} /></Link>
+            <Link className="header-search" to="/tra-nhanh" aria-label="Mở tra nhanh"><Icon name="search" size={20} /></Link>
             <div className="header-reader">
               <button type="button" className="role-trigger" aria-expanded={roleOpen} aria-controls="header-role-menu" onClick={() => setRoleOpen((open) => !open)}>
                 <span className="role-dot" /><span>{selected?.short}</span><Icon name="chevronDown" size={15} />
@@ -73,8 +73,8 @@ export function Footer() {
     <footer className="site-footer">
       <div className="container footer-upper">
         <div className="footer-about"><Brand inverse /><p>Nơi chủ nhà, kiến trúc sư và nhà thầu đọc được câu chuyện của nhau. Nội dung là để hiểu nghề, không phải để quảng cáo.</p></div>
-        <div className="footer-nav-group"><p>KHÁM PHÁ</p><Link to="/tu-sach">Tủ sách</Link><Link to="/ngach">Kho 38 ngách</Link><Link to="/hien-truong">Hiện trường</Link><Link to="/tu-dien">Từ điển nghề</Link></div>
-        <div className="footer-nav-group"><p>CONSPACE</p><Link to="/ve-conspace">Về CONSPACE</Link><Link to="/quy-tac-noi-dung">Quy tắc nội dung</Link><Link to="/ban-nghe">Bàn nghề</Link><Link to="/tra-cuu">Tra cứu</Link></div>
+        <div className="footer-nav-group"><p>KHÁM PHÁ</p><Link to="/tu-sach">Tủ sách</Link><Link to="/ngach">Kho 38 ngách</Link><Link to="/hien-truong">Hiện trường</Link><Link to="/hoi-dap">Hỏi đáp</Link><Link to="/tra-nhanh">Tra nhanh</Link></div>
+        <div className="footer-nav-group"><p>CONSPACE</p><Link to="/ve-conspace">Về CONSPACE</Link><Link to="/quy-tac-noi-dung">Quy tắc nội dung</Link><Link to="/ban-nghe">Bàn nghề</Link></div>
         <div className="footer-principle"><span className="footer-asterisk">✳</span><strong>Nói cả những điều bất lợi cho mình.</strong><p>Đó là cách chúng tôi hiểu hai chữ “sự thật”.</p></div>
       </div>
       <div className="container footer-lower"><span>© {new Date().getFullYear()} CONSPACE · Sự thật ngành Xây</span><span>Vận hành bởi Công ty Cổ phần XSPACE Việt Nam · Độc lập về biên tập</span></div>
