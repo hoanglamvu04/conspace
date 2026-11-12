@@ -1,4 +1,4 @@
-# CONSPACE API Contract v0.4 — IA Governance v1.0 + Editorial Permissions
+# CONSPACE API Contract v0.5 — IA Governance v1.0 + Explicit Editorial Permissions
 
 Base production URL: `https://conspace.vn/api`. JSON is UTF-8. Backend runtime is Node.js 22.23.2, Express, JavaScript ESM, Zod and PostgreSQL 16. The CMS uses only the dedicated `conspace` database and `conspace_app` role.
 
@@ -75,13 +75,13 @@ Returns only published, source-backed and technically reviewed terms:
 
 ### POST /api/v1/questions
 
-Anonymous reader intake. No public reader account is created. Use `multipart/form-data`:
+Anonymous reader intake. No public reader account is created. Use `application/json`:
 
 - `description`: required, 10–10,000 characters.
 - `guessedNicheId`: optional UUID.
-- `images`: optional, maximum five images, each at most 5 MB.
-- `requestPrivateReply`: `true` or `false`.
-- `phone`: optional. It is discarded unless `requestPrivateReply=true`; if true, phone is required and encrypted at rest using AES-256-GCM. If the encryption key is not configured, private-reply intake fails closed.
+- `images`: optional array of `{filename,mimeType,data}` base64 image objects; maximum five JPEG/PNG/WebP images, each at most 5 MB decoded.
+- `requestPrivateReply`: string `"true"` or `"false"`.
+- `phone`: optional. It is discarded unless `requestPrivateReply="true"`; if true, phone is required and encrypted at rest using AES-256-GCM. If the encryption key is not configured, private-reply intake fails closed.
 
 Response confirms receipt only. It never echoes a phone number.
 
@@ -101,10 +101,15 @@ There are no public-reader accounts in this release. All `/api/admin/*` endpoint
 
 | Role | Permissions |
 |---|---|
-| `ADMIN` | Manage staff accounts, roles, authors, configuration-level CMS operations and editorial overrides |
-| `EDITOR` | Create/edit drafts, manage books/niches/terms/field notes/questions/media, submit content for review |
-| `TECHNICAL_REVIEWER` | Review technical accuracy and return/reject/approve assigned editorial material |
-| `EDITOR_IN_CHIEF` | Review sensitive content, schedule, publish and withdraw editorial material |
+| `ADMIN` | Manage internal staff accounts, explicit role memberships, delegated permissions and system-level configuration. ADMIN alone has no content create/edit/submit/review/approve/publish/withdraw authority. |
+| `EDITOR` | Create/edit drafts, manage books/niches/terms/field notes/questions/media and submit content for review. |
+| `TECHNICAL_REVIEWER` | Review technical accuracy and return/reject/approve assigned editorial material; cannot publish by virtue of this role. |
+| `EDITOR_IN_CHIEF` | Review sensitive content, approve, schedule, publish and withdraw editorial material. |
+
+A staff account may hold multiple explicit roles. `role` is the primary compatibility field; `roles` is the complete membership list returned by login/session and staff APIs. Separate reasoned grants are available:
+- `CONTENT_PUBLISH`: publish only content that has already passed the required review and is due; it does not grant review rights.
+- `CONTENT_WITHDRAW`: withdraw content only; it does not grant review or publish rights.
+- ADMIN does not inherit either grant. Current pre-v1.0 ADMIN accounts retain temporary, explicit and audited compatibility memberships until replacement editorial staff are provisioned; new ADMIN-only accounts receive no editorial membership.
 
 Role checks are enforced by the API, not by hiding frontend controls.
 
@@ -137,7 +142,7 @@ All endpoints below are prefixed with `/api/admin`, require a valid session and 
 ### Auth and staff
 
 - `POST /auth/login`, `GET /auth/session`, `POST /auth/logout`, `POST /auth/password`.
-- `GET /users`, `POST /users`, `PATCH /users/:id`. ADMIN only. User create/reset requires a 14+ character password. Password hashes are never returned.
+- `GET /users`, `POST /users`, `PATCH /users/:id`. ADMIN only. Create accepts `role`, optional `roles`, `roleReason`, `permissions`, `permissionReason` and `personId`. Additional roles and nonempty delegated grants require a reason; role/permission/identity changes revoke active sessions. User create/reset requires a 14+ character password. Password hashes are never returned.
 - `GET /authors`, `POST /authors`, `PATCH /authors/:id`, `DELETE /authors/:id`. ADMIN/EDITOR can manage author profiles; only ADMIN can change verification. Deactivation is soft.
 
 ### Articles
@@ -162,8 +167,8 @@ Article fields: slug, title, excerpt, Markdown body, cover image URL/media, audi
 3. Technical decision: `APPROVED`, `REQUEST_CHANGES` → `NEEDS_CHANGES`, or `REJECTED`.
 4. If a sensitivity flag is present, technical approval routes to `EDITOR_IN_CHIEF_REVIEW`. Otherwise it routes to `APPROVED`.
 5. Editor-in-chief decision routes to `APPROVED`, `NEEDS_CHANGES` or `REJECTED`.
-6. Approved articles can be scheduled by ADMIN/EDITOR/EDITOR_IN_CHIEF, or immediately published by ADMIN/EDITOR_IN_CHIEF. Scheduled articles are published by the backend worker when due.
-7. Published material can be withdrawn by EDITOR_IN_CHIEF or ADMIN. Withdrawal is audited.
+6. Approved articles can be scheduled by EDITOR or EDITOR_IN_CHIEF, or immediately published by EDITOR_IN_CHIEF or an explicitly delegated `CONTENT_PUBLISH` user. Scheduled articles are published by the backend worker when due.
+7. Published material can be withdrawn by EDITOR_IN_CHIEF or an explicitly delegated `CONTENT_WITHDRAW` user. Withdrawal is audited.
 
 Review endpoints:
 
@@ -172,6 +177,8 @@ Review endpoints:
 - `POST /reviews/articles/:id/decision` with `{"stage":"TECHNICAL|EDITOR_IN_CHIEF","decision":"APPROVED|REQUEST_CHANGES|REJECTED","reason":"..."}`
 - `POST /reviews/terms/:id/start`, `POST /reviews/terms/:id/decision`
 - `POST /reviews/question-answers/:id/decision`
+- `POST /reviews/niche-sections/:id/start` with `{templateType}`
+- `POST /reviews/niche-sections/:id/decision` with `{templateType,stage,decision,reason}`
 
 The creator and the mapped author cannot review or approve their own article. The same creator self-approval restriction applies to terms and Q&A answers. Admin cannot bypass this rule. Review reasons are mandatory and retained.
 
@@ -179,7 +186,7 @@ The creator and the mapped author cannot review or approve their own article. Th
 
 - `GET /niches`, `POST /niches`, `PATCH /niches/:id`, `DELETE /niches/:id` (soft deactivation).
 - `GET /niches/groups`, `POST /niches/groups`, `PATCH /niches/groups/:id`.
-- `GET /niches/:id/sections`, `PUT /niches/:id/sections/:sectionNo`.
+- `GET /niches/:id/sections`, `PUT /niches/:id/sections/:sectionNo` (save draft), `POST /niches/:id/sections/:sectionNo/submit`, `POST /niches/:id/sections/:sectionNo/publish`.
 
 The CMS stores the 12-block core niche template and its three audience-layer mappings. Database guards enforce no more than eight design categories, 30 construction niches and five construction groups. Construction niches require a group and source reference. No undocumented 30-niche list or five group names are seeded.
 
@@ -218,7 +225,7 @@ Reader questions are anonymous. Private phone contact is decrypted only for ADMI
 ### Media
 
 - `GET /media?page=&limit=&category=`
-- `POST /media` multipart field `file`, optional `altText`, `rightsConfirmed`, `rightsNote`.
+`POST /media` JSON body `{file:{filename,mimeType,data},altText,rightsConfirmed,rightsNote}`, where `data` is base64.
 - `PATCH /media/:id` for alt text and rights metadata.
 - `GET /media/:id/download`
 - `DELETE /media/:id` — soft delete; media referenced by published content cannot be deleted.
@@ -319,11 +326,11 @@ Public APIs return only PUBLISHED content with approval and publication timestam
 
 All endpoints below use the existing envelope: success = { "ok": true, "data": ... }, error = { "ok": false, "error": { "code": "...", "message": "..." } }. All public SQL queries filter to approved PUBLISHED content (never DRAFT/APPROVED-only/SCHEDULED/REJECTED/WITHDRAWN). No placeholders or fake counts.
 
-### GET /api/v1/feed?limit=6
+### GET /api/v1/feed?limit=6&role=homeowner|architect|contractor
 
 Response: { "ok": true, "data": { "books": [], "articles": [], "fieldNotes": [], "questions": [] } }. Each lane is a DB-backed list ordered by publishedAt descending, default 6/max 20. Books = newest published chapters; fieldNotes = published and anonymized cases with confirmed photo rights; questions = approved and published answers.
 
-### GET /api/v1/books
+### GET /api/v1/books?role=homeowner|architect|contractor
 
 Data array: id, slug, title, audienceRole, contentLabel, contentLabelVi, expectedChapterCount, publishedChapterCount, latestPublishedAt. The 3 documented books have labels REFERENCE (Tài liệu tra cứu), NON_FICTION (Phi hư cấu), FICTIONALIZED (Tự sự, có hư cấu).
 
@@ -337,9 +344,9 @@ Data: bookId, bookSlug, bookTitle, contentLabel, contentLabelVi, chapterNo, disp
 
 ### GET /api/v1/niches/:slug?role=homeowner|architect|contractor
 
-Data: niche metadata, lens, sections (exactly 12 numbered blocks), articles, fieldNotes, chapters, relatedNiches. Every section: sectionNo, key, title, layers array; each layer: audienceRole, content, sourceRef. Role is a reading lens on the SAME URL, not a login role. Only PUBLISHED section bodies and links to PUBLISHED articles are included. Unknown/inactive niche: 404. Empty sections have layers: []; no invented content.
+Data: niche metadata, lens, sections, articles, fieldNotes, chapters and relatedNiches. Template A has exactly 12 blocks; each block includes sectionNo, key, title, sharedContent, sharedSourceRef and its mapped `layers` array (including empty entries). Template B has exactly seven shared blocks and `layers: []`. The optional role query changes preference/order only and never removes another reader layer. Only PUBLISHED sections with approval timestamps, publication timestamp and a nonempty source reference are exposed. Unknown/inactive niche: 404.
 
-### GET /api/v1/field-notes?niche=&limit=12&offset=0
+### GET /api/v1/field-notes?niche=&role=homeowner|architect|contractor&limit=12&offset=0
 
 Data: published, approved and fully anonymized field-case summaries; meta: total, limit, offset. Maximum limit 50. Unconfirmed image rights prevent public visibility.
 
@@ -356,14 +363,14 @@ Data array: {id,slug,title,snippet,type,publishedAt,audienceRole,bookSlug,chapte
 ## Frontend CMS integration: request bodies and transitions
 
 - Authentication: POST /api/admin/auth/login body {email,password}. Response {ok:true,data:{user,csrfToken,expiresAt}} plus HttpOnly SameSite=Strict session cookie (Secure on production HTTPS). GET /api/admin/auth/session returns the same CSRF token. Every unsafe admin request requires credentials: include and X-CSRF-Token; production also requires allowed Origin.
-- Staff: GET/POST /api/admin/users, PATCH /api/admin/users/:id, ADMIN only. User create {email,displayName,role,password}; password length >=14.
-- Articles: GET /api/admin/articles?status=&role=&search=&page=&limit=, GET /api/admin/articles/:id and GET /api/admin/articles/:id/revisions are readable to all four internal roles. POST /api/admin/articles requires slug/title and supports excerpt,body,coverImageUrl,authorId,audienceRole,contentType,nicheIds,tags,sources,mediaIds,sensitivityFlags,sensitivityAssessed. PATCH /api/admin/articles/:id accepts partial fields and changeReason; editing and creation require EDITOR/ADMIN. DELETE archives unpublished drafts.
+- Staff: GET/POST /api/admin/users, PATCH /api/admin/users/:id, ADMIN only. Create accepts {email,displayName,role,password,roles?,roleReason?,permissions?,permissionReason?,personId?}; password length >=14. Role/permission/identity changes require reasons and revoke active sessions.
+- Articles: GET /api/admin/articles?status=&role=&search=&page=&limit=, GET /api/admin/articles/:id and GET /api/admin/articles/:id/revisions are readable to assigned internal roles. POST /api/admin/articles requires EDITOR; PATCH /api/admin/articles/:id and DELETE unpublished drafts also require EDITOR. ADMIN alone is read-only.
 - Submit: POST /api/admin/articles/:id/submit {} transitions DRAFT/NEEDS_CHANGES to SUBMITTED. Explicit sensitivityAssessed is required, as are rights and field-note anonymization where relevant.
-- Start technical review: POST /api/admin/reviews/articles/:id/start {} (TECHNICAL_REVIEWER/ADMIN). Decision: POST /api/admin/reviews/articles/:id/decision {stage:"TECHNICAL",decision:"APPROVED|REQUEST_CHANGES|REJECTED",reason:"..."} (technical reviewer/ADMIN). Sensitive flags route technical approval to EDITOR_IN_CHIEF_REVIEW.
-- Chief decision: POST /api/admin/reviews/articles/:id/decision {stage:"EDITOR_IN_CHIEF",decision:"APPROVED|REQUEST_CHANGES|REJECTED",reason:"..."} (EDITOR_IN_CHIEF/ADMIN). Neither reviewer nor admin can approve their own article.
-- Publish: POST /api/admin/articles/:id/publish {} (ADMIN/EDITOR_IN_CHIEF), only APPROVED or due SCHEDULED. Schedule: POST /api/admin/articles/:id/schedule {scheduledAt:"2026-11-13T02:00:00+07:00"} (ADMIN/EDITOR/EDITOR_IN_CHIEF), APPROVED and future date only. Withdraw: POST /api/admin/articles/:id/withdraw {reason:"..."} (ADMIN/EDITOR_IN_CHIEF). A one-minute background loop locks due rows with SKIP LOCKED and logs events.
+- Start technical review: POST /api/admin/reviews/articles/:id/start {} (TECHNICAL_REVIEWER). Decision: POST /api/admin/reviews/articles/:id/decision {stage:"TECHNICAL",decision:"APPROVED|REQUEST_CHANGES|REJECTED",reason:"..."} (TECHNICAL_REVIEWER). Sensitive flags route technical approval to EDITOR_IN_CHIEF_REVIEW.
+- Chief decision: POST /api/admin/reviews/articles/:id/decision {stage:"EDITOR_IN_CHIEF",decision:"APPROVED|REQUEST_CHANGES|REJECTED",reason:"..."} (EDITOR_IN_CHIEF). Neither reviewer nor admin can approve their own article.
+- Publish: POST /api/admin/articles/:id/publish {} (EDITOR_IN_CHIEF or explicit CONTENT_PUBLISH), only APPROVED or due SCHEDULED. Schedule: POST /api/admin/articles/:id/schedule {scheduledAt:"2026-11-13T02:00:00+07:00"} (EDITOR/EDITOR_IN_CHIEF), APPROVED and future date only. Withdraw: POST /api/admin/articles/:id/withdraw {reason:"..."} (EDITOR_IN_CHIEF or explicit CONTENT_WITHDRAW). A one-minute background loop locks due rows with SKIP LOCKED and logs events.
 - Media: POST /api/admin/media application/json {file:{filename:"site.png",mimeType:"image/png",data:"<base64>"},rightsConfirmed:false,rightsNote:null,altText:"..."}. 10 MB decoded limit, 14 MB JSON request limit. JPEG/PNG/WebP/PDF signatures checked. For rightsConfirmed=true provide rightsNote; private PDF never served publicly. Other endpoints: GET/PATCH /api/admin/media/:id, GET /api/admin/media/:id/download, DELETE /api/admin/media/:id.
 - Reader Q&A: POST /api/v1/questions application/json {description,guessedNicheId?,requestPrivateReply:"false",phone?,images?:[{filename,mimeType,data}]}; max five 5 MB decoded images, 35 MB JSON limit. Phone is discarded unless private reply explicitly requested; then encrypted with AES-256-GCM and disclosed only to authorized staff. CMS: GET/PATCH /api/admin/questions/:id, POST /api/admin/questions/:id/answer, POST /api/admin/questions/:id/answer/submit, POST /api/admin/questions/:id/answer/publish, POST /api/admin/reviews/question-answers/:id/decision.
-- Niche section: PUT /api/admin/niches/:id/sections/:sectionNo {audienceRole,content,sourceRef,status:"IN_REVIEW"}, followed by POST /api/admin/niches/:id/sections/:sectionNo/publish {audienceRole,reason}, ADMIN/EDITOR_IN_CHIEF and different editor, with source required. Only published sections are public.
+- Niche section: EDITOR saves with PUT /api/admin/niches/:id/sections/:sectionNo {audienceRole,content,sourceRef,sensitivityAssessed,sensitivityFlags}; EDITOR submits with POST /api/admin/niches/:id/sections/:sectionNo/submit {audienceRole,reason}; TECHNICAL_REVIEWER starts and decides via /reviews/niche-sections/:id/start and /reviews/niche-sections/:id/decision. Sensitive content also requires EDITOR_IN_CHIEF review. Publish with POST /api/admin/niches/:id/sections/:sectionNo/publish {audienceRole,reason} (EDITOR_IN_CHIEF or CONTENT_PUBLISH) only after approval and with a source. Only published, approved and source-backed sections are public.
 
 Errors: 400 VALIDATION_ERROR, 401 UNAUTHENTICATED/INVALID_CREDENTIALS, 403 FORBIDDEN/CSRF_INVALID/AUTHOR_CANNOT_APPROVE, 404 NOT_FOUND, 409 INVALID_STATE/CONFLICT/MEDIA_RIGHTS_REQUIRED, 413 PAYLOAD_TOO_LARGE, 415 UNSUPPORTED_MEDIA_TYPE, 429 RATE_LIMITED, 503 DATABASE_UNAVAILABLE/PRIVATE_REPLY_UNAVAILABLE, 500 INTERNAL_ERROR. Never expose connection strings or user secrets.
