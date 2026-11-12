@@ -104,10 +104,14 @@ jobs:
           npm run db:seed --prefix backend
           npm run db:seed --prefix backend
       - name: Install frontend dependencies
+        id: frontend_install
         run: npm ci --prefix frontend --ignore-scripts --no-audit --no-fund
-      - name: Frontend security audit
+      - name: Frontend production dependency audit
+        run: npm audit --prefix frontend --omit=dev --audit-level=high
+      - name: Frontend full dependency audit
         run: npm audit --prefix frontend --audit-level=high
       - name: Frontend tests and production build
+        if: ${{ always() && steps.frontend_install.outcome == 'success' }}
         run: |
           npm test --prefix frontend
           npm run build
