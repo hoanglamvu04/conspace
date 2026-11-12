@@ -29,13 +29,16 @@ export function nicheLayersForRole(sections, role) {
     const layer = Array.isArray(section.layers)
       ? section.layers.find((item) => item.audienceRole === role && typeof item.content === 'string' && item.content.trim())
       : null;
+    // Shared, reviewed content is reused across mapped reader layers.
+    const content = layer?.content || section.sharedContent || '';
+    const sourceRef = layer?.sourceRef || section.sharedSourceRef || null;
     return [{
       sectionNo,
       key: section.key,
       title: section.title,
-      content: layer?.content || '',
-      sourceRef: layer?.sourceRef || null,
-      published: Boolean(layer?.content),
+      content,
+      sourceRef,
+      published: Boolean(content.trim() && sourceRef),
     }];
   });
 }

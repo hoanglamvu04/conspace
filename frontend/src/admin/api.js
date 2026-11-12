@@ -99,7 +99,10 @@ export function hasPermission(user, permission) {
   // complete effective permission set. An empty array must not erase the
   // baseline role permissions, otherwise a normal ADMIN cannot even open
   // the dashboard or user-management screen.
-  const baseline = ROLE_PERMISSIONS[user.role] || [];
+  const assignedRoles = Array.isArray(user.roles) && user.roles.length
+    ? [...new Set([user.role, ...user.roles].filter(Boolean))]
+    : [user.role].filter(Boolean);
+  const baseline = [...new Set(assignedRoles.flatMap((role) => ROLE_PERMISSIONS[role] || []))];
   const delegated = Array.isArray(user.permissions)
     ? user.permissions
     : Array.isArray(user.grants) ? user.grants : [];

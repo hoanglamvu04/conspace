@@ -177,7 +177,8 @@ export function ChapterDetail({ bookSlug }) {
 export function FieldNotes() {
   const [offset, setOffset] = useState(0);
   const [items, setItems] = useState([]);
-  const records = useFieldNotes(null, 12, offset);
+  const { reader } = useReader();
+  const records = useFieldNotes(null, 12, offset, reader);
   useEffect(() => {
     if (records.status !== 'success' || records.meta?.offset !== offset) return;
     setItems((current) => offset === 0

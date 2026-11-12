@@ -107,3 +107,12 @@ test('delegated backend permissions add only their mapped UI capabilities', () =
   assert.equal(hasPermission({ role: 'ADMIN', permissions: ['CONTENT_WITHDRAW'] }, 'articles:withdraw'), true);
   assert.equal(hasPermission({ role: 'ADMIN', grants: ['users:write'] }, 'users:write'), true);
 });
+
+test('explicit secondary staff roles add only their own CMS capabilities', () => {
+  const user = { role: 'ADMIN', roles: ['ADMIN', 'EDITOR', 'TECHNICAL_REVIEWER'], permissions: [] };
+  assert.equal(hasPermission(user, 'users:write'), true);
+  assert.equal(hasPermission(user, 'articles:create'), true);
+  assert.equal(hasPermission(user, 'reviews:technical:decide'), true);
+  assert.equal(hasPermission(user, 'reviews:chief:decide'), false);
+  assert.equal(hasPermission(user, 'articles:publish'), false);
+});

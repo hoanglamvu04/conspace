@@ -20,7 +20,7 @@ export default function HomeV1() {
   const { reader, setReader } = useReader();
   const [query, setQuery] = useState('');
   const navigate = useNavigate();
-  const feed = useFeed();
+  const feed = useFeed(reader);
   const niches = useNiches();
   const data = feed.status === 'success' ? feed.data : null;
   const articles = sortByLens(data?.articles || [], reader);

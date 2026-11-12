@@ -38,16 +38,16 @@ export function useNiches(group) {
   return useResource(apiUrl('/niches', group ? { group } : {}));
 }
 
-export function useFeed() {
-  return useResource(apiUrl('/feed', { limit: 6 }), { list: false });
+export function useFeed(role = 'homeowner') {
+  return useResource(apiUrl('/feed', { limit: 6, role }), { list: false });
 }
 
 export function useBooks() {
   return useResource(apiUrl('/books'));
 }
 
-export function useFieldNotes(niche = null, limit = 12, offset = 0) {
-  return useResource(apiUrl('/field-notes', { niche, limit, offset }));
+export function useFieldNotes(niche = null, limit = 12, offset = 0, role = 'homeowner') {
+  return useResource(apiUrl('/field-notes', { niche, limit, offset, role }));
 }
 
 export function useQuestions(page = 1, limit = 30) {

@@ -39,7 +39,7 @@ export default function NicheDetailV1() {
     setOpenRoles((current) => addOpenLayerRole(current, reader));
   }, [reader]);
   const validSlug = typeof slug === 'string' && /^[a-z0-9][a-z0-9-]*$/.test(slug);
-  const resource = useResource(validSlug ? apiUrl('/niches/' + slug) : null, { list: false, enabled: validSlug });
+  const resource = useResource(validSlug ? apiUrl('/niches/' + slug, { role: reader }) : null, { list: false, enabled: validSlug });
   const niche = resource.status === 'success' ? resource.data : null;
   const selectedRole = READERS.find((item) => item.id === reader) || READERS[0];
 

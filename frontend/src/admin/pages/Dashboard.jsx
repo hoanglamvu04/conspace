@@ -27,7 +27,7 @@ export default function Dashboard(){
   const returned=useAdminList('/articles',{status:'NEEDS_CHANGES',page:1,limit:8},can('articles:write'));
   const all=[drafts,submitted,technical,chief,published,scheduled,changed];
   function refresh(){all.forEach(x=>x.retry());if(can('reviews:read'))queue.retry();if(can('articles:write'))returned.retry();if(can('users:read'))users.retry();}
-  const queueItems=queue.status==='success'?[...(queue.data.articles||[]),...(queue.data.terms||[]),...(queue.data.answers||[])]:[];
+  const queueItems=queue.status==='success'?[...(queue.data.articles||[]),...(queue.data.terms||[]),...(queue.data.answers||[]),...(queue.data.nicheSections||[])]:[];
   return <><PageHeading kicker="TỔNG QUAN TÒA SOẠN" title={`Chào ${user?.displayName||'bạn'},`} description={user?.role === 'ADMIN' ? 'Tổng quan quản trị hệ thống. Vai trò ADMIN không bao gồm biên tập, duyệt hoặc xuất bản.' : 'Các chỉ số được tổng hợp trực tiếp từ danh sách bài viết và hàng đợi thực tế.'} icon="dashboard" actions={<><button type="button" className="cms-btn cms-btn--secondary" onClick={refresh}><CmsIcon name="refresh" size={17}/> Cập nhật</button>{can('articles:create')&&<Link className="cms-btn cms-btn--primary" to="/admin/articles/new"><CmsIcon name="plus"/> Viết bài</Link>}</>}/>
     <div className="cms-metric-grid">
       {user?.role === 'ADMIN' ? <>
