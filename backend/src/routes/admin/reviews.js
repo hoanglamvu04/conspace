@@ -147,5 +147,62 @@ export function createReviewsRouter(db=pool,editorial=createEditorialService(db)
     res.json({ok:true,data:result});
   }));
 
+  const nicheSectionInput=z.strictObject({templateType:z.enum(['TEMPLATE_A','TEMPLATE_B'])});
+  router.post('/niche-sections/:id/start',requireRoles('TECHNICAL_REVIEWER'),asyncHandler(async(req,res)=>{
+    const id=validate(z.strictObject({id:uuid}),req.params).id;
+    const {templateType}=validate(nicheSectionInput,req.body);
+    const table=templateType==='TEMPLATE_B'?'conspace.architectural_sections':'conspace.niche_sections';
+    const result=await inTransaction(db,async(client)=>{
+      const found=await client.query('SELECT * FROM '+table+' WHERE id=$1 FOR UPDATE',[id]);
+      const section=found.rows[0];if(!section)throw new RequestError(404,'NOT_FOUND','Niche section not found');
+      if(!['SUBMITTED','IN_REVIEW'].includes(section.status))throw new RequestError(409,'INVALID_STATE','Section must be submitted before technical review');
+      await assertDifferentPerson(client,section.updated_by_user_id,req.auth);
+      const updated=await client.query("UPDATE "+table+" SET status='TECHNICAL_REVIEW',updated_at=now() WHERE id=$1 RETURNING *",[id]);
+      await writeWorkflowEvent(client,{entityType:templateType==='TEMPLATE_B'?'ARCHITECTURAL_SECTION':'NICHE_SECTION',entityId:id,fromStatus:section.status,toStatus:'TECHNICAL_REVIEW',action:'START_TECHNICAL_REVIEW',reason:null,actorUserId:req.auth.id});
+      await writeAudit(client,{actorUserId:req.auth.id,action:'NICHE_SECTION_TECHNICAL_REVIEW_STARTED',entityType:templateType==='TEMPLATE_B'?'ARCHITECTURAL_SECTION':'NICHE_SECTION',entityId:id,before:{status:section.status},after:{status:'TECHNICAL_REVIEW'},req});
+      return updated.rows[0];
+    });
+    res.json({ok:true,data:result});
+  }));
+
+  const nicheDecisionSchema=z.strictObject({
+    templateType:z.enum(['TEMPLATE_A','TEMPLATE_B']),
+    stage:z.enum(['TECHNICAL','EDITOR_IN_CHIEF']),
+    decision:z.enum(['APPROVED','REQUEST_CHANGES','REJECTED']),
+    reason:z.string().trim().min(3).max(1000),
+  });
+  router.post('/niche-sections/:id/decision',asyncHandler(async(req,res)=>{
+    const id=validate(z.strictObject({id:uuid}),req.params).id;
+    const input=validate(nicheDecisionSchema,req.body);
+    const assigned=Array.isArray(req.auth.roles)&&req.auth.roles.length?req.auth.roles:[req.auth.role];
+    const technical=input.stage==='TECHNICAL';
+    if(technical&&!assigned.includes('TECHNICAL_REVIEWER'))throw new RequestError(403,'FORBIDDEN','Technical reviewer role is required');
+    if(!technical&&!assigned.includes('EDITOR_IN_CHIEF'))throw new RequestError(403,'FORBIDDEN','Editor-in-chief role is required for chief review');
+    const table=input.templateType==='TEMPLATE_B'?'conspace.architectural_sections':'conspace.niche_sections';
+    const entityType=input.templateType==='TEMPLATE_B'?'ARCHITECTURAL_SECTION':'NICHE_SECTION';
+    const result=await inTransaction(db,async(client)=>{
+      const found=await client.query('SELECT * FROM '+table+' WHERE id=$1 FOR UPDATE',[id]);
+      const section=found.rows[0];if(!section)throw new RequestError(404,'NOT_FOUND','Niche section not found');
+      const expected=technical?'TECHNICAL_REVIEW':'EDITOR_IN_CHIEF_REVIEW';
+      if(section.status!==expected)throw new RequestError(409,'INVALID_STATE','Section is not at the requested review stage');
+      await assertDifferentPerson(client,section.updated_by_user_id,req.auth);
+      const next=input.decision==='APPROVED'
+        ? (technical&&section.requires_chief_review?'EDITOR_IN_CHIEF_REVIEW':'APPROVED')
+        : input.decision==='REQUEST_CHANGES'?'NEEDS_CHANGES':'REJECTED';
+      const updated=technical
+        ? await client.query(
+          "UPDATE "+table+" SET status=$2,technical_reviewed_by_user_id=$3,technical_reviewed_at=now(),approved_by_user_id=CASE WHEN $2='APPROVED' THEN $3 ELSE approved_by_user_id END,approved_at=CASE WHEN $2='APPROVED' THEN now() ELSE approved_at END,updated_at=now() WHERE id=$1 RETURNING *",
+          [id,next,req.auth.id])
+        : await client.query(
+          "UPDATE "+table+" SET status=$2,chief_reviewed_by_user_id=$3,chief_reviewed_at=now(),approved_by_user_id=CASE WHEN $2='APPROVED' THEN $3 ELSE approved_by_user_id END,approved_at=CASE WHEN $2='APPROVED' THEN now() ELSE approved_at END,updated_at=now() WHERE id=$1 RETURNING *",
+          [id,next,req.auth.id]);
+      await client.query('INSERT INTO conspace.editorial_reviews(entity_type,entity_id,stage,decision,reason,reviewer_user_id) VALUES($1,$2,$3,$4,$5,$6)',[entityType,id,input.stage,input.decision,input.reason,req.auth.id]);
+      await writeWorkflowEvent(client,{entityType,entityId:id,fromStatus:section.status,toStatus:next,action:input.decision,reason:input.reason,actorUserId:req.auth.id});
+      await writeAudit(client,{actorUserId:req.auth.id,action:'NICHE_SECTION_REVIEW_DECIDED',entityType,entityId:id,before:{status:section.status},after:{status:next,stage:input.stage,decision:input.decision,reason:input.reason},req});
+      return updated.rows[0];
+    });
+    res.json({ok:true,data:result});
+  }));
+
   return router;
 }
