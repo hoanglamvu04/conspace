@@ -891,3 +891,5 @@ svg { flex-shrink: 0; }
   .home-feed-articles .articles-grid { grid-template-columns: 1fr; }
   .public-chapter-row { grid-template-columns: 38px minmax(0, 1fr) 18px; gap: 10px; }
 }
+
+.public-layer-unpublished { margin: 0; padding: 12px 14px; border-left: 3px solid #d7e6ed; background: #f7fafb; color: #8297a2; font-size: 12px; line-height: 1.65; }
