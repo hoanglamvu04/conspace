@@ -72,6 +72,12 @@ export async function runLocalSmoke({ fetcher = fetch, env = process.env, log = 
     pass('Public feed lens ' + role + ' (all content collections remain available)');
   }
 
+  const books = await json(fetcher, localUrl(backend, '/api/v1/books?role=architect'), 'Books lens');
+  if (!Array.isArray(books.data) || books.meta?.preferredAudienceRole !== 'architect') {
+    throw new Error('Books lens: preference not acknowledged or data is invalid');
+  }
+  pass('Books lens preference (all published books remain available)');
+
   const notes = await json(fetcher, localUrl(backend, '/api/v1/field-notes?role=architect&limit=5'), 'Field notes lens');
   if (!Array.isArray(notes.data)) throw new Error('Field notes lens: expected an array');
   pass('Field notes lens preference');
