@@ -73,16 +73,20 @@ export function BookDetail() {
   </>;
 }
 
-function chapterLinkFromParams(bookSlug, token) {
+function chapterLinkFromParams(bookSlug, token, partToken) {
   const match = String(token || '').match(/(?:muc|chuong)-([1-9][0-9]{0,2})$/);
   if (!match) return null;
+  if (bookSlug === 'cam-nang-kien-truc-hoa-lac') {
+    const part = String(partToken || '').match(/^phan-([1-9][0-9]{0,2})$/);
+    if (!part || Number(part[1]) !== Number(match[1])) return null;
+  }
   return { bookSlug, chapterNo: Number(match[1]) };
 }
 
 export function ChapterDetail({ bookSlug }) {
   const params = useParams();
   const token = params.item || params.chapter;
-  const resolved = chapterLinkFromParams(bookSlug, token);
+  const resolved = chapterLinkFromParams(bookSlug, token, params.part);
   const chapter = useResource(resolved ? apiUrl('/books/' + resolved.bookSlug + '/chapters/' + resolved.chapterNo) : null, { list: false, enabled: Boolean(resolved) });
   usePageMeta(chapter.status === 'success' ? chapter.data.title : null, chapter.status === 'success' ? chapter.data.excerpt || chapter.data.bookTitle : null);
   if (!resolved) return <main className="container content-page"><StatusPanel status="empty" title="Đường dẫn chương không hợp lệ"/></main>;
