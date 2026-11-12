@@ -105,12 +105,15 @@ def safe_run(*command: str) -> None:
 
 def write_vhost(source: str, start: int, end: int, updated_block: str) -> None:
     entire = source[:start] + updated_block + source[end:]
-    if entire == source:
-        print("PASS: CONSPACE Nginx already matches required locations; no change")
-        return
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     backup = VHOST.with_name(VHOST.name + ".before-gate1-" + stamp)
     shutil.copy2(VHOST, backup)
+    if entire == source:
+        BACKUP_STATE.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        BACKUP_STATE.write_text(str(backup) + chr(10), encoding="utf-8")
+        print("PASS: CONSPACE Nginx already matches required locations; no config change")
+        print("Verified rollback snapshot: " + str(backup))
+        return
     tmp_path = None
     try:
         with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=str(VHOST.parent),
