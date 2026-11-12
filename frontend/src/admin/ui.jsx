@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { cloneElement, isValidElement, useEffect, useId, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { ADMIN_NAV, displayStatus, formatAdminDate, ROLES } from './constants.js';
 import { useSession, useNotices } from './Session.jsx';
@@ -127,7 +127,9 @@ export function SearchFilters({ query, onQuery, status, onStatus, statuses = [],
 
 export function FormField({ label, name, required, help, children, className = '' }) {
   const id = useId();
-  return <div className={`cms-field ${className}`}><label htmlFor={name || id}>{label}{required && <span className="cms-required"> *</span>}</label>{typeof children === 'function' ? children(name || id) : children}{help && <span className="cms-field-help">{help}</span>}</div>;
+  const target = name || (isValidElement(children) && children.props.id) || id;
+  const control = typeof children === 'function' ? children(target) : isValidElement(children) && ['input', 'select', 'textarea'].includes(children.type) ? cloneElement(children, { id: children.props.id || target }) : children;
+  return <div className={`cms-field ${className}`}><label htmlFor={target}>{label}{required && <span className="cms-required"> *</span>}</label>{control}{help && <span className="cms-field-help">{help}</span>}</div>;
 }
 
 export function ConfirmDialog({ open, title = 'Xác nhận thao tác', description, confirmText = 'Xác nhận', danger = false, busy = false, onConfirm, onClose }) {
