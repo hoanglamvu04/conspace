@@ -52,6 +52,6 @@ test('robots and sitemap expose only stable canonical public pages', () => {
   assert.ok(!sitemap.includes('/tra-cuu'));
   assert.ok(!sitemap.includes('/tu-dien'));
   assert.ok(!sitemap.includes('/tra-nhanh'));
-  assert.ok(robots.includes('Disallow: /admin/'));
+  assert.ok(robots.includes('Disallow: /admin'));
   assert.ok(robots.includes('Sitemap: https://conspace.vn/sitemap.xml'));
 });
