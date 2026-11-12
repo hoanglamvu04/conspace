@@ -12,7 +12,6 @@ for arg in "$@"; do
     *) echo 'Usage: production-acceptance.sh [--cms|--public-only] [--with-restore]' >&2; exit 2 ;;
   esac
 done
-BASE="https://conspace.vn"
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 TMP="$(mktemp -d)"
 trap 'rm -rf -- "$TMP"' EXIT
@@ -69,7 +68,6 @@ for host in conspace.vn www.conspace.vn; do
   fi
 done
 if [[ "$MODE" == cms ]]; then
-  OTHER_SITES_FILE="NO"
   OTHER_SITES_FILE="${OTHER_SITES_FILE:-/var/lib/conspace-ops/other-sites.acceptance}"
   [[ -s "$OTHER_SITES_FILE" && "$(stat -c '%a' "$OTHER_SITES_FILE")" == 600 ]] || {
     echo 'BLOCKED: Add root-protected 0600 other-sites.acceptance with: https://site.example/health 200' >&2; exit 1;
@@ -86,6 +84,7 @@ if [[ "$MODE" == cms ]]; then
   (( sites > 0 )) || { echo 'BLOCKED: no other site baseline provided' >&2; exit 1; }
 fi
 BACKUP_ROOT="${CONSPACE_BACKUP_ROOT:-/var/backups/conspace}"
+[[ "$BACKUP_ROOT" == "/var/backups/conspace" ]] || { echo "STOP: unreviewed backup root" >&2; exit 2; }
 if (( EUID == 0 )) && [[ -d "$BACKUP_ROOT" ]]; then
   latest="$(find "$BACKUP_ROOT" -mindepth 2 -maxdepth 2 -type f -name SHA256SUMS -printf '%T@ %h\n' | sort -nr | head -n 1 | cut -d ' ' -f 2-)"
   [[ -n "$latest" ]] || { echo 'FAIL: no complete CONSPACE backup' >&2; exit 1; }
