@@ -8,7 +8,7 @@ export const READERS = [
   {
     id: 'architect', label: 'Kiến trúc sư', short: 'KTS', heading: 'Tôi là kiến trúc sư',
     description: 'Nhìn rõ điểm giao giữa thiết kế, hiện trường và những người cùng thực hiện.',
-    detail: 'Góc nhìn của người thiết kế: lựa chọn, phối hợp chuyên môn và điểm dừng kiểm tra.',
+    detail: 'Góc nhìn của người thiết kế: hồ sơ bản vẽ, phối hợp chuyên môn và điểm dừng nghiệm thu có nguồn.',
     icon: 'draft', number: '02',
   },
   {
