@@ -90,3 +90,9 @@ test('ok:false payload rejects even with HTTP 200',async t=>{
   globalThis.fetch=async()=>({ok:true,status:200,json:async()=>({ok:false,error:{message:'Lỗi có thật'}})});
   await assert.rejects(()=>adminRequest('/articles'),/Lỗi có thật/);
 });
+
+test('explicit backend permission grants override role fallback', () => {
+  assert.equal(hasPermission({ role: 'ADMIN', permissions: ['articles:publish'] }, 'articles:publish'), true);
+  assert.equal(hasPermission({ role: 'EDITOR_IN_CHIEF', permissions: [] }, 'articles:publish'), false);
+  assert.equal(hasPermission({ role: 'ADMIN', grants: ['users:write'] }, 'users:write'), true);
+});
