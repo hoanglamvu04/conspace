@@ -494,3 +494,6 @@
 @media (prefers-reduced-motion: reduce) {
   .cms *, .cms *::before, .cms *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; scroll-behavior: auto !important; }
 }
+
+.cms-role-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; max-width: 300px; }
+.cms-role-tags .cms-pill { margin: 0; }

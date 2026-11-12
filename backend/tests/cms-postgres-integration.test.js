@@ -242,6 +242,9 @@ test('real PostgreSQL flow: login -> create -> technical review -> chief review 
     audienceRole:'homeowner',reason:'Gửi khối nội dung để duyệt kỹ thuật',
   });
   assert.equal(sectionSubmitted.status,200,JSON.stringify(sectionSubmitted.body));
+  const technicalQueue=await reviewerApi('GET','/api/admin/reviews/queue?stage=TECHNICAL');
+  assert.equal(technicalQueue.status,200,JSON.stringify(technicalQueue.body));
+  assert.ok(technicalQueue.body.data.nicheSections.some(item=>item.id===sectionId),'Submitted niche section must appear in the technical review queue');
   const sectionStarted=await reviewerApi('POST','/api/admin/reviews/niche-sections/'+sectionId+'/start',{templateType:'TEMPLATE_A'});
   assert.equal(sectionStarted.status,200,JSON.stringify(sectionStarted.body));
   const sectionDecision=await reviewerApi('POST','/api/admin/reviews/niche-sections/'+sectionId+'/decision',{

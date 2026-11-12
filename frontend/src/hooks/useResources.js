@@ -42,8 +42,8 @@ export function useFeed(role = 'homeowner') {
   return useResource(apiUrl('/feed', { limit: 6, role }), { list: false });
 }
 
-export function useBooks() {
-  return useResource(apiUrl('/books'));
+export function useBooks(role = 'homeowner') {
+  return useResource(apiUrl('/books', { role }));
 }
 
 export function useFieldNotes(niche = null, limit = 12, offset = 0, role = 'homeowner') {

@@ -47,3 +47,22 @@ test('switching the reader opens the new layer without collapsing layers the rea
   open = addOpenLayerRole(open, 'architect');
   assert.deepEqual(open, ['homeowner', 'contractor', 'architect']);
 });
+
+test('shared niche content is reusable only when it has a source reference', () => {
+  const sections = [{
+    sectionNo: 1,
+    key: 'scope',
+    title: 'Làm gì và không làm',
+    sharedContent: 'Nội dung dùng chung đã được duyệt.',
+    sharedSourceRef: 'Official construction guidance, 2026',
+    layers: [],
+  }];
+  const homeowner = nicheLayersForRole(sections, 'homeowner');
+  const contractor = nicheLayersForRole(sections, 'contractor');
+  assert.equal(homeowner[0].content, 'Nội dung dùng chung đã được duyệt.');
+  assert.equal(homeowner[0].published, true);
+  assert.equal(contractor[0].content, 'Nội dung dùng chung đã được duyệt.');
+  assert.equal(contractor[0].published, true);
+  const unsupported = nicheLayersForRole([{...sections[0], sharedSourceRef: null}], 'homeowner');
+  assert.equal(unsupported[0].published, false);
+});

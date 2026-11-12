@@ -83,8 +83,8 @@ function BookLabel({ value }) {
 }
 
 export function BookIndex() {
-  const books = useResource(apiUrl('/books'));
   const { reader } = useReader();
+  const books = useResource(apiUrl('/books', { role: reader }));
   const orderedBooks = sortByLens(books.data, reader);
   return <>
     <PageIntro eyebrow="CONSPACE / THƯ VIỆN BIÊN TẬP" title="Tủ sách" description="Ba đầu sách theo đúng nhãn nội dung đã được xác nhận. Chỉ chương đã xuất bản mới có đường dẫn đọc."/>
@@ -179,6 +179,10 @@ export function FieldNotes() {
   const [items, setItems] = useState([]);
   const { reader } = useReader();
   const records = useFieldNotes(null, 12, offset, reader);
+  useEffect(() => {
+    setOffset(0);
+    setItems([]);
+  }, [reader]);
   useEffect(() => {
     if (records.status !== 'success' || records.meta?.offset !== offset) return;
     setItems((current) => offset === 0
