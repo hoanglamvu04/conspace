@@ -10,20 +10,27 @@ test('book chapters use the canonical IA route families', () => {
   assert.equal(chapterPath('phan-nha-thau-xay-dung', 0), '/tu-sach');
 });
 
-test('niche layers are separated by audience while sharing the same source sections', () => {
-  const sections = [
-    { sectionNo: 1, key: 'scope', title: 'Phạm vi', layers: [
-      { audienceRole: 'homeowner', content: 'Chủ nhà cần biết.', sourceRef: 'Nguồn A' },
-      { audienceRole: 'contractor', content: 'Nhà thầu cần biết.', sourceRef: 'Nguồn B' },
-    ] },
-    { sectionNo: 2, key: 'sequence', title: 'Trình tự', layers: [
-      { audienceRole: 'architect', content: 'KTS cần biết.', sourceRef: 'Nguồn C' },
-    ] },
-    { sectionNo: 3, key: 'pricing', title: 'Giá', layers: [] },
+test('niche layers follow the exact v1.0 mapping and leave unpublished slots empty', () => {
+  const sections = Array.from({ length: 12 }, (_, index) => ({
+    sectionNo: index + 1,
+    key: 'block-' + (index + 1),
+    title: 'Khối ' + (index + 1),
+    layers: [],
+  }));
+  sections[0].layers = [
+    { audienceRole: 'homeowner', content: 'Chủ nhà cần biết.', sourceRef: 'Nguồn A' },
+    { audienceRole: 'contractor', content: 'Nhà thầu cần biết.', sourceRef: 'Nguồn B' },
   ];
-  assert.deepEqual(nicheLayersForRole(sections, 'homeowner').map((item) => item.sectionNo), [1]);
-  assert.deepEqual(nicheLayersForRole(sections, 'architect').map((item) => item.sectionNo), [2]);
-  assert.deepEqual(nicheLayersForRole(sections, 'contractor').map((item) => item.sectionNo), [1]);
+  sections[1].layers = [{ audienceRole: 'architect', content: 'KTS cần biết.', sourceRef: 'Nguồn C' }];
+  const homeowner = nicheLayersForRole(sections, 'homeowner');
+  const architect = nicheLayersForRole(sections, 'architect');
+  const contractor = nicheLayersForRole(sections, 'contractor');
+  assert.deepEqual(homeowner.map((item) => item.sectionNo), [1, 3, 4, 5, 7, 11]);
+  assert.deepEqual(contractor.map((item) => item.sectionNo), [1, 6, 8, 9, 10]);
+  assert.deepEqual(architect.map((item) => item.sectionNo), [2, 9, 10]);
+  assert.equal(homeowner[0].published, true);
+  assert.equal(homeowner[1].published, false);
+  assert.equal(homeowner[1].content, '');
   assert.deepEqual(nicheLayersForRole(sections, 'unknown'), []);
 });
 
