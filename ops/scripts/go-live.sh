@@ -56,220 +56,23 @@ bash ops/scripts/preflight.sh
 echo '=== 3. Prepare isolated storage/log directories ==='
 bash ops/scripts/setup-storage.sh --apply
 if [[ "$RELEASE_KIND" == cms ]]; then
-  # Backend reads MEDIA_STORAGE_DIR (not MEDIA_ROOT). Never write uploads into release/source.
-  grep -Eq '^MEDIA_STORAGE_DIR=/var/lib/conspace/media/private
-
-echo '=== 4. Stage immutable release and run tests/build ==='
-bash ops/scripts/stage.sh "$SHA"
-RELEASE="/var/www/conspace-releases/$SHA"
-# A public classification may never silently carry new CMS router code.
-if grep -R -Eq '/api/admin|createAdminRouter|admin/auth|adminRouter' "$RELEASE/backend/src"; then
-  [[ "$RELEASE_KIND" == cms ]] || die 'Admin route code detected; release must be classified CMS and independently approved.'
-fi
-if [[ "$RELEASE_KIND" == cms ]]; then
-  bash ops/scripts/cms-nginx-preflight.sh
-fi
-
-echo '=== 5. Back up CONSPACE database + media BEFORE migrations ==='
-bash ops/scripts/backup-all.sh
-# Validate the actual backup by restoring ONLY into temporary scratch DB/media.
-LATEST_BACKUP="$(find /var/backups/conspace -mindepth 2 -maxdepth 2 -type f -name SHA256SUMS -printf '%T@ %h\n' |
-  sort -nr | head -n 1 | cut -d ' ' -f 2-)"
-[[ -n "$LATEST_BACKUP" ]] || die 'No complete CONSPACE backup found for restore verification.'
-bash ops/scripts/restore-drill.sh "$LATEST_BACKUP"
-
-echo '=== 6. Apply only reviewed transactional CONSPACE migrations (NO automatic seed) ==='
-npm run db:migrate --prefix "$RELEASE/backend"
-
-echo '=== 7. Reload only conspace-api and switch frontend ==='
-if [[ -d frontend/dist && ! -L frontend/dist ]]; then
-  OLD_DIST="frontend/dist.before-gate1-$(date -u +%Y%m%dT%H%M%SZ)"
-  mv frontend/dist "$OLD_DIST"
-  echo "Preserved old dist at $OLD_DIST"
-fi
-bash ops/scripts/activate.sh --apply "$SHA"
-if ! bash ops/scripts/fix-static-access.sh; then
-  bash ops/scripts/rollback.sh --apply || true
-  die 'Static asset permission check failed; application rollback attempted.'
-fi
-
-echo '=== 8. Back up, validate and reload only CONSPACE Nginx vhost ==='
-if ! python3 ops/scripts/switch-nginx-gate1.py; then
-  bash ops/scripts/rollback.sh --apply || true
-  die 'Nginx switch failed; its script restores the vhost backup and app rollback was attempted.'
-fi
-
-echo '=== 9. Verify both public HTTPS hostnames ==='
-if ! bash ops/scripts/smoke.sh; then
-  BACKUP="$(cat /var/lib/conspace-ops/last-vhost-backup.txt 2>/dev/null || true)"
-  case "$BACKUP" in
-    /etc/nginx/sites-available/conspace.conf.before-gate1-*)
-      if [[ -f "$BACKUP" ]]; then
-        cp -a "$BACKUP" /etc/nginx/sites-available/conspace.conf
-        nginx -t && systemctl reload nginx
-      else
-        echo 'URGENT: Recorded Nginx backup file is missing.' >&2
-      fi
-      ;;
-    *) echo 'URGENT: Refusing to guess Nginx backup path.' >&2 ;;
-  esac
-  bash ops/scripts/rollback.sh --apply || true
-  die 'Public smoke failed; Nginx restore and application rollback attempted.'
-fi
-
-echo '=== 10. Final process and backup checks ==='
-pm2 describe conspace-api
-pm2 logs conspace-api --lines 30 --nostream || true
-bash ops/scripts/monitor.sh
-printf '\nPASS: CONSPACE deployment verified for main commit %s\n' "$SHA"
-echo 'PM2 dump was NOT saved. Do not run pm2 save until the owner reviews every existing app and explicitly approves it.'
- backend/.env ||
+  # Backend reads MEDIA_STORAGE_DIR, not MEDIA_ROOT. Keep uploads outside releases.
+  grep -Eq '^MEDIA_STORAGE_DIR=/var/lib/conspace/media/private$' backend/.env ||
     die 'CMS requires MEDIA_STORAGE_DIR=/var/lib/conspace/media/private in private backend/.env.'
-  grep -Eq '^PUBLIC_ORIGIN=https://conspace.vn
-
-echo '=== 4. Stage immutable release and run tests/build ==='
-bash ops/scripts/stage.sh "$SHA"
-RELEASE="/var/www/conspace-releases/$SHA"
-# A public classification may never silently carry new CMS router code.
-if grep -R -Eq '/api/admin|createAdminRouter|admin/auth|adminRouter' "$RELEASE/backend/src"; then
-  [[ "$RELEASE_KIND" == cms ]] || die 'Admin route code detected; release must be classified CMS and independently approved.'
-fi
-if [[ "$RELEASE_KIND" == cms ]]; then
-  bash ops/scripts/cms-nginx-preflight.sh
-fi
-
-echo '=== 5. Back up CONSPACE database + media BEFORE migrations ==='
-bash ops/scripts/backup-all.sh
-# Validate the actual backup by restoring ONLY into temporary scratch DB/media.
-LATEST_BACKUP="$(find /var/backups/conspace -mindepth 2 -maxdepth 2 -type f -name SHA256SUMS -printf '%T@ %h\n' |
-  sort -nr | head -n 1 | cut -d ' ' -f 2-)"
-[[ -n "$LATEST_BACKUP" ]] || die 'No complete CONSPACE backup found for restore verification.'
-bash ops/scripts/restore-drill.sh "$LATEST_BACKUP"
-
-echo '=== 6. Apply only reviewed transactional CONSPACE migrations (NO automatic seed) ==='
-npm run db:migrate --prefix "$RELEASE/backend"
-
-echo '=== 7. Reload only conspace-api and switch frontend ==='
-if [[ -d frontend/dist && ! -L frontend/dist ]]; then
-  OLD_DIST="frontend/dist.before-gate1-$(date -u +%Y%m%dT%H%M%SZ)"
-  mv frontend/dist "$OLD_DIST"
-  echo "Preserved old dist at $OLD_DIST"
-fi
-bash ops/scripts/activate.sh --apply "$SHA"
-if ! bash ops/scripts/fix-static-access.sh; then
-  bash ops/scripts/rollback.sh --apply || true
-  die 'Static asset permission check failed; application rollback attempted.'
-fi
-
-echo '=== 8. Back up, validate and reload only CONSPACE Nginx vhost ==='
-if ! python3 ops/scripts/switch-nginx-gate1.py; then
-  bash ops/scripts/rollback.sh --apply || true
-  die 'Nginx switch failed; its script restores the vhost backup and app rollback was attempted.'
-fi
-
-echo '=== 9. Verify both public HTTPS hostnames ==='
-if ! bash ops/scripts/smoke.sh; then
-  BACKUP="$(cat /var/lib/conspace-ops/last-vhost-backup.txt 2>/dev/null || true)"
-  case "$BACKUP" in
-    /etc/nginx/sites-available/conspace.conf.before-gate1-*)
-      if [[ -f "$BACKUP" ]]; then
-        cp -a "$BACKUP" /etc/nginx/sites-available/conspace.conf
-        nginx -t && systemctl reload nginx
-      else
-        echo 'URGENT: Recorded Nginx backup file is missing.' >&2
-      fi
-      ;;
-    *) echo 'URGENT: Refusing to guess Nginx backup path.' >&2 ;;
-  esac
-  bash ops/scripts/rollback.sh --apply || true
-  die 'Public smoke failed; Nginx restore and application rollback attempted.'
-fi
-
-echo '=== 10. Final process and backup checks ==='
-pm2 describe conspace-api
-pm2 logs conspace-api --lines 30 --nostream || true
-bash ops/scripts/monitor.sh
-printf '\nPASS: CONSPACE deployment verified for main commit %s\n' "$SHA"
-echo 'PM2 dump was NOT saved. Do not run pm2 save until the owner reviews every existing app and explicitly approves it.'
- backend/.env ||
-    die 'CMS requires explicit production PUBLIC_ORIGIN=https://conspace.vn.'
-  grep -Eq '^CONTACT_ENCRYPTION_KEY=[[:xdigit:]]{64}
-
-echo '=== 4. Stage immutable release and run tests/build ==='
-bash ops/scripts/stage.sh "$SHA"
-RELEASE="/var/www/conspace-releases/$SHA"
-# A public classification may never silently carry new CMS router code.
-if grep -R -Eq '/api/admin|createAdminRouter|admin/auth|adminRouter' "$RELEASE/backend/src"; then
-  [[ "$RELEASE_KIND" == cms ]] || die 'Admin route code detected; release must be classified CMS and independently approved.'
-fi
-if [[ "$RELEASE_KIND" == cms ]]; then
-  bash ops/scripts/cms-nginx-preflight.sh
-fi
-
-echo '=== 5. Back up CONSPACE database + media BEFORE migrations ==='
-bash ops/scripts/backup-all.sh
-# Validate the actual backup by restoring ONLY into temporary scratch DB/media.
-LATEST_BACKUP="$(find /var/backups/conspace -mindepth 2 -maxdepth 2 -type f -name SHA256SUMS -printf '%T@ %h\n' |
-  sort -nr | head -n 1 | cut -d ' ' -f 2-)"
-[[ -n "$LATEST_BACKUP" ]] || die 'No complete CONSPACE backup found for restore verification.'
-bash ops/scripts/restore-drill.sh "$LATEST_BACKUP"
-
-echo '=== 6. Apply only reviewed transactional CONSPACE migrations (NO automatic seed) ==='
-npm run db:migrate --prefix "$RELEASE/backend"
-
-echo '=== 7. Reload only conspace-api and switch frontend ==='
-if [[ -d frontend/dist && ! -L frontend/dist ]]; then
-  OLD_DIST="frontend/dist.before-gate1-$(date -u +%Y%m%dT%H%M%SZ)"
-  mv frontend/dist "$OLD_DIST"
-  echo "Preserved old dist at $OLD_DIST"
-fi
-bash ops/scripts/activate.sh --apply "$SHA"
-if ! bash ops/scripts/fix-static-access.sh; then
-  bash ops/scripts/rollback.sh --apply || true
-  die 'Static asset permission check failed; application rollback attempted.'
-fi
-
-echo '=== 8. Back up, validate and reload only CONSPACE Nginx vhost ==='
-if ! python3 ops/scripts/switch-nginx-gate1.py; then
-  bash ops/scripts/rollback.sh --apply || true
-  die 'Nginx switch failed; its script restores the vhost backup and app rollback was attempted.'
-fi
-
-echo '=== 9. Verify both public HTTPS hostnames ==='
-if ! bash ops/scripts/smoke.sh; then
-  BACKUP="$(cat /var/lib/conspace-ops/last-vhost-backup.txt 2>/dev/null || true)"
-  case "$BACKUP" in
-    /etc/nginx/sites-available/conspace.conf.before-gate1-*)
-      if [[ -f "$BACKUP" ]]; then
-        cp -a "$BACKUP" /etc/nginx/sites-available/conspace.conf
-        nginx -t && systemctl reload nginx
-      else
-        echo 'URGENT: Recorded Nginx backup file is missing.' >&2
-      fi
-      ;;
-    *) echo 'URGENT: Refusing to guess Nginx backup path.' >&2 ;;
-  esac
-  bash ops/scripts/rollback.sh --apply || true
-  die 'Public smoke failed; Nginx restore and application rollback attempted.'
-fi
-
-echo '=== 10. Final process and backup checks ==='
-pm2 describe conspace-api
-pm2 logs conspace-api --lines 30 --nostream || true
-bash ops/scripts/monitor.sh
-printf '\nPASS: CONSPACE deployment verified for main commit %s\n' "$SHA"
-echo 'PM2 dump was NOT saved. Do not run pm2 save until the owner reviews every existing app and explicitly approves it.'
- backend/.env ||
-    die 'CMS requires a valid 32-byte contact encryption key; value is never printed.'
+  grep -Eq '^PUBLIC_ORIGIN=https://conspace.vn$' backend/.env ||
+    die 'CMS requires explicit PUBLIC_ORIGIN=https://conspace.vn in private backend/.env.'
+  grep -Eq '^CONTACT_ENCRYPTION_KEY=[[:xdigit:]]{64}$' backend/.env ||
+    die 'CMS requires a valid 32-byte contact encryption key; value never printed.'
   bash ops/scripts/storage-audit.sh
 fi
 
 echo '=== 4. Stage immutable release and run tests/build ==='
 bash ops/scripts/stage.sh "$SHA"
 RELEASE="/var/www/conspace-releases/$SHA"
-# A public classification may never silently carry new CMS router code.
+# A public classification must not silently carry a newly wired CMS router.
 if grep -R -Eq '/api/admin|createAdminRouter|admin/auth|adminRouter' "$RELEASE/backend/src"; then
-  [[ "$RELEASE_KIND" == cms ]] || die 'Admin route code detected; release must be classified CMS and independently approved.'
+  [[ "$RELEASE_KIND" == cms ]] ||
+    die 'Admin route code detected; release must be classified CMS and independently approved.'
 fi
 if [[ "$RELEASE_KIND" == cms ]]; then
   bash ops/scripts/cms-nginx-preflight.sh
@@ -277,13 +80,13 @@ fi
 
 echo '=== 5. Back up CONSPACE database + media BEFORE migrations ==='
 bash ops/scripts/backup-all.sh
-# Validate the actual backup by restoring ONLY into temporary scratch DB/media.
+# Restore into a NEW scratch database and media directory before any migration.
 LATEST_BACKUP="$(find /var/backups/conspace -mindepth 2 -maxdepth 2 -type f -name SHA256SUMS -printf '%T@ %h\n' |
   sort -nr | head -n 1 | cut -d ' ' -f 2-)"
 [[ -n "$LATEST_BACKUP" ]] || die 'No complete CONSPACE backup found for restore verification.'
 bash ops/scripts/restore-drill.sh "$LATEST_BACKUP"
 
-echo '=== 6. Apply only reviewed transactional CONSPACE migrations (NO automatic seed) ==='
+echo '=== 6. Apply only reviewed transactional CONSPACE migrations (no automatic seed) ==='
 npm run db:migrate --prefix "$RELEASE/backend"
 
 echo '=== 7. Reload only conspace-api and switch frontend ==='
