@@ -4,7 +4,7 @@ import { READERS } from '../config.js';
 import { useReader } from '../context/ReaderContext.jsx';
 import { useResource } from '../hooks/useResources.js';
 import { apiUrl } from '../lib/api.js';
-import { nicheLayersForRole, chapterPath, addOpenLayerRole, toggleOpenLayerRole } from '../lib/contentModel.js';
+import { nicheLayersForRole, chapterPath, chapterDisplayLabel, addOpenLayerRole, toggleOpenLayerRole } from '../lib/contentModel.js';
 import { Markdown } from '../components/Markdown.jsx';
 import { ArticleCard, Breadcrumbs, PageIntro, ReaderSwitch, SectionHeading, StatusPanel } from '../components/UI.jsx';
 import { Icon } from '../components/Icons.jsx';
@@ -101,7 +101,7 @@ export default function NicheDetailV1() {
         </section>
         <section>
           <SectionHeading eyebrow="CHƯƠNG ĐÃ XUẤT BẢN" title="Từ tủ sách"/>
-          {chapters.length ? <div className="public-link-list">{chapters.map((item) => <Link to={chapterPath(item.bookSlug, item.chapterNo)} key={item.bookSlug + '-' + item.chapterNo}><span><strong>{item.chapterTitle || item.displayLabel}</strong><small>{item.bookTitle || item.bookSlug}</small></span><Icon name="arrow" size={17}/></Link>)}</div> : <StatusPanel status="empty" compact title="Chưa có chương sách liên quan"/>}
+          {chapters.length ? <div className="public-link-list">{chapters.map((item) => <Link to={chapterPath(item.bookSlug, item.chapterNo)} key={item.bookSlug + '-' + item.chapterNo}><span><strong>{chapterDisplayLabel(item.bookSlug, item.chapterNo, item.chapterTitle || item.displayLabel)}</strong><small>{item.bookTitle || item.bookSlug}</small></span><Icon name="arrow" size={17}/></Link>)}</div> : <StatusPanel status="empty" compact title="Chưa có chương sách liên quan"/>}
         </section>
       </div>
 
