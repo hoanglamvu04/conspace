@@ -91,8 +91,19 @@ test('ok:false payload rejects even with HTTP 200',async t=>{
   await assert.rejects(()=>adminRequest('/articles'),/Lỗi có thật/);
 });
 
-test('explicit backend permission grants override role fallback', () => {
-  assert.equal(hasPermission({ role: 'ADMIN', permissions: ['articles:publish'] }, 'articles:publish'), true);
-  assert.equal(hasPermission({ role: 'EDITOR_IN_CHIEF', permissions: [] }, 'articles:publish'), false);
+test('primary role permissions remain available when delegated grants are empty', () => {
+  assert.equal(hasPermission({ role: 'ADMIN', permissions: [] }, 'dashboard:read'), true);
+  assert.equal(hasPermission({ role: 'ADMIN', permissions: [] }, 'articles:read'), true);
+  assert.equal(hasPermission({ role: 'ADMIN', permissions: [] }, 'users:read'), true);
+  assert.equal(hasPermission({ role: 'ADMIN', permissions: [] }, 'users:write'), true);
+  assert.equal(hasPermission({ role: 'ADMIN', permissions: [] }, 'articles:publish'), false);
+  assert.equal(hasPermission({ role: 'ADMIN', permissions: [] }, 'reviews:read'), false);
+  assert.equal(hasPermission({ role: 'EDITOR_IN_CHIEF', permissions: [] }, 'articles:publish'), true);
+});
+
+test('delegated backend permissions add only their mapped UI capabilities', () => {
+  assert.equal(hasPermission({ role: 'ADMIN', permissions: ['CONTENT_PUBLISH'] }, 'articles:publish'), true);
+  assert.equal(hasPermission({ role: 'ADMIN', permissions: ['CONTENT_PUBLISH'] }, 'niches:publish'), true);
+  assert.equal(hasPermission({ role: 'ADMIN', permissions: ['CONTENT_WITHDRAW'] }, 'articles:withdraw'), true);
   assert.equal(hasPermission({ role: 'ADMIN', grants: ['users:write'] }, 'users:write'), true);
 });

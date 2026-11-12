@@ -92,9 +92,33 @@ export const ROLE_PERMISSIONS = Object.freeze({
 });
 export function hasPermission(user, permission) {
   if (!user) return false;
-  const serverPermissions = Array.isArray(user.permissions) ? user.permissions : Array.isArray(user.grants) ? user.grants : null;
-  if (serverPermissions) return serverPermissions.includes(permission);
-  return ROLE_PERMISSIONS[user.role]?.includes(permission) || false;
+
+  // ROLE_PERMISSIONS are the baseline UI capabilities for the primary,
+  // server-verified CMS role. Backend "permissions" contains only additive
+  // delegated grants (currently CONTENT_PUBLISH / CONTENT_WITHDRAW), not the
+  // complete effective permission set. An empty array must not erase the
+  // baseline role permissions, otherwise a normal ADMIN cannot even open
+  // the dashboard or user-management screen.
+  const baseline = ROLE_PERMISSIONS[user.role] || [];
+  const delegated = Array.isArray(user.permissions)
+    ? user.permissions
+    : Array.isArray(user.grants) ? user.grants : [];
+
+  const delegatedUi = new Set();
+  for (const grant of delegated) {
+    if (grant === 'CONTENT_PUBLISH') {
+      delegatedUi.add('articles:publish');
+      delegatedUi.add('niches:publish');
+      delegatedUi.add('questions:publish');
+      delegatedUi.add('dictionary:publish');
+    } else if (grant === 'CONTENT_WITHDRAW') {
+      delegatedUi.add('articles:withdraw');
+    } else if (typeof grant === 'string') {
+      delegatedUi.add(grant);
+    }
+  }
+
+  return baseline.includes(permission) || delegatedUi.has(permission);
 }
 
 export function isSafeMedia(url) {
