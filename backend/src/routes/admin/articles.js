@@ -58,8 +58,8 @@ export function createArticlesRouter(db=pool, editorial=createEditorialService(d
   router.get('/:id/revisions',asyncHandler(async(req,res)=>{
     const {id}=validate(idSchema,req.params);
     const result=await db.query(
-      'SELECT id,version_no AS "versionNo",snapshot,change_reason AS "changeReason",created_at AS "createdAt",u.display_name AS "createdBy" '+
-      'FROM conspace.article_revisions r LEFT JOIN conspace.cms_users u ON u.id=r.created_by_user_id WHERE article_id=$1 ORDER BY version_no DESC',
+      'SELECT r.id,r.version_no AS "versionNo",r.snapshot,r.change_reason AS "changeReason",r.created_at AS "createdAt",u.display_name AS "createdBy" '+
+      'FROM conspace.article_revisions r LEFT JOIN conspace.cms_users u ON u.id=r.created_by_user_id WHERE r.article_id=$1 ORDER BY r.version_no DESC',
       [id]
     );
     res.json({ok:true,data:result.rows});

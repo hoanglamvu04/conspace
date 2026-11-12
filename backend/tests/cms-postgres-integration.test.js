@@ -97,6 +97,10 @@ test('real PostgreSQL flow: login -> create -> technical review -> chief review 
   assert.equal(created.status,201,JSON.stringify(created.body));
   const id=created.body.data.id;
   assert.ok(id);
+  const edited=await editorApi('PATCH','/api/admin/articles/'+id,{
+    title:'Ghi chép đã biên tập',changeReason:'Hiệu đính nội dung trước khi duyệt',
+  });
+  assert.equal(edited.status,200,JSON.stringify(edited.body));
 
   const hidden=await api(base)('GET','/api/v1/articles/'+slug);
   assert.equal(hidden.status,404);
@@ -136,7 +140,8 @@ test('real PostgreSQL flow: login -> create -> technical review -> chief review 
 
   const history=await editorApi('GET','/api/admin/articles/'+id+'/revisions');
   assert.equal(history.status,200);
-  assert.ok(history.body.data.length>=1);
+  assert.ok(history.body.data.length>=2);
+  assert.equal(history.body.data[0].snapshot.title,'Ghi chép đã biên tập');
 
   const audit=await pool.query("SELECT action FROM conspace.audit_logs WHERE entity_id=$1 ORDER BY created_at",[id]);
   assert.ok(audit.rows.some(x=>x.action==='ARTICLE_PUBLISHED'));

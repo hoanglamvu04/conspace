@@ -151,15 +151,12 @@ export function createEditorialService(db = pool) {
         if (!['DRAFT','NEEDS_CHANGES'].includes(before.status)) {
           throw new RequestError(409,'INVALID_STATE','Only draft or returned articles can be edited');
         }
-        const snapshot = await snapshotArticle(client,id);
+        const beforeSnapshot = await snapshotArticle(client,id);
         const version = await client.query(
           'SELECT COALESCE(max(version_no),0)::integer + 1 AS next FROM conspace.article_revisions WHERE article_id=$1',
           [id]
         );
-        await client.query(
-          'INSERT INTO conspace.article_revisions (article_id,version_no,snapshot,change_reason,created_by_user_id) VALUES ($1,$2,$3::jsonb,$4,$5)',
-          [id,version.rows[0].next,JSON.stringify(snapshot),input.changeReason ?? null,actor.id]
-        );
+
         const flags = input.sensitivityFlags ?? before.sensitivity_flags;
         const requiresChief = flags.some((flag) => CHIEF_FLAGS.has(flag));
         const updated = await client.query(
@@ -175,8 +172,12 @@ export function createEditorialService(db = pool) {
         );
         await replaceArticleRelations(client,id,input);
         const after = await snapshotArticle(client,id);
-        await writeAudit(client,{actorUserId:actor.id,action:'ARTICLE_UPDATED',entityType:'ARTICLE',entityId:id,before,after,req});
-        return after ? updated.rows[0] : updated.rows[0];
+        await client.query(
+          'INSERT INTO conspace.article_revisions (article_id,version_no,snapshot,change_reason,created_by_user_id) VALUES ($1,$2,$3::jsonb,$4,$5)',
+          [id,version.rows[0].next,JSON.stringify(after),input.changeReason ?? null,actor.id]
+        );
+        await writeAudit(client,{actorUserId:actor.id,action:'ARTICLE_UPDATED',entityType:'ARTICLE',entityId:id,before:beforeSnapshot,after,req});
+        return updated.rows[0];
       });
     },
 
