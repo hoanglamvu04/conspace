@@ -23,17 +23,24 @@ export const termsQuerySchema = strict({
 });
 
 const cursorSchema = strict({
-  v: z.literal(1),
+  v: z.literal(2),
   publishedAt: z.string().datetime({ offset: true }),
   id: z.string().uuid(),
+  rank: z.number().int().min(0).max(2),
+  role: z.enum(['homeowner', 'architect', 'contractor']).nullable(),
+  niche: slug.nullable(),
 });
 
-export function encodeCursor(row) {
-  return Buffer.from(JSON.stringify({
-    v: 1,
+export function encodeCursor(row, { role = null, niche = null } = {}) {
+  const value = cursorSchema.parse({
+    v: 2,
     publishedAt: new Date(row.publishedAt).toISOString(),
     id: row.id,
-  }), 'utf8').toString('base64url');
+    rank: row.audienceRank ?? 0,
+    role,
+    niche,
+  });
+  return Buffer.from(JSON.stringify(value), 'utf8').toString('base64url');
 }
 
 export function decodeCursor(value) {
