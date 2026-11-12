@@ -37,7 +37,8 @@ test('niche detail fetches all public layers from one URL and renders accessible
 });
 
 test('books, field notes, reader questions and quick search use real public API resources', () => {
-  for (const endpoint of ["apiUrl('/books')", "apiUrl('/field-notes/", "apiUrl('/questions", "apiUrl('/search'"]) assert.ok(publicPages.includes(endpoint), 'Missing API use ' + endpoint);
+  for (const endpoint of ["apiUrl('/books', { role: reader })", "useFieldNotes(null, 12, offset, reader)", "apiUrl('/search'"]) assert.ok(publicPages.includes(endpoint), 'Missing API use ' + endpoint);
+  assert.ok(publicPages.includes('useQuestions('), 'Reader questions must use the public questions API hook.');
   assert.ok(publicPages.includes("postJson('/questions', payload)"));
   assert.ok(publicPages.includes('useFieldNotes(null, 12, offset, reader)'), 'Field notes must use the selected reader lens.');
   assert.ok(publicPages.includes('publishedChapterCount'));
