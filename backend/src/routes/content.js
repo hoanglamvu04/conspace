@@ -20,6 +20,7 @@ export function createContentRouter(repository = createContentRepository()) {
   router.get('/articles', handle(async (req, res) => {
     const params = validate(articlesQuerySchema, req.query);
     const cursor = decodeCursor(params.cursor);
+    if(cursor?.v===2&&cursor.role!==params.role)throw new RequestError(400,'VALIDATION_ERROR','Pagination cursor belongs to a different reader lens');
     const rows = await repository.articles({ ...params, cursor });
     const hasMore = rows.length > params.limit;
     const data = rows.slice(0, params.limit).map((row) => ({
@@ -28,10 +29,10 @@ export function createContentRouter(repository = createContentRepository()) {
       publishedAt: new Date(row.publishedAt).toISOString(),
       author: { displayName: row.authorName, verified: row.authorVerified },
     }));
-    const last = data[data.length - 1];
+    const last = rows[params.limit - 1];
     res.json({
       ok: true, data,
-      meta: { nextCursor: hasMore && last ? encodeCursor(last) : null },
+      meta: { nextCursor: hasMore && last ? encodeCursor(last,params.role&&cursor?.v!==1?params.role:null) : null, preferredAudienceRole:params.role??'homeowner' },
     });
   }));
 

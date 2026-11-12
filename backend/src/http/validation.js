@@ -22,34 +22,37 @@ export const termsQuerySchema = strict({
   limit: limit(20),
 });
 
-const cursorSchema = strict({
+const cursorSchemaV1 = strict({
   v: z.literal(1),
   publishedAt: z.string().datetime({ offset: true }),
   id: z.string().uuid(),
 });
-
-export function encodeCursor(row) {
-  return Buffer.from(JSON.stringify({
-    v: 1,
-    publishedAt: new Date(row.publishedAt).toISOString(),
-    id: row.id,
-  }), 'utf8').toString('base64url');
+const cursorSchemaV2 = strict({
+  v: z.literal(2),
+  role: z.enum(['homeowner','architect','contractor']),
+  preferenceRank: z.union([z.literal(0),z.literal(1)]),
+  publishedAt: z.string().datetime({ offset: true }),
+  id: z.string().uuid(),
+});
+export function encodeCursor(row, role = null) {
+  const base={publishedAt:new Date(row.publishedAt).toISOString(),id:row.id};
+  const value=role?{v:2,role,preferenceRank:row.preferenceRank,...base}:{v:1,...base};
+  return Buffer.from(JSON.stringify(value),'utf8').toString('base64url');
 }
-
 export function decodeCursor(value) {
-  if (!value) return null;
-  try {
-    if (!/^[A-Za-z0-9_-]+$/.test(value)) throw new Error('Invalid encoding');
-    const text = Buffer.from(value, 'base64url').toString('utf8');
-    if (Buffer.from(text, 'utf8').toString('base64url') !== value) {
-      throw new Error('Noncanonical cursor');
-    }
-    return cursorSchema.parse(JSON.parse(text));
-  } catch {
-    throw new RequestError(400, 'VALIDATION_ERROR', 'Invalid pagination cursor');
+  if(!value)return null;
+  try{
+    if(!/^[A-Za-z0-9_-]+$/.test(value))throw new Error('Invalid encoding');
+    const text=Buffer.from(value,'base64url').toString('utf8');
+    if(Buffer.from(text,'utf8').toString('base64url')!==value)throw new Error('Noncanonical cursor');
+    const parsed=JSON.parse(text);
+    if(parsed?.v===1)return cursorSchemaV1.parse(parsed);
+    if(parsed?.v===2)return cursorSchemaV2.parse(parsed);
+    throw new Error('Unsupported cursor version');
+  }catch{
+    throw new RequestError(400,'VALIDATION_ERROR','Invalid pagination cursor');
   }
 }
-
 export class RequestError extends Error {
   constructor(status, code, message) {
     super(message);
