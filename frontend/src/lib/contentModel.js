@@ -23,3 +23,14 @@ export function nicheLayersForRole(sections, role) {
     return layer ? [{ sectionNo: section.sectionNo, key: section.key, title: section.title, content: layer.content, sourceRef: layer.sourceRef || null }] : [];
   });
 }
+
+export function addOpenLayerRole(current, selectedRole) {
+  const roles = Array.isArray(current) ? current : [];
+  return roles.includes(selectedRole) ? roles : [...roles, selectedRole];
+}
+
+export function toggleOpenLayerRole(current, role, open) {
+  const roles = Array.isArray(current) ? current : [];
+  if (open) return addOpenLayerRole(roles, role);
+  return roles.filter((item) => item !== role);
+}
