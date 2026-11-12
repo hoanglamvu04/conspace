@@ -10,7 +10,9 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "test": "node --test tests/*.test.js",
-    "check": "node --check src/server.js && node --check src/app.js && node --check src/config/env.js && node --check src/database/pool.js"
+    "check": "node --check src/server.js && node --check src/app.js && node --check src/config/env.js && node --check src/database/pool.js && node --check src/database/migrate.js && node --check src/database/seed.js && node --check src/http/validation.js && node --check src/repositories/content.js && node --check src/routes/content.js",
+    "db:migrate": "node src/database/migrate.js",
+    "db:seed": "node src/database/seed.js"
   },
   "dependencies": {
     "cors": "2.8.5",

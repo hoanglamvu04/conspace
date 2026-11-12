@@ -4,6 +4,8 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import { env } from './config/env.js';
 import { isDatabaseReady } from './database/pool.js';
+import { createContentRouter } from './routes/content.js';
+import { errorMiddleware } from './http/validation.js';
 
 export const app = express();
 app.disable('x-powered-by');
@@ -23,12 +25,11 @@ if (env.nodeEnv !== 'test') {
   app.use(morgan(env.nodeEnv === 'production' ? 'combined' : 'dev'));
 }
 
-// Liveness: Express process works (no DB side effects).
+// Preserve Gate 1 health contracts exactly.
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, service: 'conspace-api', stage: 'gate1' });
 });
 
-// Readiness: local PostgreSQL query works. Does not expose secrets.
 app.get('/api/ready', async (_req, res) => {
   const ready = await isDatabaseReady();
   res.status(ready ? 200 : 503).json({
@@ -38,9 +39,13 @@ app.get('/api/ready', async (_req, res) => {
   });
 });
 
+app.use('/api/v1', createContentRouter());
+
 app.use('/api', (_req, res) => {
   res.status(404).json({
     ok: false,
     error: { code: 'NOT_FOUND', message: 'API endpoint not found' },
   });
 });
+
+app.use(errorMiddleware);
