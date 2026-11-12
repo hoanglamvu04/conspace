@@ -50,8 +50,8 @@ export function useFieldNotes(niche = null, limit = 12, offset = 0) {
   return useResource(apiUrl('/field-notes', { niche, limit, offset }));
 }
 
-export function useQuestions() {
-  return useResource(apiUrl('/questions'));
+export function useQuestions(page = 1, limit = 30) {
+  return useResource(apiUrl('/questions', { page, limit }));
 }
 
 export function useTerms(query, enabled = true) {
