@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { ReaderProvider } from './context/ReaderContext.jsx';
 import { Footer, Header } from './components/UI.jsx';
@@ -6,6 +6,9 @@ import Home from './pages/Home.jsx';
 import { NicheDetail, NicheDirectory } from './pages/Niches.jsx';
 import { ArticleDetail, ArticleIndex } from './pages/Articles.jsx';
 import { About, Dictionary, FieldNotes, Library, Lookup, NotFound, Principles } from './pages/Sections.jsx';
+
+// Separate route bundle: readers never download the private CMS application.
+const AdminApp = lazy(() => import('./admin/AdminApp.jsx'));
 
 const META = {
   '/': ['Một công trình. Ba góc nhìn.', 'Nơi chủ nhà, kiến trúc sư và nhà thầu đọc được câu chuyện của nhau.'],
@@ -19,7 +22,6 @@ const META = {
   '/ve-conspace': ['Về CONSPACE', 'Định vị và tư cách biên tập độc lập của CONSPACE.'],
   '/quy-tac-noi-dung': ['Quy tắc nội dung', 'Các nguyên tắc biên tập công khai của CONSPACE.'],
 };
-
 function DocumentMeta() {
   const { pathname } = useLocation();
   useEffect(() => {
@@ -36,14 +38,16 @@ function DocumentMeta() {
   }, [pathname]);
   return null;
 }
-
 function ScrollManager() {
   const { pathname } = useLocation();
   useEffect(() => { window.scrollTo({ top: 0, behavior: 'instant' }); }, [pathname]);
   return null;
 }
-
 function Site() {
+  const { pathname } = useLocation();
+  if (pathname === '/admin' || pathname.startsWith('/admin/')) {
+    return <Suspense fallback={<div role="status" aria-live="polite" style={{ padding: 48, fontFamily: 'sans-serif' }}>Đang tải tòa soạn CONSPACE…</div>}><AdminApp/></Suspense>;
+  }
   return <><DocumentMeta/><ScrollManager/><a className="skip-link" href="#main-content">Bỏ qua điều hướng, đến nội dung</a><Header/><div id="main-content"><Routes>
     <Route path="/" element={<Home/>}/>
     <Route path="/ngach" element={<NicheDirectory/>}/>
@@ -61,7 +65,4 @@ function Site() {
     <Route path="*" element={<NotFound/>}/>
   </Routes></div><Footer/></>;
 }
-
-export default function App() {
-  return <BrowserRouter><ReaderProvider><Site/></ReaderProvider></BrowserRouter>;
-}
+export default function App(){return <BrowserRouter><ReaderProvider><Site/></ReaderProvider></BrowserRouter>;}

@@ -3,14 +3,12 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "engines": {
-    "node": ">=22.0.0"
-  },
+  "engines": { "node": ">=22.0.0" },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "test": "node --test src/lib/*.test.js"
+    "test": "node --test src/lib/*.test.js src/admin/*.test.js"
   },
   "dependencies": {
     "react": "18.3.1",
