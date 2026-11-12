@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiUrl, getJson, requireList } from '../lib/api.js';
+import { mergePriorityPages, sortByPriorityIds } from '../lib/readerLens.js';
 
 export function useResource(url, options = {}) {
   const enabled = options.enabled ?? true;
@@ -37,6 +38,22 @@ export function useNiches(group) {
   return useResource(apiUrl('/niches', group ? { group } : {}));
 }
 
+export function useFeed() {
+  return useResource(apiUrl('/feed', { limit: 6 }), { list: false });
+}
+
+export function useBooks() {
+  return useResource(apiUrl('/books'));
+}
+
+export function useFieldNotes(niche = null, limit = 12, offset = 0) {
+  return useResource(apiUrl('/field-notes', { niche, limit, offset }));
+}
+
+export function useQuestions() {
+  return useResource(apiUrl('/questions'));
+}
+
 export function useTerms(query, enabled = true) {
   return useResource(apiUrl('/terms', { q: query, limit: 20 }), { enabled });
 }
@@ -45,46 +62,75 @@ export function useArticles(role, niche, limit = 9) {
   const [revision, setRevision] = useState(0);
   const [state, setState] = useState({ status: 'loading', data: [], error: null, nextCursor: null, loadingMore: false });
   const controllerRef = useRef(null);
-  const nextRef = useRef(null);
+  const nextAllRef = useRef(null);
+  const nextPriorityRef = useRef(null);
+  const priorityIdsRef = useRef(new Set());
   const busyRef = useRef(false);
 
   useEffect(() => {
     const controller = new AbortController();
     controllerRef.current = controller;
-    nextRef.current = null;
+    nextAllRef.current = null;
+    nextPriorityRef.current = null;
+    priorityIdsRef.current = new Set();
     busyRef.current = false;
     setState({ status: 'loading', data: [], error: null, nextCursor: null, loadingMore: false });
-    getJson(apiUrl('/articles', { role, niche, limit }), { signal: controller.signal })
-      .then((payload) => {
-        if (controller.signal.aborted) return;
-        const data = requireList(payload);
-        nextRef.current = typeof payload.meta?.nextCursor === 'string' && payload.meta.nextCursor ? payload.meta.nextCursor : null;
-        setState({ status: 'success', data, error: null, nextCursor: nextRef.current, loadingMore: false });
-      })
-      .catch((error) => {
-        if (!controller.signal.aborted) setState({ status: 'error', data: [], error, nextCursor: null, loadingMore: false });
-      });
+    const allUrl = apiUrl('/articles', { niche, limit });
+    const priorityUrl = role ? apiUrl('/articles', { role, niche, limit }) : null;
+    Promise.all([
+      getJson(allUrl, { signal: controller.signal }),
+      priorityUrl ? getJson(priorityUrl, { signal: controller.signal }).catch(() => null) : Promise.resolve(null),
+    ]).then(([allPayload, priorityPayload]) => {
+      if (controller.signal.aborted) return;
+      const allData = requireList(allPayload);
+      const priorityData = priorityPayload ? requireList(priorityPayload) : [];
+      priorityIdsRef.current = new Set(priorityData.map((item) => item.id));
+      nextAllRef.current = typeof allPayload.meta?.nextCursor === 'string' && allPayload.meta.nextCursor ? allPayload.meta.nextCursor : null;
+      nextPriorityRef.current = typeof priorityPayload?.meta?.nextCursor === 'string' && priorityPayload.meta.nextCursor ? priorityPayload.meta.nextCursor : null;
+      const merged = sortByPriorityIds(mergePriorityPages(priorityData, allData), priorityIdsRef.current);
+      setState({ status: 'success', data: merged, error: null, nextCursor: nextAllRef.current, loadingMore: false });
+    }).catch((error) => {
+      if (!controller.signal.aborted) setState({ status: 'error', data: [], error, nextCursor: null, loadingMore: false });
+    });
     return () => { controller.abort(); controllerRef.current = null; };
   }, [role, niche, limit, revision]);
 
   const loadMore = useCallback(async () => {
     const controller = controllerRef.current;
-    if (!controller || controller.signal.aborted || !nextRef.current || busyRef.current) return;
+    if (!controller || controller.signal.aborted || !nextAllRef.current || busyRef.current) return;
     busyRef.current = true;
     setState((current) => ({ ...current, loadingMore: true, error: null }));
     try {
-      const payload = await getJson(apiUrl('/articles', { role, niche, limit, cursor: nextRef.current }), { signal: controller.signal });
-      const data = requireList(payload);
+      const allUrl = apiUrl('/articles', { niche, limit, cursor: nextAllRef.current });
+      const priorityUrl = role && nextPriorityRef.current
+        ? apiUrl('/articles', { role, niche, limit, cursor: nextPriorityRef.current })
+        : null;
+      const [allPayload, priorityPayload] = await Promise.all([
+        getJson(allUrl, { signal: controller.signal }),
+        priorityUrl ? getJson(priorityUrl, { signal: controller.signal }).catch(() => null) : Promise.resolve(null),
+      ]);
       if (controller.signal.aborted) return;
-      const cursor = typeof payload.meta?.nextCursor === 'string' && payload.meta.nextCursor ? payload.meta.nextCursor : null;
-      // A misbehaving cursor must not create a loop.
-      nextRef.current = cursor === nextRef.current ? null : cursor;
-      setState((current) => ({ ...current, status: 'success', data: [...current.data, ...data.filter((item) => !current.data.some((old) => old.id === item.id))], nextCursor: nextRef.current, loadingMore: false }));
+      const allData = requireList(allPayload);
+      const priorityData = priorityPayload ? requireList(priorityPayload) : [];
+      priorityData.forEach((item) => priorityIdsRef.current.add(item.id));
+      const allCursor = typeof allPayload.meta?.nextCursor === 'string' && allPayload.meta.nextCursor ? allPayload.meta.nextCursor : null;
+      const priorityCursor = typeof priorityPayload?.meta?.nextCursor === 'string' && priorityPayload.meta.nextCursor ? priorityPayload.meta.nextCursor : null;
+      nextAllRef.current = allCursor;
+      nextPriorityRef.current = priorityCursor;
+      setState((current) => ({
+        ...current,
+        status: 'success',
+        data: sortByPriorityIds(mergePriorityPages([...priorityData, ...current.data], allData), priorityIdsRef.current),
+        nextCursor: allCursor,
+        loadingMore: false,
+      }));
     } catch (error) {
       if (!controller.signal.aborted) setState((current) => ({ ...current, loadingMore: false, error }));
     } finally {
       busyRef.current = false;
     }
   }, [role, niche, limit]);
-  return { ...state, retry: () => setRevision((n) => n + 1), loadMore };
+
+  const retry = useCallback(() => setRevision((current) => current + 1), []);
+  return { ...state, retry, loadMore };
 }
