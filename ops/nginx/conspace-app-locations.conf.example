@@ -1,9 +1,17 @@
-# REFERENCE SNIPPETS, NOT A STANDALONE NGINX SERVER BLOCK.
-# Only OPS should apply after backing up the existing Certbot-managed conspace vhost.
-# Keep the existing server_name, HTTPS certificates, HTTP redirect, and /__infra/health location.
+# REFERENCE ONLY; NOT A STANDALONE VHOST.
+# Back up exact CONSPACE vhost and nginx -t BEFORE edits. Preserve Certbot TLS,
+# both hostnames, existing HTTP redirect, ACME handling and /__infra/health.
+# Add inside EXISTING HTTPS server block:
 #
-# In the existing HTTPS server block, add:
-#
+# location = /api {
+#     proxy_pass http://127.0.0.1:5088;
+#     proxy_set_header Host $host;
+#     proxy_set_header X-Real-IP $remote_addr;
+#     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#     proxy_set_header X-Forwarded-Proto $scheme;
+#     proxy_connect_timeout 5s;
+#     proxy_read_timeout 30s;
+# }
 # location ^~ /api/ {
 #     proxy_pass http://127.0.0.1:5088;
 #     proxy_set_header Host $host;
@@ -14,12 +22,11 @@
 #     proxy_read_timeout 30s;
 # }
 #
-# Replace the existing location / (do NOT duplicate it):
-#
+# REPLACE existing location / (never duplicate) in HTTPS block:
 # root /var/www/conspace/frontend/dist;
 # index index.html;
 # location / {
 #     try_files $uri $uri/ /index.html;
 # }
 #
-# Test using sudo nginx -t BEFORE reload.
+# Keep all other sites unchanged. nginx -t BEFORE reload; never restart nginx.
