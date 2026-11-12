@@ -1,5 +1,7 @@
 # CONSPACE — 3 chat, 1 nhánh main
 
+**Chuẩn sản phẩm bắt buộc (v1.0):** [`INFORMATION_ARCHITECTURE_EDITORIAL_GOVERNANCE_V1.md`](INFORMATION_ARCHITECTURE_EDITORIAL_GOVERNANCE_V1.md). BE/FE/Ops phải đọc và triển khai theo cùng bản này. Thay đổi chuẩn cần chủ dự án chấp thuận, không tự sửa.
+
 Quyết định của chủ dự án (12/11/2026): **Backend, Frontend và DevOps đều commit trực tiếp lên `main`**, không tạo 3 nhánh mới hay PR cho các việc thông thường.
 
 ## Phạm vi bắt buộc

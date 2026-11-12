@@ -4,6 +4,10 @@ CONSPACE là cổng tri thức và cộng đồng ngành xây dựng. Dự án k
 
 **Trạng thái:** Codebase kỹ thuật Gate 1. Trang frontend hiện chỉ là trang kiểm thử kỹ thuật; chưa phải giao diện hoặc nội dung CONSPACE chính thức.
 
+## Product baseline v1.0
+
+Tài liệu chuẩn đã chốt: [`docs/INFORMATION_ARCHITECTURE_EDITORIAL_GOVERNANCE_V1.md`](docs/INFORMATION_ARCHITECTURE_EDITORIAL_GOVERNANCE_V1.md). Ba chat BE/FE/Ops phải dùng chung chuẩn này; dùng `main`, làm việc local trước, không tự deploy VPS.
+
 ## Kiến trúc
 
 - `frontend/`: React 18 + Vite, JavaScript JSX, sử dụng API cùng origin `/api`.
