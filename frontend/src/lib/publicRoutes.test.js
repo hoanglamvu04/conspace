@@ -6,6 +6,7 @@ const app = readFileSync(new URL('../App.jsx', import.meta.url), 'utf8');
 const home = readFileSync(new URL('../pages/HomeV1.jsx', import.meta.url), 'utf8');
 const niche = readFileSync(new URL('../pages/NicheDetailV1.jsx', import.meta.url), 'utf8');
 const publicPages = readFileSync(new URL('../pages/PublicPages.jsx', import.meta.url), 'utf8');
+const config = readFileSync(new URL('../config.js', import.meta.url), 'utf8');
 
 test('IA public routes include the new sections and keep legacy aliases working', () => {
   for (const route of ['/tu-sach', '/ngach', '/hien-truong', '/hoi-dap', '/tra-nhanh', '/tra-cuu', '/tu-dien', '/ban-nghe']) {
@@ -18,7 +19,7 @@ test('IA public routes include the new sections and keep legacy aliases working'
 });
 
 test('homepage keeps the architectural drawing and presents three reader choices without a carousel', () => {
-  for (const label of ['Tôi sắp xây nhà', 'Tôi là kiến trúc sư', 'Tôi là nhà thầu']) assert.ok(home.includes(label));
+  for (const label of ['Tôi sắp xây nhà', 'Tôi là kiến trúc sư', 'Tôi là nhà thầu']) assert.ok(config.includes(label));
   assert.match(home, /ConstructionDrawing/);
   assert.doesNotMatch(home, /carousel/i);
 });
