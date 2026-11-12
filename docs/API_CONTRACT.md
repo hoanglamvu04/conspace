@@ -37,7 +37,7 @@ When unavailable: HTTP 503 and `{"ok":false,"service":"conspace-api","checks":{"
 
 ### GET /api/v1/niches?group=design|construction
 
-Returns active, source-backed niches only.
+Returns active, source-backed niches only. Niche detail is available at `GET /api/v1/niches/:slug?role=homeowner|architect|contractor`; the optional reader lens changes preference/order only and never filters away another audience layer.
 
 ```json
 {"ok":true,"data":[{"id":"uuid","slug":"house","name":"HOUSE","group":"design","summary":"","articleCount":0}],"meta":{"total":1}}
@@ -181,7 +181,7 @@ Review endpoints:
 - `POST /reviews/niche-sections/:id/start` with `{templateType}`
 - `POST /reviews/niche-sections/:id/decision` with `{templateType,stage,decision,reason}`
 
-The creator and the mapped author cannot review or approve their own article. The same creator self-approval restriction applies to terms and Q&A answers. Admin cannot bypass this rule. Review reasons are mandatory and retained.
+The creator and mapped author cannot review or approve their own article. The same self-review restriction applies to terms, Q&A answers and niche sections. Identity checks compare `personId`, so two CMS accounts linked to the same real staff member are still treated as one person. ADMIN cannot bypass this rule. Review reasons are mandatory and retained.
 
 ### Niches
 
