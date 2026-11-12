@@ -26,7 +26,7 @@ const chapterPatch=chapterSchema.omit({bookId:true,chapterNo:true}).partial();
 
 export function createBooksRouter(db=pool){
   const router=Router();
-  router.use(requireRoles('ADMIN','EDITOR'));
+  router.use(requireRoles('EDITOR','EDITOR_IN_CHIEF'));
 
   router.get('/',asyncHandler(async(req,res)=>{
     const result=await db.query(
@@ -85,7 +85,7 @@ export function createBooksRouter(db=pool){
 
 export function createChaptersRouter(db=pool){
   const router=Router();
-  router.use(requireRoles('ADMIN','EDITOR'));
+  router.use(requireRoles('EDITOR','EDITOR_IN_CHIEF'));
 
   router.get('/',asyncHandler(async(req,res)=>{
     const query=validate(z.strictObject({bookId:uuid.optional()}),req.query);
@@ -146,7 +146,7 @@ export function createChaptersRouter(db=pool){
     res.json({ok:true,data:result});
   }));
 
-  router.delete('/:id',requireRoles('ADMIN'),asyncHandler(async(req,res)=>{
+  router.delete('/:id',requireRoles('EDITOR','EDITOR_IN_CHIEF'),asyncHandler(async(req,res)=>{
     const id=validate(z.strictObject({id:uuid}),req.params).id;
     const result=await inTransaction(db,async(client)=>{
       const current=await client.query('SELECT * FROM conspace.book_chapters WHERE id=$1 FOR UPDATE',[id]);

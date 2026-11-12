@@ -7,6 +7,11 @@ import { createEditorialService } from '../../services/editorial.js';
 import { inTransaction, writeAudit, writeWorkflowEvent } from '../../services/audit.js';
 
 const uuid=z.string().uuid();
+async function assertDifferentPerson(client,authorId,reviewer){
+ if(!authorId)return;
+ const r=await client.query('SELECT a.person_id AS author_person_id,v.person_id AS reviewer_person_id FROM conspace.cms_users a JOIN conspace.cms_users v ON v.id=$2 WHERE a.id=$1',[authorId,reviewer.id]);
+ if(r.rows[0]?.author_person_id===r.rows[0]?.reviewer_person_id)throw new RequestError(403,'AUTHOR_CANNOT_APPROVE','The author and reviewer must be different people');
+}
 const decisionSchema=z.strictObject({
   stage:z.enum(['TECHNICAL','EDITOR_IN_CHIEF']),
   decision:z.enum(['APPROVED','REQUEST_CHANGES','REJECTED']),
@@ -25,7 +30,7 @@ async function reviewerAuthor(client,user){
 
 export function createReviewsRouter(db=pool,editorial=createEditorialService(db)){
   const router=Router();
-  router.use(requireRoles('ADMIN','TECHNICAL_REVIEWER','EDITOR_IN_CHIEF'));
+  router.use(requireRoles('TECHNICAL_REVIEWER','EDITOR_IN_CHIEF'));
 
   router.get('/queue',asyncHandler(async(req,res)=>{
     const stage=validate(z.strictObject({stage:z.enum(['TECHNICAL','EDITOR_IN_CHIEF']).default('TECHNICAL')}),req.query).stage;
@@ -47,7 +52,7 @@ export function createReviewsRouter(db=pool,editorial=createEditorialService(db)
     res.json({ok:true,data:{articles:articles.rows,terms:terms.rows,answers:answers.rows}});
   }));
 
-  router.post('/articles/:id/start',requireRoles('ADMIN','TECHNICAL_REVIEWER'),asyncHandler(async(req,res)=>{
+  router.post('/articles/:id/start',requireRoles('TECHNICAL_REVIEWER'),asyncHandler(async(req,res)=>{
     const id=validate(z.strictObject({id:uuid}),req.params).id;
     const data=await editorial.startArticleReview(req.auth,id,'TECHNICAL',req);
     res.json({ok:true,data});
@@ -67,7 +72,7 @@ export function createReviewsRouter(db=pool,editorial=createEditorialService(db)
       const term=current.rows[0];
       if(!term) throw new RequestError(404,'NOT_FOUND','Term not found');
       if(term.status!=='SUBMITTED') throw new RequestError(409,'INVALID_STATE','Term is not waiting for technical review');
-      if(term.created_by_user_id===req.auth.id) throw new RequestError(403,'AUTHOR_CANNOT_REVIEW','The term author cannot review their own term');
+      await assertDifferentPerson(client,term.created_by_user_id,req.auth);
       const updated=await client.query("UPDATE conspace.terms SET status='TECHNICAL_REVIEW',updated_by_user_id=$2,updated_at=now() WHERE id=$1 RETURNING *",[id,req.auth.id]);
       await writeWorkflowEvent(client,{entityType:'TERM',entityId:id,fromStatus:'SUBMITTED',toStatus:'TECHNICAL_REVIEW',action:'REVIEW_STARTED',actorUserId:req.auth.id});
       await writeAudit(client,{actorUserId:req.auth.id,action:'TERM_REVIEW_STARTED',entityType:'TERM',entityId:id,before:{status:'SUBMITTED'},after:{status:'TECHNICAL_REVIEW'},req});
@@ -87,7 +92,7 @@ export function createReviewsRouter(db=pool,editorial=createEditorialService(db)
       const term=current.rows[0];
       if(!term) throw new RequestError(404,'NOT_FOUND','Term not found');
       if(term.status!=='TECHNICAL_REVIEW') throw new RequestError(409,'INVALID_STATE','Term is not in technical review');
-      if(term.created_by_user_id===req.auth.id) throw new RequestError(403,'AUTHOR_CANNOT_APPROVE','Authors cannot approve their own terms');
+      await assertDifferentPerson(client,term.created_by_user_id,req.auth);
       const next=input.decision==='APPROVED'?'APPROVED':input.decision==='REQUEST_CHANGES'?'NEEDS_CHANGES':'REJECTED';
       const authorId=input.decision==='APPROVED'?await reviewerAuthor(client,req.auth):null;
       const updated=await client.query(
@@ -117,11 +122,12 @@ export function createReviewsRouter(db=pool,editorial=createEditorialService(db)
       const answer=current.rows[0];
       if(!answer) throw new RequestError(404,'NOT_FOUND','Question answer not found');
       const technical=input.stage==='TECHNICAL';
-      const allowed=req.auth.role==='ADMIN' || (technical?req.auth.role==='TECHNICAL_REVIEWER':req.auth.role==='EDITOR_IN_CHIEF');
+      const assigned=Array.isArray(req.auth.roles)&&req.auth.roles.length?req.auth.roles:[req.auth.role];
+      const allowed=technical?assigned.includes('TECHNICAL_REVIEWER'):assigned.includes('EDITOR_IN_CHIEF');
       if(!allowed) throw new RequestError(403,'FORBIDDEN','Reviewer role required');
       const expected=technical?'TECHNICAL_REVIEW':'EDITOR_IN_CHIEF_REVIEW';
       if(answer.status!==expected) throw new RequestError(409,'INVALID_STATE','Answer is not at this review stage');
-      if(answer.created_by_user_id===req.auth.id) throw new RequestError(403,'AUTHOR_CANNOT_APPROVE','Authors cannot approve their own answers');
+      await assertDifferentPerson(client,answer.created_by_user_id,req.auth);
       let next;
       if(input.decision==='APPROVED') next=technical && answer.requires_chief_review?'EDITOR_IN_CHIEF_REVIEW':'APPROVED';
       else next=input.decision==='REQUEST_CHANGES'?'NEEDS_CHANGES':'REJECTED';

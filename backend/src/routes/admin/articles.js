@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { pool } from '../../database/pool.js';
 import { RequestError, validate } from '../../http/validation.js';
-import { asyncHandler, requireRoles } from '../../middleware/admin-auth.js';
+import { asyncHandler, requireRoles, requireRolesOrPermissions } from '../../middleware/admin-auth.js';
 import { createEditorialService } from '../../services/editorial.js';
 import { writeAudit, inTransaction } from '../../services/audit.js';
 
@@ -49,7 +49,7 @@ export function createArticlesRouter(db=pool, editorial=createEditorialService(d
     res.json({ok:true,data:rows,meta:{total,page:query.page,limit:query.limit}});
   }));
 
-  router.post('/',requireRoles('ADMIN','EDITOR'),asyncHandler(async(req,res)=>{
+  router.post('/',requireRoles('EDITOR'),asyncHandler(async(req,res)=>{
     const input=validate(articleSchema,req.body);
     const data=await editorial.createArticle(req.auth,input,req);
     res.status(201).json({ok:true,data});
@@ -72,7 +72,7 @@ export function createArticlesRouter(db=pool, editorial=createEditorialService(d
     res.json({ok:true,data:article});
   }));
 
-  router.patch('/:id',requireRoles('ADMIN','EDITOR'),asyncHandler(async(req,res)=>{
+  router.patch('/:id',requireRoles('EDITOR'),asyncHandler(async(req,res)=>{
     const {id}=validate(idSchema,req.params);
     const input=validate(patchSchema,req.body);
     if(!Object.keys(input).length) throw new RequestError(400,'EMPTY_UPDATE','At least one field is required');
@@ -80,7 +80,7 @@ export function createArticlesRouter(db=pool, editorial=createEditorialService(d
     res.json({ok:true,data});
   }));
 
-  router.delete('/:id',requireRoles('ADMIN'),asyncHandler(async(req,res)=>{
+  router.delete('/:id',requireRoles('EDITOR'),asyncHandler(async(req,res)=>{
     const {id}=validate(idSchema,req.params);
     const data=await inTransaction(db,async(client)=>{
       const result=await client.query('SELECT status FROM conspace.articles WHERE id=$1 FOR UPDATE',[id]);
@@ -94,13 +94,13 @@ export function createArticlesRouter(db=pool, editorial=createEditorialService(d
     res.json({ok:true,data});
   }));
 
-  router.post('/:id/submit',requireRoles('ADMIN','EDITOR'),asyncHandler(async(req,res)=>{
+  router.post('/:id/submit',requireRoles('EDITOR'),asyncHandler(async(req,res)=>{
     const {id}=validate(idSchema,req.params);
     const data=await editorial.submitArticle(req.auth,id,req);
     res.json({ok:true,data});
   }));
 
-  router.post('/:id/schedule',requireRoles('ADMIN','EDITOR','EDITOR_IN_CHIEF'),asyncHandler(async(req,res)=>{
+  router.post('/:id/schedule',requireRoles('EDITOR','EDITOR_IN_CHIEF'),asyncHandler(async(req,res)=>{
     const {id}=validate(idSchema,req.params);
     const {scheduledAt}=validate(scheduleSchema,req.body);
     const data=await editorial.scheduleArticle(req.auth,id,scheduledAt,req);

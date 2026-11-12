@@ -18,7 +18,7 @@ const authorPatch=authorSchema.partial().extend({
 
 export function createAuthorsRouter(db=pool){
   const router=Router();
-  router.use(requireRoles('ADMIN','EDITOR'));
+  router.use(requireRoles('EDITOR','EDITOR_IN_CHIEF'));
 
   router.get('/',asyncHandler(async(req,res)=>{
     const result=await db.query(
@@ -62,7 +62,7 @@ export function createAuthorsRouter(db=pool){
     res.json({ok:true,data:result});
   }));
 
-  router.delete('/:id',requireRoles('ADMIN'),asyncHandler(async(req,res)=>{
+  router.delete('/:id',requireRoles('EDITOR','EDITOR_IN_CHIEF'),asyncHandler(async(req,res)=>{
     const id=validate(z.strictObject({id:uuid}),req.params).id;
     const result=await inTransaction(db,async(client)=>{
       const current=await client.query('SELECT * FROM conspace.authors WHERE id=$1 FOR UPDATE',[id]);

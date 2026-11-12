@@ -75,7 +75,8 @@ export function requireCsrf(req, _res, next) {
 
 export function requireRoles(...roles) {
   return (req, _res, next) => {
-    if (!req.auth || !roles.includes(req.auth.role)) {
+    const assigned = Array.isArray(req.auth?.roles) && req.auth.roles.length ? req.auth.roles : (req.auth?.role ? [req.auth.role] : []);
+    if (!req.auth || !roles.some((role) => assigned.includes(role))) {
       return next(new RequestError(403, 'FORBIDDEN', 'You do not have permission to perform this action'));
     }
     next();
@@ -84,4 +85,18 @@ export function requireRoles(...roles) {
 
 export function asyncHandler(handler) {
   return (req, res, next) => Promise.resolve().then(() => handler(req, res, next)).catch(next);
+}
+
+export function requireRolesOrPermissions(roles = [], permissions = []) {
+  return (req, _res, next) => {
+    const assignedRoles = Array.isArray(req.auth?.roles) && req.auth.roles.length
+      ? req.auth.roles
+      : (req.auth?.role ? [req.auth.role] : []);
+    const assignedPermissions = Array.isArray(req.auth?.permissions) ? req.auth.permissions : [];
+    if (!roles.some((role) => assignedRoles.includes(role)) &&
+        !permissions.some((permission) => assignedPermissions.includes(permission))) {
+      return next(new RequestError(403, 'FORBIDDEN', 'You do not have permission to perform this action'));
+    }
+    return next();
+  };
 }

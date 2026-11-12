@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { pool } from '../../database/pool.js';
 import { RequestError, validate } from '../../http/validation.js';
-import { asyncHandler, requireRoles } from '../../middleware/admin-auth.js';
+import { asyncHandler, requireRoles, requireRolesOrPermissions } from '../../middleware/admin-auth.js';
 import { decryptPrivateContact } from '../../security/private-contact.js';
 import { inTransaction, writeAudit, writeWorkflowEvent } from '../../services/audit.js';
 
@@ -67,7 +67,7 @@ export function createQuestionsRouter(db=pool,config){
     res.json({ok:true,data:row});
   }));
 
-  router.patch('/:id',requireRoles('ADMIN','EDITOR'),asyncHandler(async(req,res)=>{
+  router.patch('/:id',requireRoles('EDITOR'),asyncHandler(async(req,res)=>{
     const id=validate(z.strictObject({id:uuid}),req.params).id;
     const input=validate(questionPatch,req.body);
     const result=await inTransaction(db,async(client)=>{
@@ -85,7 +85,7 @@ export function createQuestionsRouter(db=pool,config){
     res.json({ok:true,data:result});
   }));
 
-  router.post('/:id/answer',requireRoles('ADMIN','EDITOR'),asyncHandler(async(req,res)=>{
+  router.post('/:id/answer',requireRoles('EDITOR'),asyncHandler(async(req,res)=>{
     const id=validate(z.strictObject({id:uuid}),req.params).id;
     const input=validate(answerSchema,req.body);
     const result=await inTransaction(db,async(client)=>{
@@ -121,7 +121,7 @@ export function createQuestionsRouter(db=pool,config){
     res.status(201).json({ok:true,data:result});
   }));
 
-  router.post('/:id/answer/submit',requireRoles('ADMIN','EDITOR'),asyncHandler(async(req,res)=>{
+  router.post('/:id/answer/submit',requireRoles('EDITOR'),asyncHandler(async(req,res)=>{
     const id=validate(z.strictObject({id:uuid}),req.params).id;
     const result=await inTransaction(db,async(client)=>{
       const current=await client.query('SELECT * FROM conspace.question_answers WHERE question_id=$1 FOR UPDATE',[id]);

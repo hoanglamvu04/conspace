@@ -32,7 +32,7 @@ const patchSchema=baseSchema.partial().extend({changeReason:z.string().max(500).
 
 export function createFieldNotesRouter(db=pool,editorial=createEditorialService(db)){
   const router=Router();
-  router.use(requireRoles('ADMIN','EDITOR'));
+  router.use(requireRoles('EDITOR','EDITOR_IN_CHIEF'));
 
   router.get('/',asyncHandler(async(req,res)=>{
     const result=await db.query(
@@ -46,7 +46,7 @@ export function createFieldNotesRouter(db=pool,editorial=createEditorialService(
     res.json({ok:true,data:result.rows});
   }));
 
-  router.post('/',asyncHandler(async(req,res)=>{
+  router.post('/',requireRoles('EDITOR'),asyncHandler(async(req,res)=>{
     const input=validate(baseSchema,req.body);
     if(input.repairCostAmount!==undefined && input.repairCostAmount!==null && !input.repairCostSource) {
       throw new RequestError(400,'COST_SOURCE_REQUIRED','A real source is required when repair cost is supplied');
@@ -96,7 +96,7 @@ export function createFieldNotesRouter(db=pool,editorial=createEditorialService(
     res.json({ok:true,data:result.rows[0]});
   }));
 
-  router.patch('/:id',asyncHandler(async(req,res)=>{
+  router.patch('/:id',requireRoles('EDITOR'),asyncHandler(async(req,res)=>{
     const id=validate(z.strictObject({id:uuid}),req.params).id;
     const input=validate(patchSchema,req.body);
     const current=await db.query(
@@ -141,7 +141,7 @@ export function createFieldNotesRouter(db=pool,editorial=createEditorialService(
     res.json({ok:true,data:updated});
   }));
 
-  router.delete('/:id',requireRoles('ADMIN'),asyncHandler(async(req,res)=>{
+  router.delete('/:id',requireRoles('EDITOR','EDITOR_IN_CHIEF'),asyncHandler(async(req,res)=>{
     const id=validate(z.strictObject({id:uuid}),req.params).id;
     const result=await inTransaction(db,async(client)=>{
       const current=await client.query(

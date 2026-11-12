@@ -29,8 +29,10 @@ export function createAuthService(db = pool, config = env) {
       }
 
       const result = await db.query(
-        'SELECT id, email, display_name, role, password_hash, is_active, must_change_password ' +
-        'FROM conspace.cms_users WHERE email = $1 LIMIT 1',
+        'SELECT u.id,u.email,u.display_name,u.role,u.person_id,u.password_hash,u.is_active,u.must_change_password,' +
+        "COALESCE((SELECT json_agg(r.role ORDER BY r.role) FROM conspace.cms_user_roles r WHERE r.user_id=u.id),'[]'::json) AS roles," +
+        "COALESCE((SELECT json_agg(p.permission ORDER BY p.permission) FROM conspace.cms_user_permissions p WHERE p.user_id=u.id),'[]'::json) AS permissions " +
+        'FROM conspace.cms_users u WHERE email = $1 LIMIT 1',
         [String(email).trim().toLowerCase()]
       );
       const user = result.rows[0];
@@ -71,7 +73,7 @@ export function createAuthService(db = pool, config = env) {
         expiresAt: expiresAt.toISOString(),
         user: {
           id: user.id, email: user.email, displayName: user.display_name,
-          role: user.role, mustChangePassword: user.must_change_password,
+          role: user.role, roles: Array.isArray(user.roles)?user.roles:[user.role], permissions:Array.isArray(user.permissions)?user.permissions:[], personId:user.person_id??null, mustChangePassword: user.must_change_password,
         },
       };
     },
@@ -82,18 +84,20 @@ export function createAuthService(db = pool, config = env) {
         'UPDATE conspace.cms_sessions s SET last_seen_at = now() ' +
         'FROM conspace.cms_users u WHERE s.user_id = u.id AND s.token_hash = $1 ' +
         'AND s.expires_at > now() AND u.is_active = true ' +
-        'RETURNING u.id,u.email,u.display_name,u.role,u.must_change_password,s.csrf_token,s.expires_at',
+        'RETURNING u.id,u.email,u.display_name,u.role,u.person_id,u.must_change_password,s.csrf_token,s.expires_at',
         [sha256(token)]
       );
       const row = result.rows[0];
       if (!row) return null;
+      const assigned=await db.query('SELECT role FROM conspace.cms_user_roles WHERE user_id=$1 ORDER BY role',[row.id]);
+      const delegated=await db.query('SELECT permission FROM conspace.cms_user_permissions WHERE user_id=$1 ORDER BY permission',[row.id]);
       return {
         sessionTokenHash: sha256(token),
         csrfToken: row.csrf_token,
         expiresAt: row.expires_at,
         user: {
           id: row.id, email: row.email, displayName: row.display_name,
-          role: row.role, mustChangePassword: row.must_change_password,
+          role: row.role, roles:assigned.rows.map(x=>x.role), permissions:delegated.rows.map(x=>x.permission), personId:row.person_id??null, mustChangePassword: row.must_change_password,
         },
       };
     },
@@ -128,6 +132,7 @@ export function createAuthService(db = pool, config = env) {
           [String(email).trim().toLowerCase(), displayName.trim(), passwordHash]
         );
         const user = created.rows[0];
+        await client.query("INSERT INTO conspace.cms_user_roles(user_id,role,grant_source,grant_reason) VALUES($1,'ADMIN','BOOTSTRAP','Initial system administrator')",[user.id]);
         await client.query(
           'INSERT INTO conspace.authors (slug,display_name,user_id) VALUES ($1,$2,$3)',
           ['staff-' + user.id.replaceAll('-', ''), user.display_name, user.id]

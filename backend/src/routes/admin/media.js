@@ -11,7 +11,7 @@ const uuid=z.string().uuid();
 
 export function createMediaRouter(db=pool,mediaService=createMediaService(db)){
   const router=Router();
-  router.use(requireRoles('ADMIN','EDITOR'));
+  router.use(requireRoles('ADMIN','EDITOR','TECHNICAL_REVIEWER','EDITOR_IN_CHIEF'));
 
   router.get('/',asyncHandler(async(req,res)=>{
     const query=validate(z.strictObject({
@@ -30,7 +30,7 @@ export function createMediaRouter(db=pool,mediaService=createMediaService(db)){
     res.json({ok:true,data:result.rows});
   }));
 
-  router.post('/',asyncHandler(async(req,res)=>{
+  router.post('/',requireRoles('EDITOR','EDITOR_IN_CHIEF'),asyncHandler(async(req,res)=>{
     if(!req.body?.file) throw new RequestError(400,'FILE_REQUIRED','Upload one file in JSON field "file"');
     const file=decodeUpload(req.body.file);
     const rightsConfirmed=req.body.rightsConfirmed===true;
@@ -56,7 +56,7 @@ export function createMediaRouter(db=pool,mediaService=createMediaService(db)){
     res.send(file.buffer);
   }));
 
-  router.patch('/:id',asyncHandler(async(req,res)=>{
+  router.patch('/:id',requireRoles('EDITOR','EDITOR_IN_CHIEF'),asyncHandler(async(req,res)=>{
     const id=validate(z.strictObject({id:uuid}),req.params).id;
     const input=validate(z.strictObject({
       altText:z.string().max(500).nullable().optional(),
@@ -78,7 +78,7 @@ export function createMediaRouter(db=pool,mediaService=createMediaService(db)){
     res.json({ok:true,data:result});
   }));
 
-  router.delete('/:id',requireRoles('ADMIN'),asyncHandler(async(req,res)=>{
+  router.delete('/:id',requireRoles('EDITOR','EDITOR_IN_CHIEF'),asyncHandler(async(req,res)=>{
     const id=validate(z.strictObject({id:uuid}),req.params).id;
     const result=await inTransaction(db,async(client)=>{
       const current=await client.query('SELECT * FROM conspace.media_assets WHERE id=$1 AND deleted_at IS NULL FOR UPDATE',[id]);

@@ -2,6 +2,9 @@ import { pool } from '../database/pool.js';
 import { RequestError } from '../http/validation.js';
 import { inTransaction, writeAudit, writeWorkflowEvent } from './audit.js';
 
+const hasRole=(actor,role)=>(Array.isArray(actor?.roles)&&actor.roles.length?actor.roles:[actor?.role]).includes(role);
+const hasPermission=(actor,permission)=>Array.isArray(actor?.permissions)&&actor.permissions.includes(permission);
+
 const CHIEF_FLAGS = new Set([
   'INDUSTRY_DARK_SIDE','PRICE_OR_RATE','WARRANTY_PERIOD','IDENTIFIABLE_ENTITY_RISK','LEGAL_CONTENT',
 ]);
@@ -221,7 +224,7 @@ export function createEditorialService(db = pool) {
         const expectedRole=stage==='TECHNICAL'?'TECHNICAL_REVIEWER':'EDITOR_IN_CHIEF';
         const expectedStatus=stage==='TECHNICAL'?'SUBMITTED':'EDITOR_IN_CHIEF_REVIEW';
         const targetStatus=stage==='TECHNICAL'?'TECHNICAL_REVIEW':'EDITOR_IN_CHIEF_REVIEW';
-        if(actor.role!=='ADMIN' && actor.role!==expectedRole) throw new RequestError(403,'FORBIDDEN','Review role required');
+        if(!hasRole(actor,expectedRole)) throw new RequestError(403,'FORBIDDEN','Review role required');
         if(article.status!==expectedStatus) throw new RequestError(409,'INVALID_STATE','Article is not waiting for this review stage');
         await assertNotAuthor(client,article,actor);
         const updated=await client.query('UPDATE conspace.articles SET status=$2,updated_by_user_id=$3,updated_at=now() WHERE id=$1 RETURNING *',[id,targetStatus,actor.id]);
@@ -237,7 +240,7 @@ export function createEditorialService(db = pool) {
         const article=result.rows[0];
         if(!article) throw new RequestError(404,'NOT_FOUND','Article not found');
         const technical=stage==='TECHNICAL';
-        const roleAllowed=actor.role==='ADMIN' || (technical ? actor.role==='TECHNICAL_REVIEWER' : actor.role==='EDITOR_IN_CHIEF');
+        const roleAllowed=technical ? hasRole(actor,'TECHNICAL_REVIEWER') : hasRole(actor,'EDITOR_IN_CHIEF');
         if(!roleAllowed) throw new RequestError(403,'FORBIDDEN','Reviewer role required');
         const expected=technical?'TECHNICAL_REVIEW':'EDITOR_IN_CHIEF_REVIEW';
         if(article.status!==expected) throw new RequestError(409,'INVALID_STATE','Article is not at this review stage');
@@ -271,7 +274,7 @@ export function createEditorialService(db = pool) {
         const result=await client.query('SELECT * FROM conspace.articles WHERE id=$1 FOR UPDATE',[id]);
         const article=result.rows[0];
         if(!article) throw new RequestError(404,'NOT_FOUND','Article not found');
-        if(!['EDITOR','EDITOR_IN_CHIEF','ADMIN'].includes(actor.role)) throw new RequestError(403,'FORBIDDEN','Only editorial staff can schedule approved articles');
+        if(!hasRole(actor,'EDITOR')&&!hasRole(actor,'EDITOR_IN_CHIEF')) throw new RequestError(403,'FORBIDDEN','Only editorial staff can schedule approved articles');
         if(article.status!=='APPROVED') throw new RequestError(409,'INVALID_STATE','Only approved articles can be scheduled');
         if(new Date(scheduledAt)<=new Date()) throw new RequestError(400,'INVALID_SCHEDULE','Publication time must be in the future');
         const updated=await client.query(
@@ -290,7 +293,7 @@ export function createEditorialService(db = pool) {
         const result=await client.query('SELECT * FROM conspace.articles WHERE id=$1 FOR UPDATE',[id]);
         const article=result.rows[0];
         if(!article) throw new RequestError(404,'NOT_FOUND','Article not found');
-        if(!['EDITOR_IN_CHIEF','ADMIN'].includes(actor.role)) throw new RequestError(403,'FORBIDDEN','Only the editor-in-chief or admin can publish');
+        if(!hasRole(actor,'EDITOR_IN_CHIEF')&&!hasPermission(actor,'CONTENT_PUBLISH')) throw new RequestError(403,'FORBIDDEN','An editor-in-chief role or explicit CONTENT_PUBLISH grant is required');
         if(!['APPROVED','SCHEDULED'].includes(article.status)) throw new RequestError(409,'INVALID_STATE','Only approved or scheduled articles can be published');
         if(article.status==='SCHEDULED' && new Date(article.scheduled_at)>new Date()) throw new RequestError(409,'NOT_DUE','Scheduled publication time has not arrived');
         await assertArticleMediaRights(client,id);
@@ -311,7 +314,7 @@ export function createEditorialService(db = pool) {
         const result=await client.query('SELECT * FROM conspace.articles WHERE id=$1 FOR UPDATE',[id]);
         const article=result.rows[0];
         if(!article) throw new RequestError(404,'NOT_FOUND','Article not found');
-        if(!['EDITOR_IN_CHIEF','ADMIN'].includes(actor.role)) throw new RequestError(403,'FORBIDDEN','Only the editor-in-chief or admin can withdraw');
+        if(!hasRole(actor,'EDITOR_IN_CHIEF')&&!hasPermission(actor,'CONTENT_WITHDRAW')) throw new RequestError(403,'FORBIDDEN','An editor-in-chief role or explicit CONTENT_WITHDRAW grant is required');
         if(!['PUBLISHED','SCHEDULED','APPROVED'].includes(article.status)) throw new RequestError(409,'INVALID_STATE','Article cannot be withdrawn from this state');
         const updated=await client.query(
           "UPDATE conspace.articles SET status='WITHDRAWN',withdrawn_at=now(),updated_by_user_id=$2,updated_at=now() WHERE id=$1 RETURNING *",
@@ -358,9 +361,9 @@ export function createEditorialService(db = pool) {
 }
 
 async function assertNotAuthor(client,article,actor){
-  if(article.created_by_user_id===actor.id) throw new RequestError(403,'AUTHOR_CANNOT_APPROVE','Authors cannot review or approve their own articles');
-  const author=await client.query('SELECT user_id FROM conspace.authors WHERE id=$1',[article.author_id]);
-  if(author.rows[0]?.user_id===actor.id) throw new RequestError(403,'AUTHOR_CANNOT_APPROVE','Authors cannot review or approve their own articles');
+ const r=await client.query('SELECT reviewer.person_id AS reviewer_person_id,creator.person_id AS creator_person_id,author_user.person_id AS author_person_id FROM conspace.cms_users reviewer LEFT JOIN conspace.cms_users creator ON creator.id=$2 LEFT JOIN conspace.authors author ON author.id=$3 LEFT JOIN conspace.cms_users author_user ON author_user.id=author.user_id WHERE reviewer.id=$1',[actor.id,article.created_by_user_id??null,article.author_id]);
+ const row=r.rows[0];if(!row)throw new RequestError(403,'REVIEWER_IDENTITY_REQUIRED','Reviewer identity could not be verified');
+ if(row.reviewer_person_id===row.creator_person_id||row.reviewer_person_id===row.author_person_id)throw new RequestError(403,'AUTHOR_CANNOT_APPROVE','The article author and reviewer must be different people');
 }
 
 async function assertArticleMediaRights(client,articleId){

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { pool } from '../../database/pool.js';
 import { RequestError, validate } from '../../http/validation.js';
-import { asyncHandler, requireRoles } from '../../middleware/admin-auth.js';
+import { asyncHandler, requireRoles, requireRolesOrPermissions } from '../../middleware/admin-auth.js';
 import { inTransaction, writeAudit, writeWorkflowEvent } from '../../services/audit.js';
 
 const uuid=z.string().uuid();
@@ -29,7 +29,7 @@ async function replaceNiches(client,termId,nicheIds){
 
 export function createTermsRouter(db=pool){
   const router=Router();
-  router.use(requireRoles('ADMIN','EDITOR','TECHNICAL_REVIEWER'));
+  router.use(requireRoles('EDITOR','TECHNICAL_REVIEWER','EDITOR_IN_CHIEF'));
 
   router.get('/',asyncHandler(async(req,res)=>{
     const query=validate(z.strictObject({
@@ -54,7 +54,7 @@ export function createTermsRouter(db=pool){
     res.json({ok:true,data:result.rows,meta:{total:count.rows[0].total,page:query.page,limit:query.limit}});
   }));
 
-  router.post('/',requireRoles('ADMIN','EDITOR'),asyncHandler(async(req,res)=>{
+  router.post('/',requireRoles('EDITOR'),asyncHandler(async(req,res)=>{
     const input=validate(termSchema,req.body);
     const result=await inTransaction(db,async(client)=>{
       const inserted=await client.query(
@@ -79,7 +79,7 @@ export function createTermsRouter(db=pool){
     res.json({ok:true,data:result.rows[0]});
   }));
 
-  router.patch('/:id',requireRoles('ADMIN','EDITOR'),asyncHandler(async(req,res)=>{
+  router.patch('/:id',requireRoles('EDITOR'),asyncHandler(async(req,res)=>{
     const id=validate(z.strictObject({id:uuid}),req.params).id;
     const input=validate(termPatch,req.body);
     const result=await inTransaction(db,async(client)=>{
@@ -98,7 +98,7 @@ export function createTermsRouter(db=pool){
     res.json({ok:true,data:result});
   }));
 
-  router.delete('/:id',requireRoles('ADMIN'),asyncHandler(async(req,res)=>{
+  router.delete('/:id',requireRoles('EDITOR'),asyncHandler(async(req,res)=>{
     const id=validate(z.strictObject({id:uuid}),req.params).id;
     const result=await inTransaction(db,async(client)=>{
       const current=await client.query('SELECT * FROM conspace.terms WHERE id=$1 FOR UPDATE',[id]);
@@ -111,7 +111,7 @@ export function createTermsRouter(db=pool){
     res.json({ok:true,data:result});
   }));
 
-  router.post('/:id/submit',requireRoles('ADMIN','EDITOR'),asyncHandler(async(req,res)=>{
+  router.post('/:id/submit',requireRoles('EDITOR'),asyncHandler(async(req,res)=>{
     const id=validate(z.strictObject({id:uuid}),req.params).id;
     const result=await inTransaction(db,async(client)=>{
       const current=await client.query('SELECT * FROM conspace.terms WHERE id=$1 FOR UPDATE',[id]);
