@@ -4,15 +4,16 @@
   "version": "0.1.0",
   "type": "module",
   "engines": {
-    "node": ">=22.0.0"
+    "node": "22.23.2"
   },
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "test": "node --test tests/*.test.js",
-    "check": "node --check src/server.js && node --check src/app.js && node --check src/config/env.js && node --check src/database/pool.js && node --check src/database/migrate.js && node --check src/database/seed.js && node --check src/http/validation.js && node --check src/repositories/content.js && node --check src/routes/content.js",
+    "check": "node --check src/server.js && node --check src/app.js && node --check src/config/env.js && node --check src/database/pool.js && node --check src/database/migrate.js && node --check src/database/seed.js && node --check src/http/validation.js && node --check src/repositories/content.js && node --check src/routes/content.js && node --check src/security/password.js && node --check src/security/private-contact.js && node --check src/services/auth.js && node --check src/services/audit.js && node --check src/services/media.js && node --check src/services/uploads.js && node --check src/services/editorial.js && node --check src/middleware/admin-auth.js && node --check src/routes/admin/index.js && node --check src/routes/admin/auth.js && node --check src/routes/admin/users.js && node --check src/routes/admin/authors.js && node --check src/routes/admin/articles.js && node --check src/routes/admin/niches.js && node --check src/routes/admin/books.js && node --check src/routes/admin/field-notes.js && node --check src/routes/admin/terms.js && node --check src/routes/admin/questions.js && node --check src/routes/admin/media.js && node --check src/routes/admin/reviews.js && node --check src/routes/public-questions.js && node --check src/routes/public-media.js && node --check src/routes/publishing.js && node --check src/routes/search.js && node --check src/cli/bootstrap-admin.js",
     "db:migrate": "node src/database/migrate.js",
-    "db:seed": "node src/database/seed.js"
+    "db:seed": "node src/database/seed.js",
+    "cms:bootstrap-admin": "node src/cli/bootstrap-admin.js --password-stdin"
   },
   "dependencies": {
     "cors": "2.8.5",

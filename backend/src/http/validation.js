@@ -80,10 +80,34 @@ export function errorMiddleware(error, _req, res, _next) {
       error: { code: 'VALIDATION_ERROR', message: 'Invalid JSON body' },
     });
   }
-  if (error?.type === 'entity.too.large') {
+  if (error?.type === 'entity.too.large' || error?.code === 'LIMIT_FILE_SIZE') {
     return res.status(413).json({
       ok: false,
-      error: { code: 'PAYLOAD_TOO_LARGE', message: 'Request body too large' },
+      error: { code: 'PAYLOAD_TOO_LARGE', message: 'Request body or upload is too large' },
+    });
+  }
+  if (error?.name === 'MulterError') {
+    return res.status(400).json({
+      ok: false,
+      error: { code: 'INVALID_UPLOAD', message: 'Upload contains an unexpected file or too many files' },
+    });
+  }
+  if (error?.code === '23505') {
+    return res.status(409).json({
+      ok: false,
+      error: { code: 'CONFLICT', message: 'A record with the same unique value already exists' },
+    });
+  }
+  if (error?.code === '23503' || error?.code === '23514') {
+    return res.status(409).json({
+      ok: false,
+      error: { code: 'CONSTRAINT_VIOLATION', message: 'The requested change conflicts with related records or business rules' },
+    });
+  }
+  if ([400, 401, 403, 404, 409, 415, 429, 503].includes(error?.status)) {
+    return res.status(error.status).json({
+      ok: false,
+      error: { code: error.code || 'REQUEST_FAILED', message: error.message || 'Request could not be completed' },
     });
   }
   console.error('CONSPACE API request failed:', error?.name || 'UnknownError');
