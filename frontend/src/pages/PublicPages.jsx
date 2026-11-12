@@ -10,6 +10,19 @@ import { Markdown } from '../components/Markdown.jsx';
 import { ArticleCard, Breadcrumbs, PageIntro, SectionHeading, StatusPanel } from '../components/UI.jsx';
 import { Icon } from '../components/Icons.jsx';
 
+function usePageMeta(title, description) {
+  useEffect(() => {
+    if (!title) return;
+    document.title = title + ' | CONSPACE · Sự thật ngành Xây';
+    const meta = document.querySelector('meta[name="description"]');
+    if (meta && description) meta.setAttribute('content', description);
+    const ogTitle = document.querySelector('meta[property="og:title"]');
+    if (ogTitle) ogTitle.setAttribute('content', document.title);
+    const ogDescription = document.querySelector('meta[property="og:description"]');
+    if (ogDescription && description) ogDescription.setAttribute('content', description);
+  }, [title, description]);
+}
+
 function BookLabel({ value }) {
   return <span className="pill-label">{value || 'Nhãn sách chưa được xác định'}</span>;
 }
@@ -39,6 +52,7 @@ export function BookDetail() {
   const { slug } = useParams();
   const validSlug = typeof slug === 'string' && /^[a-z0-9][a-z0-9-]*$/.test(slug);
   const book = useResource(validSlug ? apiUrl('/books/' + slug) : null, { list: false, enabled: validSlug });
+  usePageMeta(book.status === 'success' ? book.data.title : null, book.status === 'success' ? 'Các chương đã xuất bản trong ' + book.data.title + '.' : null);
   if (!validSlug) return <main className="container content-page"><StatusPanel status="empty" title="Đường dẫn sách không hợp lệ"/></main>;
   if (book.status === 'loading') return <main className="container content-page"><StatusPanel status="loading" kind="articles"/></main>;
   if (book.status === 'error') return <main className="container content-page"><Breadcrumbs items={[{ label: 'Tủ sách', to: '/tu-sach' }]}/><StatusPanel status="error" title={book.error?.status === 404 ? 'Không tìm thấy đầu sách' : 'Chưa thể tải đầu sách'} description={book.error?.message} onRetry={book.error?.status === 404 ? undefined : book.retry}/></main>;
@@ -70,6 +84,7 @@ export function ChapterDetail({ bookSlug }) {
   const token = params.item || params.chapter;
   const resolved = chapterLinkFromParams(bookSlug, token);
   const chapter = useResource(resolved ? apiUrl('/books/' + resolved.bookSlug + '/chapters/' + resolved.chapterNo) : null, { list: false, enabled: Boolean(resolved) });
+  usePageMeta(chapter.status === 'success' ? chapter.data.title : null, chapter.status === 'success' ? chapter.data.excerpt || chapter.data.bookTitle : null);
   if (!resolved) return <main className="container content-page"><StatusPanel status="empty" title="Đường dẫn chương không hợp lệ"/></main>;
   if (chapter.status === 'loading') return <main className="container content-page"><StatusPanel status="loading" kind="articles"/></main>;
   if (chapter.status === 'error') return <main className="container content-page"><Breadcrumbs items={[{ label: 'Tủ sách', to: '/tu-sach' }]}/><StatusPanel status="error" title={chapter.error?.status === 404 ? 'Chương chưa được xuất bản' : 'Chưa thể tải chương'} description={chapter.error?.status === 404 ? 'Chương chưa công khai hoặc chưa đến lịch. Nội dung chưa xuất bản được bảo vệ.' : chapter.error?.message} onRetry={chapter.error?.status === 404 ? undefined : chapter.retry}/><Link className="text-link" to="/tu-sach">Về tủ sách <Icon name="arrow" size={16}/></Link></main>;
@@ -124,6 +139,7 @@ export function FieldNoteDetail() {
   const { id } = useParams();
   const validId = /^[0-9a-f-]{36}$/i.test(id || '');
   const record = useResource(validId ? apiUrl('/field-notes/' + id) : null, { list: false, enabled: validId });
+  usePageMeta(record.status === 'success' ? record.data.title : null, record.status === 'success' ? record.data.excerpt || record.data.phenomenon : null);
   if (!validId) return <main className="container content-page"><StatusPanel status="empty" title="Mã ca hiện trường không hợp lệ"/></main>;
   if (record.status === 'loading') return <main className="container content-page"><StatusPanel status="loading" kind="articles"/></main>;
   if (record.status === 'error') return <main className="container content-page"><Breadcrumbs items={[{ label: 'Hiện trường', to: '/hien-truong' }]}/><StatusPanel status="error" title={record.error?.status === 404 ? 'Ca hiện trường không tồn tại' : 'Chưa thể tải ca hiện trường'} description={record.error?.message} onRetry={record.error?.status === 404 ? undefined : record.retry}/></main>;
@@ -175,6 +191,7 @@ export function QuestionDetail() {
   const { id } = useParams();
   const validId = /^[0-9a-f-]{36}$/i.test(id || '');
   const question = useResource(validId ? apiUrl('/questions/' + id) : null, { list: false, enabled: validId });
+  usePageMeta(question.status === 'success' ? 'Hỏi đáp: ' + question.data.description : null, question.status === 'success' ? question.data.description : null);
   if (!validId) return <main className="container content-page"><StatusPanel status="empty" title="Mã câu hỏi không hợp lệ"/></main>;
   if (question.status === 'loading') return <main className="container content-page"><StatusPanel status="loading" kind="articles"/></main>;
   if (question.status === 'error') return <main className="container content-page"><Breadcrumbs items={[{ label: 'Hỏi đáp', to: '/hoi-dap' }]}/><StatusPanel status="error" title={question.error?.status === 404 ? 'Câu hỏi chưa được xuất bản' : 'Chưa thể tải câu hỏi'} description={question.error?.status === 404 ? 'Câu hỏi hoặc câu trả lời chưa đủ điều kiện công khai.' : question.error?.message} onRetry={question.error?.status === 404 ? undefined : question.retry}/></main>;
