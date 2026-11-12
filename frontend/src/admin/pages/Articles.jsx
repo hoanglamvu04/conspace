@@ -30,7 +30,7 @@ export function ArticleEditor(){
   const detail=useAdminObject(isNew?null:`/articles/${id}`,!isNew);
   const revisions=useAdminList(`/articles/${id||'00000000-0000-4000-8000-000000000000'}/revisions`,{},!isNew);
   const nicheList=useAdminList('/niches');
-  const {can}=useSession(),{notice}=useNotices();
+  const {can,user}=useSession(),{notice}=useNotices();
   const authors=useAdminList('/authors',{},can('authors:read'));
   const [form,setForm]=useState({...blank}),[dirty,setDirty]=useState(false),[editedSlug,setEditedSlug]=useState(false),[tab,setTab]=useState('edit'),[saving,setSaving]=useState(false),[uploading,setUploading]=useState(false),[confirm,setConfirm]=useState(null),[reason,setReason]=useState('');
   const initialized=useRef(null);
@@ -48,7 +48,7 @@ export function ArticleEditor(){
   async function workflow(){setSaving(true);try{if(confirm==='schedule'){if(!form.scheduledAt||new Date(form.scheduledAt)<=new Date())throw new Error('Cần chọn mốc xuất bản trong tương lai.');await adminRequest(`/articles/${id}/schedule`,{method:'POST',data:{scheduledAt:new Date(form.scheduledAt).toISOString()}});}else if(confirm==='publish'){await adminRequest(`/articles/${id}/publish`,{method:'POST',data:{}});}else if(confirm==='withdraw'){if(reason.trim().length<3)throw new Error('Cần nêu lý do thu hồi.');await adminRequest(`/articles/${id}/withdraw`,{method:'POST',data:{reason:reason.trim()}});}notice('Backend đã ghi nhận thay đổi trạng thái.');setConfirm(null);detail.retry();}catch(e){notice(e.message,'error');}finally{setSaving(false);}}
   const authorsArr=authors.status==='success'?authors.data.filter(x=>x.active):[];
   const niches=nicheList.status==='success'?nicheList.data:[];
-  return <><PageHeading kicker="BIÊN TẬP / CMS" title={isNew?'Tạo bản thảo':detail.data?.title||'Hồ sơ bài viết'} description="Editor Markdown có nguồn, ngách, người đọc và lịch sử được Backend kiểm chứng." icon="article" actions={<><Link to="/admin/articles" className="cms-btn cms-btn--secondary">← Danh sách</Link>{editable&&<button type="button" className="cms-btn cms-btn--primary" onClick={save} disabled={saving||uploading}>{saving?'Đang lưu…':'Lưu bản nháp'}</button>}</>}/>
+  return <><PageHeading kicker="BIÊN TẬP / CMS" title={isNew?'Tạo bản thảo':(editable?'Biên tập: ':'Xem: ')+(detail.data?.title||'Hồ sơ bài viết')} description={user?.role === 'ADMIN' ? 'Chế độ chỉ xem. Quản trị hệ thống không mặc nhiên có quyền biên tập, duyệt hoặc xuất bản.' : 'Editor Markdown có nguồn, ngách, người đọc và lịch sử được Backend kiểm chứng.'} icon="article" actions={<><Link to="/admin/articles" className="cms-btn cms-btn--secondary">← Danh sách</Link>{editable&&<button type="button" className="cms-btn cms-btn--primary" onClick={save} disabled={saving||uploading}>{saving?'Đang lưu…':'Lưu bản nháp'}</button>}</>}/>
     {!isNew&&detail.status==='loading'&&<div role="status" className="cms-inline-state">Đang tải nội dung…</div>}
     {!isNew&&detail.status==='error'&&<EmptyState title="Không thể mở bài viết" description={detail.error?.message} icon="alert"/>}
     {(isNew||detail.status==='success')&&<><div className="cms-editor-overview"><Pill value={status}/><span className={dirty?'cms-unsaved':'cms-saved'}>{dirty?'● Có thay đổi chưa lưu':'Đã đồng bộ nội dung từ API'}</span>{!isNew&&<span className="cms-muted">{formatAdminDate(detail.data?.updated_at||detail.data?.updatedAt)}</span>}</div>
