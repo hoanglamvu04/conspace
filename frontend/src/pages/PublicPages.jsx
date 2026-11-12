@@ -165,16 +165,26 @@ export function ChapterDetail({ bookSlug }) {
 }
 
 export function FieldNotes() {
-  const records = useFieldNotes(null, 12, 0);
+  const [offset, setOffset] = useState(0);
+  const [items, setItems] = useState([]);
+  const records = useFieldNotes(null, 12, offset);
+  useEffect(() => {
+    if (records.status !== 'success' || records.meta?.offset !== offset) return;
+    setItems((current) => offset === 0
+      ? records.data
+      : [...current, ...records.data.filter((item) => !current.some((old) => old.id === item.id))]);
+  }, [records.status, records.data, records.meta, offset]);
+  const hasMore = records.status === 'success' && Number(records.meta?.total || 0) > offset + records.data.length;
+
   return <>
     <PageIntro eyebrow="GHI CHÉP / HIỆN TRƯỜNG" title="Hiện trường" description="Từ hiện tượng đến nguyên nhân gốc và mốc nghiệm thu có thể ngăn vấn đề. Ca công khai phải được ẩn danh và có quyền sử dụng tư liệu."/>
     <main className="container content-page">
       <Breadcrumbs items={[{ label: 'Hiện trường' }]}/>
-      {records.status === 'loading' && <StatusPanel status="loading" kind="articles"/>}
-      {records.status === 'error' && <StatusPanel status="error" onRetry={records.retry}/>}
-      {records.status === 'success' && records.data.length > 0 && <>
-        <p className="results-count" role="status">{records.data.length} ca trong trang này · {records.meta?.total ?? records.data.length} ca đã xuất bản</p>
-        <div className="public-content-grid">{records.data.map((item) => <Link className="public-field-card" to={'/hien-truong/' + item.id} key={item.id}>
+      {records.status === 'loading' && offset === 0 && <StatusPanel status="loading" kind="articles"/>}
+      {records.status === 'error' && offset === 0 && <StatusPanel status="error" onRetry={records.retry}/>}
+      {items.length > 0 && <>
+        <p className="results-count" role="status">{items.length} / {records.meta?.total ?? items.length} ca đã xuất bản</p>
+        <div className="public-content-grid">{items.map((item) => <Link className="public-field-card" to={'/hien-truong/' + item.id} key={item.id}>
           <span className="eyebrow">CA ĐÃ ẨN DANH · {formatDate(item.publishedAt)}</span>
           <h2>{item.title}</h2>
           <p>{item.excerpt || item.phenomenon}</p>
@@ -182,7 +192,9 @@ export function FieldNotes() {
           <span className="text-link">Đọc phân tích <Icon name="arrow" size={16}/></span>
         </Link>)}</div>
       </>}
-      {records.status === 'success' && !records.data.length && <StatusPanel status="empty" title="Chưa có ca hiện trường công khai" description="Kho hiện trường chỉ hiển thị ca đã được duyệt, ẩn danh đơn vị/địa chỉ và xác nhận quyền sử dụng ảnh."/>}
+      {records.status === 'success' && offset === 0 && !records.data.length && <StatusPanel status="empty" title="Chưa có ca hiện trường công khai" description="Kho hiện trường chỉ hiển thị ca đã được duyệt, ẩn danh đơn vị/địa chỉ và xác nhận quyền sử dụng ảnh."/>}
+      {records.status === 'error' && offset > 0 && <p className="inline-error" role="alert">{records.error?.message || 'Chưa thể tải thêm ca hiện trường.'} <button type="button" onClick={records.retry}>Thử lại</button></p>}
+      {hasMore && <div className="pagination-actions"><button type="button" className="button button--outline" disabled={records.status === 'loading'} onClick={() => setOffset((value) => value + records.data.length)}>{records.status === 'loading' ? 'Đang tải...' : 'Xem thêm ca hiện trường'} <Icon name="arrow" size={17}/></button></div>}
     </main>
   </>;
 }
