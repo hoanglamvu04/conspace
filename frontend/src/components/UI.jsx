@@ -120,7 +120,8 @@ export function ArticleCard({ article, featured = false }) {
 
 export function NicheCard({ niche, index }) {
   const isDesign = niche.group === 'design';
-  return <Link to={`/ngach/${encodeURIComponent(niche.slug)}`} className="niche-card"><span className="niche-card-top"><span className="niche-card-code">{isDesign ? 'MẢNG KIẾN TRÚC' : 'NGÁCH THI CÔNG'} {index !== undefined ? ` / ${String(index + 1).padStart(2, '0')}` : ''}</span><Icon name="upRight" size={18} /></span><span className="niche-card-main"><span className="niche-card-icon"><Icon name={isDesign ? 'blueprint' : 'hardhat'} size={24} /></span><strong>{niche.name}</strong>{niche.summary && <span className="niche-card-summary">{niche.summary}</span>}</span><span className="niche-card-bottom">{typeof niche.articleCount === 'number' ? `${niche.articleCount} bài đã xuất bản` : 'Khám phá lĩnh vực'}<Icon name="arrow" size={15} /></span></Link>;
+  const destination = (isDesign ? '/mang/' : '/ngach/') + encodeURIComponent(niche.slug);
+  return <Link to={destination} className="niche-card"><span className="niche-card-top"><span className="niche-card-code">{isDesign ? 'MẢNG KIẾN TRÚC' : 'NGÁCH THI CÔNG'} {index !== undefined ? ` / ${String(index + 1).padStart(2, '0')}` : ''}</span><Icon name="upRight" size={18} /></span><span className="niche-card-main"><span className="niche-card-icon"><Icon name={isDesign ? 'blueprint' : 'hardhat'} size={24} /></span><strong>{niche.name}</strong>{niche.summary && <span className="niche-card-summary">{niche.summary}</span>}</span><span className="niche-card-bottom">{typeof niche.articleCount === 'number' ? `${niche.articleCount} bài đã xuất bản` : 'Khám phá lĩnh vực'}<Icon name="arrow" size={15} /></span></Link>;
 }
 
 export function BookCard({ book }) {
