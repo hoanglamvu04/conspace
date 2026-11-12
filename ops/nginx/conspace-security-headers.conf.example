@@ -1,0 +1,13 @@
+# REFERENCE ONLY: inspect existing headers and Nginx inheritance before applying.
+# Helmet currently adds headers to Express responses. Static Vite files are served by Nginx.
+# Do not add duplicate add_header directives blindly; location-level add_header may override
+# inherited server-level headers on older Nginx releases.
+#
+# Candidate headers for static root and /media locations:
+# add_header X-Content-Type-Options "nosniff" always;
+# add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+# add_header X-Frame-Options "SAMEORIGIN" always;
+# add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+#
+# Add HSTS only after confirming both hostnames and all intended subdomains are HTTPS-ready.
+# Do not enable includeSubDomains or preload without a domain-wide TLS inventory.

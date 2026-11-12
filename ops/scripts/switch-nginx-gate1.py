@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
-"""Switch only CONSPACE's existing HTTPS Nginx vhost from holding to React/API.
-
-Run as root after PM2 conspace-api passes /api/ready and frontend/dist is built.
-Refuses unexpected Nginx layout. Makes a timestamped backup and restores on error.
-Does not edit any other site's vhost or restart Nginx.
-"""
+"""Safely switch only CONSPACE's existing HTTPS vhost and add the published-media alias."""
 from __future__ import annotations
 import os
 import pathlib
@@ -18,10 +13,12 @@ from datetime import datetime, timezone
 
 VHOST = pathlib.Path("/etc/nginx/sites-available/conspace.conf")
 DIST = pathlib.Path("/var/www/conspace/frontend/dist")
+MEDIA_PUBLIC = pathlib.Path("/var/lib/conspace/media/public")
 BACKUP_STATE = pathlib.Path("/var/lib/conspace-ops/last-vhost-backup.txt")
 ROOT_OLD = "/var/www/conspace/ops/holding"
 ROOT_NEW = "/var/www/conspace/frontend/dist"
-PROXY = """\
+
+API_BLOCK = """\
 {indent}location = /api {{
 {indent}    proxy_pass http://127.0.0.1:5088;
 {indent}    proxy_set_header Host $host;
@@ -39,6 +36,28 @@ PROXY = """\
 {indent}    proxy_set_header X-Forwarded-Proto $scheme;
 {indent}    proxy_connect_timeout 5s;
 {indent}    proxy_read_timeout 30s;
+{indent}}}
+"""
+
+MEDIA_BLOCK = """\
+{indent}location ~* ^/media/(?<media_file>[a-f0-9]{{32}}\\.(?:jpe?g|png|webp|avif|pdf))$ {{
+{indent}    alias /var/lib/conspace/media/public/$media_file;
+{indent}    autoindex off;
+{indent}    default_type application/octet-stream;
+{indent}    types {{
+{indent}        image/jpeg jpg jpeg;
+{indent}        image/png png;
+{indent}        image/webp webp;
+{indent}        image/avif avif;
+{indent}        application/pdf pdf;
+{indent}    }}
+{indent}    add_header X-Content-Type-Options "nosniff" always;
+{indent}    add_header Content-Security-Policy "default-src 'none'; sandbox" always;
+{indent}    add_header Cache-Control "public, max-age=31536000, immutable" always;
+{indent}}}
+{indent}location /media/ {{
+{indent}    autoindex off;
+{indent}    return 404;
 {indent}}}
 """
 
@@ -84,64 +103,18 @@ def safe_run(*command: str) -> None:
     subprocess.run(command, check=True)
 
 
-def main() -> None:
-    if os.geteuid() != 0:
-        fail("Run as root on the CONSPACE VPS")
-    if not DIST.is_symlink() or not (DIST / "index.html").is_file():
-        fail("Expected managed frontend/dist symlink and built index.html")
-    if not VHOST.is_file():
-        fail("CONSPACE Nginx vhost not found")
-    safe_run("nginx", "-t")
-    source = VHOST.read_text(encoding="utf-8")
-    matched = []
-    for match in re.finditer(r"(?m)^[ \t]*server[ \t]*\{", source):
-        start, end = match.start(), match_brace(source, match.end() - 1)
-        block = source[start:end]
-        if not re.search(r"(?m)^\s*listen\s+(?:\[::\]:)?443\s+ssl\b", block):
-            continue
-        names = re.findall(r"(?m)^\s*server_name\s+([^;]+);", block)
-        if len(names) != 1 or set(names[0].split()) != {"conspace.vn", "www.conspace.vn"}:
-            continue
-        matched.append((start, end, block))
-    if len(matched) != 1:
-        fail("Expected exactly one CONSPACE HTTPS vhost (found " + str(len(matched)) + ")")
-    start, end, block = matched[0]
-    if not re.search(r"(?m)^\s*ssl_certificate\s+", block):
-        fail("HTTPS vhost has no certificate directive")
-    if not re.search(r"(?m)^\s*location\s*=\s*/__infra/health\s*\{", block):
-        fail("Gate 0 edge health location missing")
-    has_api = re.search(r"(?m)^\s*location\s+\^~\s+/api/\s*\{", block)
-    has_root = re.search(r"(?m)^\s*root\s+" + re.escape(ROOT_NEW) + r"\s*;", block)
-    if has_api or has_root:
-        if has_api and has_root and re.search(r"(?m)^\s*location\s*=\s*/api\s*\{", block):
-            print("PASS: CONSPACE Nginx already points to React and API; no change")
-            return
-        fail("Vhost partially migrated; review manually instead of overwriting")
-    root_matches = list(re.finditer(r"(?m)^[ \t]*root\s+" + re.escape(ROOT_OLD) + r"\s*;", block))
-    loc_matches = list(re.finditer(r"(?m)^(?P<indent>[ \t]*)location\s+/\s*\{", block))
-    if len(root_matches) != 1 or len(loc_matches) != 1:
-        fail("Unexpected root or location / layout; need manual review")
-    loc = loc_matches[0]
-    loc_body = block[loc.start():match_brace(block, loc.end() - 1)]
-    if "try_files $uri $uri/ /index.html;" not in loc_body:
-        fail("Existing location / is not the Gate 0 holding fallback")
-    if re.search(r"(?m)^\s*location\s+(?:=\s*/api|\^~\s*/api/)\s*\{", block):
-        fail("Existing API location not owned by this script")
-    replacement = PROXY.format(indent=loc.group("indent"))
-    updated = block[:loc.start()] + replacement + "\n" + block[loc.start():]
-    updated = updated.replace(ROOT_OLD, ROOT_NEW, 1)
-    entire = source[:start] + updated + source[end:]
+def write_vhost(source: str, start: int, end: int, updated_block: str) -> None:
+    entire = source[:start] + updated_block + source[end:]
     if entire == source:
-        fail("No vhost change produced")
-
+        print("PASS: CONSPACE Nginx already matches required locations; no change")
+        return
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     backup = VHOST.with_name(VHOST.name + ".before-gate1-" + stamp)
     shutil.copy2(VHOST, backup)
     tmp_path = None
     try:
-        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8",
-                                         dir=str(VHOST.parent), prefix=".conspace-gate1-",
-                                         delete=False) as output:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=str(VHOST.parent),
+                                         prefix=".conspace-gate1-", delete=False) as output:
             tmp_path = pathlib.Path(output.name)
             output.write(entire)
             output.flush()
@@ -152,7 +125,7 @@ def main() -> None:
         safe_run("nginx", "-t")
         safe_run("systemctl", "reload", "nginx")
     except Exception as exc:
-        print("Switch failed: " + str(exc) + "; restoring Nginx vhost backup", file=sys.stderr)
+        print("Switch failed: " + str(exc) + "; restoring CONSPACE vhost backup", file=sys.stderr)
         shutil.copy2(backup, VHOST)
         try:
             safe_run("nginx", "-t")
@@ -165,9 +138,83 @@ def main() -> None:
             tmp_path.unlink()
     BACKUP_STATE.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     BACKUP_STATE.write_text(str(backup) + "\n", encoding="utf-8")
-    print("PASS: CONSPACE HTTPS now serves frontend/dist and proxies /api")
+    print("PASS: CONSPACE HTTPS serves Vite, proxies /api and exposes allowlisted published media.")
     print("Nginx vhost backup: " + str(backup))
-    print("Other Nginx vhosts were not modified.")
+    print("Other Nginx vhosts and Certbot files were not modified.")
+
+
+def main() -> None:
+    if os.geteuid() != 0:
+        fail("Run as root on the CONSPACE VPS")
+    if not DIST.is_symlink() or not (DIST / "index.html").is_file():
+        fail("Expected managed frontend/dist symlink and built index.html")
+    if not MEDIA_PUBLIC.is_dir() or MEDIA_PUBLIC.is_symlink():
+        fail("Expected real /var/lib/conspace/media/public; run setup-storage.sh first")
+    if not VHOST.is_file():
+        fail("CONSPACE Nginx vhost not found")
+    safe_run("nginx", "-t")
+    source = VHOST.read_text(encoding="utf-8")
+
+    matched = []
+    for match in re.finditer(r"(?m)^[ \t]*server[ \t]*\{", source):
+        start, end = match.start(), match_brace(source, match.end() - 1)
+        block = source[start:end]
+        if not re.search(r"(?m)^\s*listen\s+(?:\[::\]:)?443\s+ssl\b", block):
+            continue
+        names = re.findall(r"(?m)^\s*server_name\s+([^;]+);", block)
+        if len(names) == 1 and set(names[0].split()) == {"conspace.vn", "www.conspace.vn"}:
+            matched.append((start, end, block))
+    if len(matched) != 1:
+        fail("Expected exactly one CONSPACE HTTPS vhost (found " + str(len(matched)) + ")")
+    start, end, block = matched[0]
+    if not re.search(r"(?m)^\s*ssl_certificate\s+", block):
+        fail("HTTPS vhost has no certificate directive")
+    if not re.search(r"(?m)^\s*location\s*=\s*/__infra/health\s*\{", block):
+        fail("Gate 0 edge health location missing")
+
+    root_new = bool(re.search(r"(?m)^\s*root\s+" + re.escape(ROOT_NEW) + r"\s*;", block))
+    root_old = bool(re.search(r"(?m)^\s*root\s+" + re.escape(ROOT_OLD) + r"\s*;", block))
+    api_exact = bool(re.search(r"(?m)^\s*location\s*=\s*/api\s*\{", block))
+    api_prefix = bool(re.search(r"(?m)^\s*location\s+\^~\s+/api/\s*\{", block))
+    media_regex = bool(re.search(r"(?m)^\s*location\s+~\*\s+\^/media/", block))
+    media_fallback = bool(re.search(r"(?m)^\s*location\s+/media/\s*\{", block))
+    if api_exact != api_prefix:
+        fail("Partial API proxy configuration; manual review required")
+    if media_regex != media_fallback:
+        fail("Partial media location configuration; manual review required")
+
+    loc = re.search(r"(?m)^(?P<indent>[ \t]*)location\s+/\s*\{", block)
+    if not loc:
+        fail("Existing location / missing")
+    loc_end = match_brace(block, loc.end() - 1)
+    if "try_files $uri $uri/ /index.html;" not in block[loc.start():loc_end]:
+        fail("Existing location / is not the expected SPA fallback; manual review required")
+    indent = loc.group("indent")
+
+    updated = block
+    if root_old and not root_new:
+        if api_exact or api_prefix or media_regex or media_fallback:
+            fail("Holding root has pre-existing API/media locations; manual review required")
+        updated = block.replace(ROOT_OLD, ROOT_NEW, 1)
+        # Recalculate location offset after the root path length changes.
+        loc = re.search(r"(?m)^(?P<indent>[ \t]*)location\s+/\s*\{", updated)
+        updated = updated[:loc.start()] + API_BLOCK.format(indent=indent) + MEDIA_BLOCK.format(indent=indent) + updated[loc.start():]
+    elif root_new:
+        if not (api_exact and api_prefix):
+            fail("Frontend root is active but API proxy is incomplete; manual review required")
+        if not (media_regex and media_fallback):
+            if media_regex or media_fallback:
+                fail("Partial media configuration; manual review required")
+            loc = re.search(r"(?m)^(?P<indent>[ \t]*)location\s+/\s*\{", updated)
+            updated = updated[:loc.start()] + MEDIA_BLOCK.format(indent=loc.group("indent")) + updated[loc.start():]
+    else:
+        fail("Unexpected CONSPACE document root; no automatic edit performed")
+
+    if "proxy_pass http://127.0.0.1:5088;" not in updated:
+        fail("Expected loopback API proxy is missing")
+    if "/var/lib/conspace/media/public/$media_file" not in updated:
+        fail("Published media alias is missing")
+    write_vhost(source, start, end, updated)
 
 
 if __name__ == "__main__":

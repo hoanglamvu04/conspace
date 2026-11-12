@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily CONSPACE backup schedule
+
+[Timer]
+OnCalendar=*-*-* 02:30:00
+RandomizedDelaySec=15m
+Persistent=true
+Unit=conspace-backup.service
+
+[Install]
+WantedBy=timers.target

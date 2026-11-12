@@ -4,14 +4,12 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
+  workflow_dispatch:
 
 permissions:
   contents: read
 
-# No SSH, deployment credentials, or production deploy jobs.
+# CI only. There is intentionally no production SSH/deploy job.
 jobs:
   ops-static:
     runs-on: ubuntu-latest
@@ -20,51 +18,92 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
-      - name: Check ops scripts syntax
+      - name: Validate Ops scripts and configs
         run: |
+          set -euo pipefail
           for script in ops/scripts/*.sh ops/vps-audit.sh ops/check-dns.sh ops/check-public.sh; do
             bash -n "$script"
           done
           node --check ops/scripts/pm2-check.cjs
           node --check ops/ecosystem.config.cjs
-          python3 -m py_compile ops/scripts/switch-nginx-gate1.py
-      - name: Test PM2 dump safeguard using fake data
+          python3 - <<'PY'
+          import ast
+          from pathlib import Path
+          ast.parse(Path("ops/scripts/switch-nginx-gate1.py").read_text())
+          PY
+          git diff --check HEAD^ HEAD
+      - name: Test PM2 dump safeguard (synthetic data only)
         run: |
+          set -euo pipefail
           printf '[{"name":"x-hub-api"},{"name":"old-api"}]' > /tmp/pm2-fixture.json
-          printf '[{"name":"x-hub-api","pm2_env":{"status":"online"}},{"name":"old-api","pm2_env":{"status":"online"}}]' | node ops/scripts/pm2-check.cjs /tmp/pm2-fixture.json --strict-all
-          printf '\n>>>> In-memory PM2 is out-of-date\nLocal PM2 version: 7.1.2\n[{"name":"x-hub-api"},{"name":"old-api"}]' | node ops/scripts/pm2-check.cjs /tmp/pm2-fixture.json --strict-all
-          printf '[{"name":"old-api"}]' > /tmp/pm2-fixture.json
-          if printf '[{"name":"x-hub-api"}]' | node ops/scripts/pm2-check.cjs /tmp/pm2-fixture.json; then
-            echo 'FAIL: Missing x-hub-api not detected'
+          printf '[{"name":"x-hub-api","pm2_env":{"status":"online"}},{"name":"old-api","pm2_env":{"status":"online"}}]' |
+            node ops/scripts/pm2-check.cjs /tmp/pm2-fixture.json --strict-all --require-online
+          printf '>>>> PM2 daemon warning\nLocal PM2 version: 7.1.2\n[{"name":"x-hub-api","pm2_env":{"status":"online"}}]' |
+            node ops/scripts/pm2-check.cjs /tmp/pm2-fixture.json
+          if printf '[{"name":"old-api","pm2_env":{"status":"online"}}]' |
+            node ops/scripts/pm2-check.cjs /tmp/pm2-fixture.json; then
+            echo 'FAIL: missing x-hub-api was not detected'; exit 1
+          fi
+          if printf '[{"name":"x-hub-api","pm2_env":{"status":"stopped"}}]' |
+            node ops/scripts/pm2-check.cjs /tmp/pm2-fixture.json --require-online; then
+            echo 'FAIL: offline PM2 process was not detected'; exit 1
+          fi
+      - name: Reject committed runtime secrets and backups
+        run: |
+          if git ls-files | grep -E '(^|/)\.env$|\.(dump|pem|key|p12|pfx)$|(^|/)dump\.pm2$'; then
+            echo 'FAIL: runtime secret, certificate key or database/PM2 dump is tracked'
             exit 1
           fi
 
   backend-and-frontend:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: conspace
+          POSTGRES_USER: conspace_app
+          POSTGRES_PASSWORD: ci-only-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U conspace_app -d conspace"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql://conspace_app:ci-only-password@127.0.0.1:5432/conspace
+      NODE_ENV: test
+      HOST: 127.0.0.1
+      PORT: 5088
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
       - name: Install backend dependencies
-        run: |
-          if test -f backend/package-lock.json; then
-            npm ci --prefix backend --ignore-scripts --no-audit --no-fund
-          else
-            echo 'WARNING: backend lockfile missing; production staging will reject commit'
-            npm install --prefix backend --package-lock=false --ignore-scripts --no-audit --no-fund
-          fi
-      - name: Backend checks
+        run: npm ci --prefix backend --ignore-scripts --no-audit --no-fund
+      - name: Backend security audit
+        run: npm audit --prefix backend --audit-level=high
+      - name: Backend syntax and tests
         run: |
           npm run check --prefix backend
-          npm run test --prefix backend
-      - name: Install frontend dependencies
+          npm test --prefix backend
+      - name: PostgreSQL migration and seed verification
         run: |
-          if test -f frontend/package-lock.json; then
-            npm ci --prefix frontend --ignore-scripts --no-audit --no-fund
-          else
-            echo 'WARNING: frontend lockfile missing; production staging will reject commit'
-            npm install --prefix frontend --package-lock=false --ignore-scripts --no-audit --no-fund
-          fi
-      - name: Build frontend
-        run: npm run build
+          npm run db:migrate --prefix backend
+          npm run db:migrate --prefix backend
+          npm run db:seed --prefix backend
+          npm run db:seed --prefix backend
+      - name: Install frontend dependencies
+        run: npm ci --prefix frontend --ignore-scripts --no-audit --no-fund
+      - name: Frontend security audit
+        run: npm audit --prefix frontend --audit-level=high
+      - name: Frontend tests and production build
+        run: |
+          npm test --prefix frontend
+          npm run build

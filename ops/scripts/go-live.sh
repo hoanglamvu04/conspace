@@ -1,118 +1,115 @@
 #!/usr/bin/env bash
-# Deploy only approved Gate 1 integration code to CONSPACE on the existing VPS.
-# Changes ONLY conspace database schema, conspace-api PM2 app and conspace.vn vhost.
-# Requires root/TTY for database password if backend/.env doesn't exist.
+# Owner-approved, CI-gated deployment of main to CONSPACE only.
+# Never runs global PM2 actions, changes PostgreSQL cluster config, or reboots the VPS.
 set -euo pipefail
 umask 077
 REPO=/var/www/conspace
-cd "$REPO"
-die() { printf 'STOP: %s\n' "$*" >&2; exit 1; }
+die(){ printf 'STOP: %s\n' "$*" >&2; exit 1; }
+(( EUID == 0 )) || die 'Run as root (the owner of pm2-root).'
+[[ "${1:-}" == '--apply' ]] || die 'Usage: go-live.sh --apply <40-char-main-SHA>'
+APPROVED_SHA="${2:-}"
+[[ "$APPROVED_SHA" =~ ^[a-f0-9]{40}$ ]] || die 'Invalid approved SHA.'
+[[ -z "$(git -C "$REPO" status --porcelain)" ]] || die 'Working tree has changes/untracked files. Inspect; do not discard.'
+[[ "$(git -C "$REPO" branch --show-current)" == main ]] || die 'Only main is deployable.'
 
-[[ "$EUID" == 0 ]] || die 'Run as root (matching existing pm2-root service).'
-[[ "$(git branch --show-current)" == 'main' ]] || die 'Switch to approved main before running.'
-[[ -z "$(git status --porcelain --untracked-files=no)" ]] || die 'Tracked working tree has local modifications; inspect before deploying.'
+cd "$REPO"
+git fetch --no-tags origin main
+git pull --ff-only origin main
 SHA="$(git rev-parse HEAD)"
 REMOTE="$(git rev-parse refs/remotes/origin/main)"
-[[ "$SHA" == "$REMOTE" ]] || die "Local SHA differs from remote integration; git pull --ff-only first."
+[[ "$SHA" == "$REMOTE" && "$SHA" == "$APPROVED_SHA" ]] || die "Local main, origin/main and approved SHA must match. local=$SHA remote=$REMOTE approved=$APPROVED_SHA"
+[[ "${CONSPACE_CI_APPROVED_SHA:-}" == "$SHA" ]] || die 'Set CONSPACE_CI_APPROVED_SHA to this SHA only after verifying all GitHub Actions checks passed.'
 [[ "$(node -v)" == 'v22.23.2' ]] || die 'Expected Node.js 22.23.2.'
-test -f backend/package-lock.json || die 'Backend lockfile missing.'
-test -f frontend/package-lock.json || die 'Frontend lockfile missing.'
-test -f /root/.pm2/dump.pm2 || die 'PM2 dump not present.'
-test -f /etc/nginx/sites-available/conspace.conf || die 'CONSPACE Nginx config not present.'
+for file in backend/package-lock.json frontend/package-lock.json; do test -s "$file" || die "$file missing."; done
+test -f /root/.pm2/dump.pm2 || die 'PM2 saved dump missing.'
+test -f /etc/nginx/sites-available/conspace.conf || die 'CONSPACE Nginx vhost missing.'
+test -f backend/.env || die 'Private backend/.env missing; prepare it manually.'
+[[ "$(stat -c '%a' backend/.env)" == 600 ]] || die 'backend/.env must be mode 600.'
+if git ls-files --error-unmatch backend/.env >/dev/null 2>&1; then die 'backend/.env is tracked by Git.'; fi
 
-echo '=== 1. Verify existing PM2 apps without restarting ==='
-pm2 jlist | node -e '
-const fs = require("node:fs");
-const s=fs.readFileSync(0,"utf8");
-const i=s.search(/\[\s*(?:\{|\])/);
-if(i<0)process.exit(3);
-let apps;
-try{apps=JSON.parse(s.slice(i))}catch{process.exit(3)}
-const required=["autospace-api","autospace-web","autospace-worker","bandohoalac-api","dothihoalac-api","halo-hola-api","kientruchoalac-api","x-hub-api"];
-const bad=required.filter(n=>!apps.some(p=>(p.name||p.pm2_env?.name)===n&&p.pm2_env?.status==="online"));
-if(bad.length){console.error("STOP: Missing/offline PM2 apps: "+bad.join(", "));process.exit(1)}
-console.log("PASS: All 8 previously running apps are online.");
-'
-# A prior saved PM2 dump missed x-hub-api; back up before refreshing persistent inventory.
-if ! pm2 jlist | node ops/scripts/pm2-check.cjs /root/.pm2/dump.pm2 --strict-all; then
-  BACKUP="/root/.pm2/dump.pm2.before-conspace-$(date -u +%Y%m%dT%H%M%SZ)"
-  cp -p /root/.pm2/dump.pm2 "$BACKUP"
-  echo "Saved original PM2 dump at: $BACKUP"
-  pm2 save
-  pm2 jlist | node ops/scripts/pm2-check.cjs /root/.pm2/dump.pm2 --strict-all ||
-    die 'PM2 current/saved inventory still mismatches; stop without deploy.'
-fi
+echo '=== 1. Verify GitHub Actions checks for this exact commit ==='
+CHECKS_JSON="$(mktemp)"
+trap 'rm -f "$CHECKS_JSON"' EXIT
+curl --fail --silent --show-error --max-time 20 \
+  -H 'Accept: application/vnd.github+json' \
+  -H 'X-GitHub-Api-Version: 2022-11-28' \
+  "https://api.github.com/repos/hoanglamvu04/conspace/commits/$SHA/check-runs?per_page=100" > "$CHECKS_JSON"
+node - "$CHECKS_JSON" <<'NODE'
+const fs = require('node:fs');
+const data = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+if (!Array.isArray(data.check_runs) || data.check_runs.length === 0) {
+  console.error('STOP: No GitHub check-runs found for this SHA.');
+  process.exit(1);
+}
+const bad = data.check_runs.filter((check) =>
+  check.status !== 'completed' || check.conclusion !== 'success'
+);
+for (const check of data.check_runs) {
+  console.log((check.conclusion === 'success' ? 'PASS: ' : 'WAIT/FAIL: ') + check.name + ' [' + check.status + '/' + check.conclusion + ']');
+}
+if (bad.length) {
+  console.error('STOP: Every check-run for the approved SHA must be completed/success.');
+  process.exit(1);
+}
+NODE
 
-echo '=== 2. Preflight existing HTTPS, PM2, PostgreSQL ==='
+echo '=== 2. Verify existing PM2 apps and saved dump (read-only) ==='
+pm2 jlist | node ops/scripts/pm2-check.cjs /root/.pm2/dump.pm2 --strict-all --require-online
 bash ops/scripts/preflight.sh
 
-echo '=== 3. Prepare private database connection ==='
-if [[ ! -f backend/.env ]]; then
-  printf 'Enter CONSPACE conspace_app PostgreSQL password (hidden): '
-  IFS= read -rs DBPASS
-  printf '\n'
-  [[ -n "$DBPASS" ]] || die 'Database password cannot be empty.'
-  CONSPACE_DB_PASSWORD="$DBPASS" node <<'NODE'
-const fs = require('node:fs');
-const secret = process.env.CONSPACE_DB_PASSWORD;
-const url = 'postgresql://conspace_app:' + encodeURIComponent(secret) + '@127.0.0.1:5432/conspace';
-fs.writeFileSync('backend/.env',
-  'NODE_ENV=production\nHOST=127.0.0.1\nPORT=5088\nDATABASE_URL=' + url + '\n',
-  { mode: 0o600, flag: 'wx' });
-console.log('Private backend/.env created (mode 600).');
-NODE
-  unset DBPASS
-else
-  echo 'Existing backend/.env found; preserving it without printing credentials.'
-fi
-chmod 600 backend/.env
+echo '=== 3. Prepare isolated storage/log directories ==='
+bash ops/scripts/setup-storage.sh --apply
 
-echo '=== 4. Stage immutable integrated release, run tests and build ==='
+echo '=== 4. Stage immutable release and run tests/build ==='
 bash ops/scripts/stage.sh "$SHA"
 RELEASE="/var/www/conspace-releases/$SHA"
 
-echo '=== 5. Create CONSPACE-only content schema and approved taxonomy ==='
+echo '=== 5. Back up CONSPACE database + media BEFORE migrations ==='
+bash ops/scripts/backup-all.sh
+
+echo '=== 6. Apply transactional CONSPACE migrations and seed ==='
 npm run db:migrate --prefix "$RELEASE/backend"
 npm run db:seed --prefix "$RELEASE/backend"
 
-echo '=== 6. Preserve local dist generated by earlier build ==='
+echo '=== 7. Reload only conspace-api and switch frontend ==='
 if [[ -d frontend/dist && ! -L frontend/dist ]]; then
   OLD_DIST="frontend/dist.before-gate1-$(date -u +%Y%m%dT%H%M%SZ)"
   mv frontend/dist "$OLD_DIST"
-  echo "Existing build preserved: $OLD_DIST"
+  echo "Preserved old dist at $OLD_DIST"
 fi
-
-echo '=== 7. Activate isolated API and React release ==='
 bash ops/scripts/activate.sh --apply "$SHA"
+if ! bash ops/scripts/fix-static-access.sh; then
+  bash ops/scripts/rollback.sh --apply || true
+  die 'Static asset permission check failed; application rollback attempted.'
+fi
 
-echo '=== 7b. Grant Nginx access to compiled public Vite assets ==='
-bash ops/scripts/fix-static-access.sh
-
-echo '=== 8. Switch only CONSPACE HTTPS vhost ==='
+echo '=== 8. Back up, validate and reload only CONSPACE Nginx vhost ==='
 if ! python3 ops/scripts/switch-nginx-gate1.py; then
-  echo 'Nginx switch failed; API/frontend revert to previous state.' >&2
   bash ops/scripts/rollback.sh --apply || true
-  die 'Deployment did not change public Nginx routing.'
+  die 'Nginx switch failed; its script restores the vhost backup and app rollback was attempted.'
 fi
 
-echo '=== 9. Verify real HTTPS frontend and API ==='
+echo '=== 9. Verify both public HTTPS hostnames ==='
 if ! bash ops/scripts/smoke.sh; then
-  echo 'Smoke failed; restoring previously backed-up CONSPACE Nginx vhost.' >&2
-  NGINX_BACKUP="$(cat /var/lib/conspace-ops/last-vhost-backup.txt 2>/dev/null || true)"
-  if [[ -f "$NGINX_BACKUP" ]]; then
-    cp -a "$NGINX_BACKUP" /etc/nginx/sites-available/conspace.conf
-    nginx -t && systemctl reload nginx
-  else
-    echo 'URGENT: Missing Nginx backup path; review conspace.conf manually.' >&2
-  fi
+  BACKUP="$(cat /var/lib/conspace-ops/last-vhost-backup.txt 2>/dev/null || true)"
+  case "$BACKUP" in
+    /etc/nginx/sites-available/conspace.conf.before-gate1-*)
+      if [[ -f "$BACKUP" ]]; then
+        cp -a "$BACKUP" /etc/nginx/sites-available/conspace.conf
+        nginx -t && systemctl reload nginx
+      else
+        echo 'URGENT: Recorded Nginx backup file is missing.' >&2
+      fi
+      ;;
+    *) echo 'URGENT: Refusing to guess Nginx backup path.' >&2 ;;
+  esac
   bash ops/scripts/rollback.sh --apply || true
-  die 'Public smoke failed; check details before retrying.'
+  die 'Public smoke failed; Nginx restore and application rollback attempted.'
 fi
 
-echo '=== 10. Save PM2 startup list after successful deployment ==='
-FINAL_BACKUP="/root/.pm2/dump.pm2.before-conspace-active-$(date -u +%Y%m%dT%H%M%SZ)"
-cp -p /root/.pm2/dump.pm2 "$FINAL_BACKUP"
-pm2 save
-pm2 jlist | node ops/scripts/pm2-check.cjs /root/.pm2/dump.pm2 --strict-all
-printf '\nPASS: CONSPACE Gate 1 production live. Commit %s\n' "$SHA"
-echo 'URLs: https://conspace.vn/ | https://www.conspace.vn/ | https://conspace.vn/api/ready'
+echo '=== 10. Final process and backup checks ==='
+pm2 describe conspace-api
+pm2 logs conspace-api --lines 30 --nostream || true
+bash ops/scripts/monitor.sh
+printf '\nPASS: CONSPACE deployment verified for main commit %s\n' "$SHA"
+echo 'PM2 dump was NOT saved. Do not run pm2 save until the owner reviews every existing app and explicitly approves it.'

@@ -1,32 +1,55 @@
-# REFERENCE ONLY; NOT A STANDALONE VHOST.
-# Back up exact CONSPACE vhost and nginx -t BEFORE edits. Preserve Certbot TLS,
-# both hostnames, existing HTTP redirect, ACME handling and /__infra/health.
-# Add inside EXISTING HTTPS server block:
+# REFERENCE ONLY; merge into the existing HTTPS server block after reviewing it.
+# Keep Certbot-managed TLS, both server_name values, HTTP redirect, ACME handling,
+# and the exact /__infra/health location. Never replace the whole vhost.
 #
-# location = /api {
-#     proxy_pass http://127.0.0.1:5088;
-#     proxy_set_header Host $host;
-#     proxy_set_header X-Real-IP $remote_addr;
-#     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-#     proxy_set_header X-Forwarded-Proto $scheme;
-#     proxy_connect_timeout 5s;
-#     proxy_read_timeout 30s;
-# }
-# location ^~ /api/ {
-#     proxy_pass http://127.0.0.1:5088;
-#     proxy_set_header Host $host;
-#     proxy_set_header X-Real-IP $remote_addr;
-#     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-#     proxy_set_header X-Forwarded-Proto $scheme;
-#     proxy_connect_timeout 5s;
-#     proxy_read_timeout 30s;
-# }
-#
-# REPLACE existing location / (never duplicate) in HTTPS block:
-# root /var/www/conspace/frontend/dist;
-# index index.html;
-# location / {
-#     try_files $uri $uri/ /index.html;
-# }
-#
-# Keep all other sites unchanged. nginx -t BEFORE reload; never restart nginx.
+# API proxy: no trailing slash on proxy_pass, so Express receives /api/health.
+location = /api {
+    proxy_pass http://127.0.0.1:5088;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_connect_timeout 5s;
+    proxy_read_timeout 30s;
+}
+location ^~ /api/ {
+    proxy_pass http://127.0.0.1:5088;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_connect_timeout 5s;
+    proxy_read_timeout 30s;
+}
+
+# Only random-name, allowlisted published files are served. All other /media paths 404.
+# Files must be promoted by the backend from private/ to public/ only after publication.
+location ~* ^/media/(?<media_file>[a-f0-9]{32}\.(?:jpe?g|png|webp|avif|pdf))$ {
+    alias /var/lib/conspace/media/public/$media_file;
+    autoindex off;
+    default_type application/octet-stream;
+    types {
+        image/jpeg jpg jpeg;
+        image/png png;
+        image/webp webp;
+        image/avif avif;
+        application/pdf pdf;
+    }
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Content-Security-Policy "default-src 'none'; sandbox" always;
+    add_header Cache-Control "public, max-age=31536000, immutable" always;
+}
+location /media/ {
+    autoindex off;
+    return 404;
+}
+
+# Replace the existing location /; do NOT duplicate it.
+root /var/www/conspace/frontend/dist;
+index index.html;
+location / {
+    try_files $uri $uri/ /index.html;
+}
+
+# Before and after edits: sudo nginx -t. Reload only after it passes:
+# sudo systemctl reload nginx

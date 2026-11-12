@@ -1,0 +1,21 @@
+# REFERENCE ONLY: these limit_req_zone directives belong inside Nginx http {},
+# not inside a server/location block. Check nginx -T and existing zone names first.
+limit_req_zone $binary_remote_addr zone=conspace_admin_login:10m rate=5r/m;
+limit_req_zone $binary_remote_addr zone=conspace_media_upload:10m rate=10r/m;
+limit_req_status 429;
+
+# Once Backend defines the routes, add inside the CONSPACE HTTPS server block:
+#
+# location = /api/admin/auth/login {
+#     limit_req zone=conspace_admin_login burst=3 nodelay;
+#     ...same proxy headers and proxy_pass as /api...
+# }
+#
+# location ^~ /api/admin/media {
+#     client_max_body_size 25m;
+#     limit_req zone=conspace_media_upload burst=5 nodelay;
+#     ...same proxy headers and proxy_pass as /api...
+# }
+#
+# Express must also enforce account+IP rate limits. Nginx limits are an outer layer,
+# not a replacement for application authentication/authorization.

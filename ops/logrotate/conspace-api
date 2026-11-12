@@ -1,0 +1,12 @@
+/var/log/conspace/api-out.log /var/log/conspace/api-error.log {
+    daily
+    rotate 14
+    missingok
+    notifempty
+    compress
+    delaycompress
+    dateext
+    copytruncate
+    su root root
+    create 0640 root root
+}
