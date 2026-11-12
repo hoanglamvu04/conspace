@@ -22,7 +22,14 @@ try {
 }
 
 const saved = parseJson('PM2 dump', savedRaw);
-const live = parseJson('PM2 live list', fs.readFileSync(0, 'utf8'));
+// Some PM2 daemon/CLI version combinations print a >>>> warning before JSON.
+const liveOutput = fs.readFileSync(0, 'utf8');
+const jsonStart = liveOutput.search(/\[\s*(?:\{|\])/);
+if (jsonStart < 0) {
+  console.error('FAIL: PM2 live list has no JSON array');
+  process.exit(2);
+}
+const live = parseJson('PM2 live list', liveOutput.slice(jsonStart));
 if (!Array.isArray(saved) || !Array.isArray(live)) {
   console.error('FAIL: Unexpected PM2 JSON structure');
   process.exit(2);
