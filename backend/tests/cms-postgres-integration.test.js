@@ -38,10 +38,15 @@ function api(base,session) {
 async function login(base,email,password) {
   const response=await api(base)('POST','/api/admin/auth/login',{email,password});
   assert.equal(response.status,200,JSON.stringify(response.body));
+  const user=response.body.data.user;
   return {
     cookie:response.headers.get('set-cookie').split(';')[0],
     csrfToken:response.body.data.csrfToken,
-    id:response.body.data.user.id,
+    id:user.id,
+    role:user.role,
+    roles:user.roles,
+    permissions:user.permissions,
+    personId:user.personId,
   };
 }
 
@@ -216,13 +221,42 @@ test('real PostgreSQL flow: login -> create -> technical review -> chief review 
   assert.equal(niche.body.data.sections.length,7);
   assert.ok(niche.body.data.sections.every(s=>Array.isArray(s.layers)&&s.layers.length===0));
   const group=await pool.query('INSERT INTO conspace.niche_groups(slug,name,source_ref) VALUES($1,$2,$3) RETURNING id',['ci-group-'+uuidSuffix,'CI test construction group','CI fixture only']);
-  await pool.query('INSERT INTO conspace.niches(slug,name,group_type,template_key,source_ref,is_active,niche_group_id) VALUES($1,$2,\'construction\',\'TEMPLATE_A\',$3,true,$4)',['ci-construction-'+uuidSuffix,'CI test construction niche','CI fixture only',group.rows[0].id]);
-  const templateA=await api(base)('GET','/api/v1/niches/ci-construction-'+uuidSuffix+'?role=contractor');
+  const constructionNiche=await pool.query('INSERT INTO conspace.niches(slug,name,group_type,template_key,source_ref,is_active,niche_group_id) VALUES($1,$2,\'construction\',\'TEMPLATE_A\',$3,true,$4) RETURNING id',['ci-construction-'+uuidSuffix,'CI test construction niche','CI fixture only',group.rows[0].id]);
+  const constructionNicheId=constructionNiche.rows[0].id;
+  const constructionSlug='ci-construction-'+uuidSuffix;
+  const templateA=await api(base)('GET','/api/v1/niches/'+constructionSlug+'?role=contractor');
   assert.equal(templateA.status,200,JSON.stringify(templateA.body));
   assert.equal(templateA.body.data.templateType,'TEMPLATE_A');assert.equal(templateA.body.data.sections.length,12);
   assert.deepEqual(templateA.body.data.sections[0].layers.map(x=>x.audienceRole),['contractor','homeowner']);
   assert.ok([2,9,10].every(no=>templateA.body.data.sections[no-1].layers.some(x=>x.audienceRole==='architect')));
   assert.ok(niche.body.data.sections.every(s=>Array.isArray(s.layers)));
+
+  // Real Template A section workflow: author -> technical review -> publish -> public layer.
+  const sectionSaved=await editorApi('PUT','/api/admin/niches/'+constructionNicheId+'/sections/1',{
+    audienceRole:'homeowner',content:'Nội dung lớp chủ nhà đã có nguồn và được kiểm tra.',
+    sourceRef:'CI fixture: verified editorial source',sensitivityAssessed:true,sensitivityFlags:[],
+  });
+  assert.equal(sectionSaved.status,200,JSON.stringify(sectionSaved.body));
+  const sectionId=sectionSaved.body.data.id;
+  const sectionSubmitted=await editorApi('POST','/api/admin/niches/'+constructionNicheId+'/sections/1/submit',{
+    audienceRole:'homeowner',reason:'Gửi khối nội dung để duyệt kỹ thuật',
+  });
+  assert.equal(sectionSubmitted.status,200,JSON.stringify(sectionSubmitted.body));
+  const sectionStarted=await reviewerApi('POST','/api/admin/reviews/niche-sections/'+sectionId+'/start',{templateType:'TEMPLATE_A'});
+  assert.equal(sectionStarted.status,200,JSON.stringify(sectionStarted.body));
+  const sectionDecision=await reviewerApi('POST','/api/admin/reviews/niche-sections/'+sectionId+'/decision',{
+    templateType:'TEMPLATE_A',stage:'TECHNICAL',decision:'APPROVED',reason:'Đã kiểm tra nội dung và nguồn',
+  });
+  assert.equal(sectionDecision.status,200,JSON.stringify(sectionDecision.body));
+  assert.equal(sectionDecision.body.data.status,'APPROVED');
+  const sectionPublished=await chiefApi('POST','/api/admin/niches/'+constructionNicheId+'/sections/1/publish',{
+    audienceRole:'homeowner',reason:'Xuất bản khối đã qua duyệt kỹ thuật',
+  });
+  assert.equal(sectionPublished.status,200,JSON.stringify(sectionPublished.body));
+  const publicNiche=await api(base)('GET','/api/v1/niches/'+constructionSlug+'?role=homeowner');
+  assert.equal(publicNiche.status,200,JSON.stringify(publicNiche.body));
+  assert.equal(publicNiche.body.data.sections[0].layers.find(x=>x.audienceRole==='homeowner').content,'Nội dung lớp chủ nhà đã có nguồn và được kiểm tra.');
+  assert.equal(publicNiche.body.data.sections[0].layers.find(x=>x.audienceRole==='contractor').content,null);
 
   const fieldNotes=await api(base)('GET','/api/v1/field-notes');
   assert.equal(fieldNotes.status,200,JSON.stringify(fieldNotes.body));

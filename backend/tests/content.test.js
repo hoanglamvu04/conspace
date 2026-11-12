@@ -12,7 +12,7 @@ const secondId = '22222222-2222-4222-8222-222222222222';
 const publishedAt = '2026-11-11T09:00:00.000Z';
 const record = {
   id, slug: 'construction-facts', title: 'Verified content', excerpt: 'Verified excerpt',
-  coverImage: null, niches: ['house'], publishedAt,
+  coverImage: null, niches: ['house'], publishedAt, preferenceRank: 0,
   updatedAt: publishedAt, body: 'Verified markdown',
   authorName: 'Reviewed author', authorVerified: true, sources: [],
 };
@@ -155,8 +155,8 @@ test('repository uses parameter placeholders for all public inputs', async () =>
   assert.ok(calls.some(({ params }) => params.includes("foo' OR TRUE --")));
   assert.ok(calls.some(({ params }) => params.includes("a'b")));
   assert.match(calls[1].sql, /approved_at IS NOT NULL/);
-  assert.match(calls[1].sql, /LIMIT \$5/);
-  assert.equal(calls[1].params[4], 13);
+  assert.match(calls[1].sql, /LIMIT \$6/);
+  assert.equal(calls[1].params[5], 13);
 });
 
 

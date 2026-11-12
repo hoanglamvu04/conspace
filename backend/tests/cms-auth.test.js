@@ -21,7 +21,7 @@ test('CMS login creates an opaque session and stores only the token hash',async(
   const db={query:async(sql,params=[])=>{
     calls.push({sql,params});
     if(sql.includes('auth_login_rate_limits') && sql.startsWith('INSERT')) return {rows:[{attempts:0,blocked_until:null}]};
-    if(sql.includes('FROM conspace.cms_users WHERE email')) return {rows:[{id:'11111111-1111-4111-8111-111111111111',email:'editor@conspace.vn',display_name:'Editor',role:'EDITOR',password_hash:passwordHash,is_active:true,must_change_password:false}]};
+    if(sql.includes('FROM conspace.cms_users u WHERE email')) return {rows:[{id:'11111111-1111-4111-8111-111111111111',email:'editor@conspace.vn',display_name:'Editor',role:'EDITOR',password_hash:passwordHash,is_active:true,must_change_password:false}]};
     return {rows:[],rowCount:1};
   }};
   const service=createAuthService(db,{sessionTtlHours:8});
@@ -44,7 +44,7 @@ test('CMS login returns a generic 401 and persistent rate limit can block furthe
     if(sql.includes('auth_login_rate_limits') && sql.startsWith('INSERT')){
       return {rows:[{attempts,blocked_until:null}]};
     }
-    if(sql.includes('FROM conspace.cms_users WHERE email')) return {rows:[]};
+    if(sql.includes('FROM conspace.cms_users u WHERE email')) return {rows:[]};
     if(sql.includes('UPDATE conspace.auth_login_rate_limits SET attempts')) {attempts+=1;return {rows:[]};}
     return {rows:[]};
   }};
