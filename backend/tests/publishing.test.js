@@ -69,11 +69,12 @@ test('published book chapter exposes navigation only to other published chapters
 test('niche detail preserves 12 empty blocks and never fills gaps with fake content',async(t)=>{
   const db={query:async(sql)=>{
     if(sql.includes('FROM conspace.niches n LEFT JOIN'))return {rows:[{
-      id,slug:'house',name:'HOUSE',group:'design',summary:'',
+      id,slug:'house',name:'HOUSE',group:'construction',templateType:'TEMPLATE_A',expectedSectionCount:12,summary:'',
     }]};
     if(sql.includes('FROM conspace.niche_template_blocks b'))return {rows:[
-      {sectionNo:1,blockKey:'scope',title:'Ngách này làm gì',content:null,audienceRole:null},
-      {sectionNo:2,blockKey:'sequence',title:'Trình tự',content:'Real published section',audienceRole:'architect'},
+      {sectionNo:1,blockKey:'scope',title:'Ngách này làm gì',sharedContent:null,audienceRole:'homeowner',content:null},
+      {sectionNo:1,blockKey:'scope',title:'Ngách này làm gì',sharedContent:null,audienceRole:'contractor',content:null},
+      {sectionNo:2,blockKey:'sequence',title:'Trình tự',sharedContent:null,audienceRole:'architect',content:'Real published section'},
     ]};
     return {rows:[]};
   }};
@@ -82,8 +83,10 @@ test('niche detail preserves 12 empty blocks and never fills gaps with fake cont
   assert.equal(response.status,200);
   const data=(await response.json()).data;
   assert.equal(data.sections.length,12);
-  assert.deepEqual(data.sections[0].layers,[]);
+  assert.equal(data.templateType,'TEMPLATE_A');
+  assert.deepEqual(data.sections[0].layers.map(x=>x.audienceRole).sort(),['contractor','homeowner']);
   assert.equal(data.sections[1].layers[0].content,'Real published section');
+  assert.equal(data.preferredAudienceRole,'architect');
   assert.deepEqual(data.articles,[]);
   assert.equal(data.lens,'architect');
 });
@@ -96,7 +99,7 @@ test('PostgreSQL public search uses published-only checks for all private entiti
     return {rows:[]};
   }};
   const base=await serverFor(t,'/api/v1/search',createPublicSearchRouter(db));
-  const response=await fetch(base+'/api/v1/search?q=bao%20hanh&type=all&limit=7&page=2');
+  const response=await fetch(base+'/api/v1/search?q=bao%20hanh&type=all&limit=7&page=2&role=homeowner');
   assert.equal(response.status,200);
   const body=await response.json();
   assert.deepEqual(body.data,[]);
@@ -105,6 +108,9 @@ test('PostgreSQL public search uses published-only checks for all private entiti
   assert.ok(queries[0].sql.includes("a.status='PUBLISHED'"));
   assert.ok(queries[0].sql.includes("t.status='PUBLISHED'"));
   assert.ok(queries[0].sql.includes("f.unit_anonymized=true"));
+  assert.equal(queries[0].params[2],'homeowner');
+  assert.ok(queries[0].sql.includes('CASE WHEN $3::text IS NOT NULL AND a.audience_role=$3 THEN 0 ELSE 1 END'));
+  assert.ok(!queries[0].sql.includes('AND ($3::text IS NULL OR a.audience_role=$3'));
   assert.equal(queries[0].params[4],7);
   assert.equal(queries[0].params[5],7);
 });
@@ -128,4 +134,42 @@ test('publishing scheduler commits only due, reviewed articles and writes an aud
   assert.ok(calls.some(c=>c.sql.includes("SET status='PUBLISHED',published_at=now()")));
   assert.ok(calls.some(c=>c.params?.includes("SYSTEM_AUTO_PUBLISH")));
   assert.equal(calls.at(-1).sql,'COMMIT');
+});
+
+
+test('Template B returns seven shared blocks and no invented perspective layers',async(t)=>{
+ const db={query:async(sql)=>{
+  if(sql.includes('FROM conspace.niches n LEFT JOIN'))return {rows:[{id,slug:'house',name:'HOUSE',group:'design',templateType:'TEMPLATE_B',expectedSectionCount:7}]};
+  if(sql.includes('FROM conspace.architectural_template_blocks b'))return {rows:Array.from({length:7},(_,i)=>({sectionNo:i+1,blockKey:'block-'+(i+1),title:'Template block '+(i+1),content:i===1?'Sourced block':null,sourceRef:i===1?'IA v1.0':null}))};
+  return {rows:[]};
+ }};
+ const base=await serverFor(t,'/api/v1',createPublishingRouter(db));
+ const response=await fetch(base+'/api/v1/niches/house?role=contractor');
+ assert.equal(response.status,200);
+ const data=(await response.json()).data;
+ assert.equal(data.templateType,'TEMPLATE_B');assert.equal(data.sections.length,7);
+ assert.equal(data.sections[0].content,null);assert.deepEqual(data.sections[0].layers,[]);
+ assert.equal(data.sections[1].content,'Sourced block');assert.equal(data.preferredAudienceRole,'contractor');
+});
+
+test('homepage and books rank the selected audience without filtering other roles',async(t)=>{
+ const calls=[],db={query:async(sql,params=[])=>{calls.push({sql,params});return {rows:[]};}};
+ const base=await serverFor(t,'/api/v1',createPublishingRouter(db));
+ const feed=await fetch(base+'/api/v1/feed?role=architect&limit=5');
+ assert.equal(feed.status,200);assert.equal((await feed.json()).meta.preferredAudienceRole,'architect');
+ assert.ok(calls.slice(0,3).every(q=>q.params[1]==='architect'));
+ assert.ok(calls[0].sql.includes('CASE WHEN $2::text IS NOT NULL AND b.audience_role=$2'));
+ assert.ok(calls[1].sql.includes('CASE WHEN $2::text IS NOT NULL AND a.audience_role=$2'));
+ const books=await fetch(base+'/api/v1/books?role=contractor');
+ assert.equal(books.status,200);assert.equal((await books.json()).meta.preferredAudienceRole,'contractor');
+ assert.equal(calls[4].params[0],'contractor');
+});
+
+test('field-note list ranks selected perspective and keeps other published cases',async(t)=>{
+ const calls=[],db={query:async(sql,params=[])=>{calls.push({sql,params});return {rows:sql.startsWith('SELECT count')?[{total:0}]:[]};}};
+ const base=await serverFor(t,'/api/v1',createPublishingRouter(db));
+ const response=await fetch(base+'/api/v1/field-notes?role=architect&limit=5');
+ assert.equal(response.status,200);assert.equal((await response.json()).meta.preferredAudienceRole,'architect');
+ assert.equal(calls[0].params[1],'architect');
+ assert.ok(calls[0].sql.includes('CASE WHEN $2::text IS NOT NULL AND a.audience_role=$2'));
 });

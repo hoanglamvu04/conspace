@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { hashPassword, verifyPassword } from '../src/security/password.js';
 import { encryptPrivateContact, decryptPrivateContact } from '../src/security/private-contact.js';
 import { createMediaService, sniffMime } from '../src/services/media.js';
-import { requireRoles, requireCsrf } from '../src/middleware/admin-auth.js';
+import { requireRoles, requireRolesOrPermissions, requireCsrf } from '../src/middleware/admin-auth.js';
 import { errorMiddleware, RequestError } from '../src/http/validation.js';
 
 async function start(t, app) {
@@ -83,13 +83,19 @@ test('media service rejects MIME mismatch and non-image upload on image-only rou
 
 test('RBAC denies missing or insufficient role',async(t)=>{
   const app=express();
-  app.use((req,_res,next)=>{req.auth={role:req.get('x-role')||'GUEST'};next();});
+  app.use((req,_res,next)=>{const role=req.get('x-role')||'GUEST';const roles=(req.get('x-roles')||'').split(',').filter(Boolean);const permissions=(req.get('x-permissions')||'').split(',').filter(Boolean);req.auth={role,roles:roles.length?roles:[role],permissions};next();});
   app.get('/admin',requireRoles('ADMIN'),(_req,res)=>res.json({ok:true}));
+  app.get('/review',requireRoles('TECHNICAL_REVIEWER'),(_req,res)=>res.json({ok:true}));
+  app.get('/publish',requireRolesOrPermissions(['EDITOR_IN_CHIEF'],['CONTENT_PUBLISH']),(_req,res)=>res.json({ok:true}));
   app.use(errorMiddleware);
   const base=await start(t,app);
   assert.equal((await fetch(base+'/admin')).status,403);
   assert.equal((await fetch(base+'/admin',{headers:{'x-role':'EDITOR'}})).status,403);
   assert.equal((await fetch(base+'/admin',{headers:{'x-role':'ADMIN'}})).status,200);
+  assert.equal((await fetch(base+'/review',{headers:{'x-role':'ADMIN'}})).status,403);
+  assert.equal((await fetch(base+'/review',{headers:{'x-role':'ADMIN','x-roles':'ADMIN,TECHNICAL_REVIEWER'}})).status,200);
+  assert.equal((await fetch(base+'/publish',{headers:{'x-role':'ADMIN'}})).status,403);
+  assert.equal((await fetch(base+'/publish',{headers:{'x-role':'ADMIN','x-permissions':'CONTENT_PUBLISH'}})).status,200);
 });
 
 test('CSRF middleware rejects missing token and accepts the session token',async(t)=>{

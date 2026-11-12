@@ -17,6 +17,7 @@ function workflowDb(article,authorUserId=creatorId){
     query:async(sql,params=[])=>{
       calls.push({sql,params});
       if(sql.startsWith('SELECT * FROM conspace.articles')) return {rows:[article]};
+      if(sql.startsWith('SELECT reviewer.person_id AS reviewer_person_id')) return {rows:[{reviewer_person_id:params[0],creator_person_id:params[1],author_person_id:authorUserId}]};
       if(sql.startsWith('SELECT user_id FROM conspace.authors')) return {rows:[{user_id:authorUserId}]};
       if(sql.startsWith('SELECT id FROM conspace.authors WHERE user_id')) return {rows:[]};
       if(sql.startsWith('INSERT INTO conspace.authors')) return {rows:[{id:authorId}]};
@@ -104,4 +105,20 @@ test('admin article API enforces role permissions for creation and publication',
   assert.equal(editorPublish.status,403);
   const chiefPublish=await fetch(base+'/api/admin/articles/'+articleId+'/publish',{method:'POST',headers:{'x-role':'EDITOR_IN_CHIEF'}});
   assert.equal(chiefPublish.status,200);
+});
+
+
+test('ADMIN-only membership cannot start technical review or publish',async()=>{
+ const service=createEditorialService(workflowDb({id:articleId,status:'SUBMITTED',created_by_user_id:creatorId,author_id:authorId,requires_chief_review:false}));
+ const admin={id:actorId,role:'ADMIN',roles:['ADMIN'],displayName:'System Admin'};
+ await assert.rejects(service.startArticleReview(admin,articleId,'TECHNICAL'),{status:403,code:'FORBIDDEN'});
+ const approved=createEditorialService(workflowDb({id:articleId,status:'APPROVED',created_by_user_id:creatorId,author_id:authorId,requires_chief_review:false}));
+ await assert.rejects(approved.publishArticle(admin,articleId),{status:403,code:'FORBIDDEN'});
+});
+
+test('explicit multi-role membership authorizes only the additional assigned review role',async()=>{
+ const service=createEditorialService(workflowDb({id:articleId,status:'SUBMITTED',created_by_user_id:creatorId,author_id:authorId,requires_chief_review:false}));
+ const assigned={id:actorId,role:'ADMIN',roles:['ADMIN','TECHNICAL_REVIEWER'],displayName:'System Admin + Reviewer'};
+ const started=await service.startArticleReview(assigned,articleId,'TECHNICAL');
+ assert.equal(started.status,'TECHNICAL_REVIEW');
 });

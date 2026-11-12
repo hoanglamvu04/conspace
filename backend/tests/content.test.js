@@ -43,7 +43,7 @@ test('GET niches returns the contract envelope, accepts group and rejects unknow
   const api = mockRouter({
     niches: async (group) => {
       calls.push(group);
-      return [{ id, slug: 'house', name: 'HOUSE', group: 'design', summary: '', articleCount: 0 }];
+      return [{ id, slug: 'house', name: 'HOUSE', group: 'design', templateType:'TEMPLATE_B', expectedSectionCount:7, summary: '', articleCount: 0 }];
     },
   });
   const base = await withServer(t, api);
@@ -73,10 +73,12 @@ test('GET articles supports keyset cursor with a strict limit and author mapping
   assert.equal(body.data.length, 1);
   assert.deepEqual(body.data[0].author, { displayName: 'Reviewed author', verified: true });
   assert.ok(body.meta.nextCursor);
-  const next = await fetch(base + '/api/v1/articles?limit=1&cursor=' + body.meta.nextCursor);
+  const next = await fetch(base + '/api/v1/articles?role=homeowner&limit=1&cursor=' + body.meta.nextCursor);
   assert.equal(next.status, 200);
   assert.deepEqual(calls[0].cursor, null);
   assert.equal(calls[1].cursor.id, id);
+  assert.equal(calls[1].cursor.v,2);
+  assert.equal(calls[1].cursor.role,'homeowner');
   for (const suffix of ['?limit=51', '?limit=0', '?limit=abc', '?role=admin', '?niche=bad%27slug', '?cursor=not-base64']) {
     const invalid = await fetch(base + '/api/v1/articles' + suffix);
     assert.equal(invalid.status, 400, suffix);
@@ -86,6 +88,8 @@ test('GET articles supports keyset cursor with a strict limit and author mapping
 test('cursor round-trip and tampering protection', () => {
   const token = encodeCursor(record);
   assert.deepEqual(decodeCursor(token), { v: 1, id, publishedAt });
+  const preferred=encodeCursor({...record,preferenceRank:0},'architect');
+  assert.deepEqual(decodeCursor(preferred),{v:2,role:'architect',preferenceRank:0,id,publishedAt});
   assert.throws(() => decodeCursor(token + '!'), { status: 400 });
   assert.throws(() => decodeCursor(Buffer.from('{}').toString('base64url')), { status: 400 });
 });
@@ -153,4 +157,14 @@ test('repository uses parameter placeholders for all public inputs', async () =>
   assert.match(calls[1].sql, /approved_at IS NOT NULL/);
   assert.match(calls[1].sql, /LIMIT \$5/);
   assert.equal(calls[1].params[4], 13);
+});
+
+
+test('reader lens is a ranking preference and does not filter other published audiences',async()=>{
+ const calls=[],db={query:async(sql,params)=>{calls.push({sql,params});return {rows:[]};}};
+ const repository=createContentRepository(db);
+ await repository.articles({role:'homeowner',niche:null,limit:12,cursor:null});
+ assert.equal(calls[0].params[0],'homeowner');
+ assert.ok(calls[0].sql.includes('CASE WHEN $1::text IS NOT NULL AND a.audience_role=$1 THEN 0 ELSE 1 END'));
+ assert.ok(!calls[0].sql.includes('AND ($1::text IS NULL OR a.audience_role=$1'));
 });

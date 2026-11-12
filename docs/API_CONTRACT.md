@@ -1,4 +1,4 @@
-# CONSPACE API Contract v0.3 — Public APIs + Internal CMS + Publishing Engine
+# CONSPACE API Contract v0.4 — IA Governance v1.0 + Editorial Permissions
 
 Base production URL: `https://conspace.vn/api`. JSON is UTF-8. Backend runtime is Node.js 22.23.2, Express, JavaScript ESM, Zod and PostgreSQL 16. The CMS uses only the dedicated `conspace` database and `conspace_app` role.
 
@@ -242,6 +242,77 @@ Allowed file signatures: JPEG, PNG, WebP and PDF. Admin upload maximum is 10 MB.
 - Workflow events record status transitions, actor, reason and timestamp.
 - Private phone numbers are encrypted with AES-256-GCM and are never returned from public APIs.
 - No public user account, marketplace, bidding, escrow, ranking, paid PR, or free-form technical/legal chatbot is introduced by this CMS release.
+
+
+
+
+## IA & Editorial Governance v1.0 — API additions and semantics (v0.4)
+
+### Reader perspectives are preferences, never access controls
+
+homeowner, architect, and contractor are reading perspectives, not CMS roles or access scopes. The optional role query ranks matching published content first but never filters other published perspectives:
+- GET /api/v1/articles?role=...
+- GET /api/v1/search?role=...
+- GET /api/v1/feed?role=...
+- GET /api/v1/books?role=...
+- GET /api/v1/field-notes?role=...
+- GET /api/v1/niches/:slug?role=...
+
+No role defaults to homeowner preference. Reset cursors when changing perspective. Opaque v2 article cursors are bound to the selected role; a mismatched role returns 400. v1 cursors remain accepted chronologically for rollout compatibility.
+
+### Niche templates
+
+GET /api/v1/niches adds templateType and expectedSectionCount. Eight documented design categories use TEMPLATE_B (7 blocks). Construction niches use TEMPLATE_A (12 blocks), with capacity for 30. Five construction groups are source-managed. No undocumented construction names or content are seeded.
+
+Template A returns exactly 12 sections. Each section has sectionNo, key, title, sharedContent, sharedSourceRef, and layers. layers includes all documented homeowner, architect and contractor mappings, including empty entries. Shared content is stored once with audience_role IS NULL. Role selects ordering/lens only and never removes another layer.
+
+Template A layer map: homeowner blocks 1,3,4,5,7,11; contractor blocks 1,6,8,9,10; architect blocks 2,9,10.
+
+Template B returns exactly seven shared blocks with layers: []. The seven documented block titles are:
+1. Ranh giới loại công trình.
+2. Đặc thù.
+3. Chuỗi ngách.
+4. Quy chuẩn/pháp lý riêng.
+5. Rủi ro.
+6. KTS chuyên mảng.
+7. Năng lực/giới hạn giao việc.
+
+Template B does not invent perspective-specific layers. Empty source content stays empty. Public linked articles, books and field notes remain published-only.
+
+### CMS roles and explicit publishing delegation
+
+Authenticated user/session and GET /api/admin/users now return:
+~~~json
+{"id":"uuid","role":"ADMIN","roles":["ADMIN"],"permissions":[],"personId":"uuid"}
+~~~
+
+roles is the explicit role membership list used by server authorization. A user can hold multiple roles. ADMIN alone manages accounts and roles but cannot create/edit/submit content, review, approve, publish or withdraw. EDITOR creates/edits/submits and schedules. TECHNICAL_REVIEWER performs technical review only. EDITOR_IN_CHIEF reviews sensitive content and can approve, publish and withdraw.
+
+Separate reasoned capabilities support delegation:
+- CONTENT_PUBLISH allows publication of already approved/due content only. It does not allow technical or Chief review.
+- CONTENT_WITHDRAW allows withdrawal only.
+- EDITOR_IN_CHIEF role includes publish/withdraw authority.
+- ADMIN does not inherit either permission.
+
+POST /api/admin/users accepts optional roles, roleReason, permissions, permissionReason and personId. Any additional role requires roleReason. Any nonempty permissions list requires permissionReason. Permissions are CONTENT_PUBLISH and CONTENT_WITHDRAW. PATCH /api/admin/users/:id replaces roles or permissions when the corresponding array is supplied; changing only primary role preserves other explicit roles. Role/permission/identity changes revoke active sessions.
+
+An ADMIN cannot grant additional roles, delegated permissions, or change/link personId to their own staff identity. The last active ADMIN membership cannot be removed. personId links multiple CMS accounts belonging to one real staff member; self-review checks compare personId, not account ID.
+
+Publishing route permissions:
+- POST /api/admin/articles/:id/publish: EDITOR_IN_CHIEF or explicit CONTENT_PUBLISH; approved or due-scheduled article only.
+- POST /api/admin/articles/:id/withdraw: EDITOR_IN_CHIEF or explicit CONTENT_WITHDRAW; reason required.
+- Term, Q&A and niche-section publish: EDITOR_IN_CHIEF or explicit CONTENT_PUBLISH.
+- Technical and Chief review endpoints remain role-gated; publishing delegation never grants review rights.
+
+### Legacy ADMIN compatibility
+
+Migration 004_ia_governance.sql is additive. It creates cms_user_roles, cms_user_permissions and cms_users.person_id, migrates primary roles, and gives each currently active pre-v1.0 ADMIN explicit, audited LEGACY_ADMIN_COMPAT memberships for EDITOR, TECHNICAL_REVIEWER and EDITOR_IN_CHIEF. These are temporary explicit grants, not permissions inherited from ADMIN. New ADMIN-only accounts receive ADMIN only and no publishing permission.
+
+Provision replacement EDITOR, TECHNICAL_REVIEWER and EDITOR_IN_CHIEF staff before removing the legacy grants. Revoke them through PATCH /api/admin/users/:id with roles and roleReason. Application rollback can continue using the unchanged cms_users.role column; retain additive role, permission, identity and audit tables.
+
+### Public visibility invariants
+
+Public APIs return only PUBLISHED content with approval and publication timestamps. Field cases additionally require unit/address anonymization and image rights. Terms require technical review and a source. Q&A answers require an approved published answer. Chapters expose body/navigation only when their linked article is published. Public media requires rights confirmation and eligible published linkage. Documents remain private.
 
 
 ## Publishing Engine v0.3 (public, no authentication)
