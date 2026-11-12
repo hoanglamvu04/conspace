@@ -158,6 +158,39 @@ test('real PostgreSQL flow: login -> create -> technical review -> chief review 
   assert.equal(visible.status,200,JSON.stringify(visible.body));
   assert.equal(visible.body.data.body,'Ghi chép thử nghiệm từ CI, không có tên đơn vị.');
 
+  const secondSlug='ci-contractor-'+uuidSuffix;
+  const secondDraft=await editorApi('POST','/api/admin/articles/',{
+    slug:secondSlug,title:'Góc nhìn nhà thầu về công trình',excerpt:'Bài kiểm tra lens',
+    body:'Bài kiểm tra xếp hạng cho một công trình; người đọc ở mọi góc nhìn vẫn đọc được.',
+    audienceRole:'contractor',contentType:'EDITORIAL',sensitivityAssessed:true,sensitivityFlags:[],
+    sources:[{title:'Nguồn thử nghiệm',citation:'CI test only'}],
+  });
+  assert.equal(secondDraft.status,201,JSON.stringify(secondDraft.body));
+  const secondId=secondDraft.body.data.id;
+  assert.equal((await editorApi('POST','/api/admin/articles/'+secondId+'/submit',{})).status,200);
+  assert.equal((await reviewerApi('POST','/api/admin/reviews/articles/'+secondId+'/start',{})).status,200);
+  const secondDecision=await reviewerApi('POST','/api/admin/reviews/articles/'+secondId+'/decision',{
+    stage:'TECHNICAL',decision:'APPROVED',reason:'Đã kiểm tra nguồn và nội dung',
+  });
+  assert.equal(secondDecision.status,200,JSON.stringify(secondDecision.body));
+  const publisherReview=await publisherApi('POST','/api/admin/reviews/articles/'+secondId+'/start',{});
+  assert.equal(publisherReview.status,403);
+  const delegatedPublish=await publisherApi('POST','/api/admin/articles/'+secondId+'/publish',{});
+  assert.equal(delegatedPublish.status,200,JSON.stringify(delegatedPublish.body));
+  const delegatedWithdraw=await publisherApi('POST','/api/admin/articles/'+secondId+'/withdraw',{reason:'Requires separate withdrawal grant'});
+  assert.equal(delegatedWithdraw.status,403);
+
+  const lensArticles=await api(base)('GET','/api/v1/articles?role=homeowner&limit=50');
+  assert.equal(lensArticles.status,200,JSON.stringify(lensArticles.body));
+  assert.ok(lensArticles.body.data.some(a=>a.slug===slug));
+  assert.ok(lensArticles.body.data.some(a=>a.slug===secondSlug),'published contractor article remains visible to homeowner lens');
+  assert.equal(lensArticles.body.data[0].slug,slug);
+  const lensSearch=await api(base)('GET','/api/v1/search?q=c%C3%B4ng%20tr%C3%ACnh&type=article&role=homeowner');
+  assert.equal(lensSearch.status,200,JSON.stringify(lensSearch.body));
+  assert.ok(lensSearch.body.data.some(a=>a.slug===secondSlug));
+  assert.equal(lensSearch.body.data[0].slug,slug);
+
+
   const feed=await api(base)('GET','/api/v1/feed?limit=10&role=homeowner');
   assert.equal(feed.status,200,JSON.stringify(feed.body));
   assert.ok(feed.body.data.articles.some(a=>a.slug===slug));

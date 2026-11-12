@@ -70,5 +70,5 @@ test('IA v1.0 migration preserves legacy admin access and creates explicit permi
  assert.ok(sql.includes("THEN 'TEMPLATE_B'"));
  assert.ok(sql.includes('CREATE TABLE IF NOT EXISTS conspace.architectural_template_blocks'));
  assert.match(sql,/section_no BETWEEN 1 AND 7/);assert.match(templateA,/section_no BETWEEN 1 AND 12/);
- assert.ok(!/DROP TABLE|TRUNCATE|DELETE FROM conspace\\./i.test(sql));
+ assert.ok(!/DROP TABLE|TRUNCATE|DELETE FROM conspace\./i.test(sql));
 });
