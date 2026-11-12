@@ -7,6 +7,7 @@ import { NicheDirectory } from './pages/Niches.jsx';
 import NicheDetailV1 from './pages/NicheDetailV1.jsx';
 import { ArticleDetail, ArticleIndex } from './pages/Articles.jsx';
 import { About, NotFound, Principles } from './pages/Sections.jsx';
+import { Contact } from './pages/Contact.jsx';
 import { BookIndex, BookDetail, ChapterDetail, FieldNotes, FieldNoteDetail, Questions, QuestionDetail, QuestionForm, Lookup } from './pages/PublicPages.jsx';
 
 // Separate route bundle: readers never download the private CMS application.
@@ -23,6 +24,7 @@ const META = {
   '/bai-viet': ['Bài viết', 'Những bài đã xuất bản tại CONSPACE.'],
   '/ve-conspace': ['Về CONSPACE', 'Định vị và tư cách biên tập độc lập của CONSPACE.'],
   '/quy-tac-noi-dung': ['Quy tắc nội dung', 'Các nguyên tắc biên tập công khai của CONSPACE.'],
+  '/lien-he': ['Liên hệ', 'Thông tin tổ chức và kênh tiếp nhận câu hỏi biên tập của CONSPACE.'],
 };
 function DocumentMeta() {
   const { pathname } = useLocation();
@@ -76,6 +78,7 @@ function Site() {
     <Route path="/ban-nghe" element={<ArticleIndex isWorkbench/>}/>
     <Route path="/ve-conspace" element={<About/>}/>
     <Route path="/quy-tac-noi-dung" element={<Principles/>}/>
+    <Route path="/lien-he" element={<Contact/>}/>
     <Route path="*" element={<NotFound/>}/>
   </Routes></div><Footer/></>;
 }
