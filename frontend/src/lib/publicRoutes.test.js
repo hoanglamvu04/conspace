@@ -9,10 +9,11 @@ const publicPages = readFileSync(new URL('../pages/PublicPages.jsx', import.meta
 const config = readFileSync(new URL('../config.js', import.meta.url), 'utf8');
 
 test('IA public routes include the new sections and keep legacy aliases working', () => {
-  for (const route of ['/tu-sach', '/ngach', '/hien-truong', '/hoi-dap', '/tra-nhanh', '/tra-cuu', '/tu-dien', '/ban-nghe']) {
+  for (const route of ['/tu-sach', '/ngach', '/hien-truong', '/hoi-dap', '/tra-nhanh', '/tra-cuu', '/tu-dien', '/ban-nghe', '/lien-he']) {
     assert.ok(app.includes('path="' + route + '"'), 'Missing public route ' + route);
   }
   assert.ok(app.includes('path="/mang/:slug"'));
+  assert.ok(app.includes('path="/lien-he"'));
   assert.ok(app.includes('path="/cam-nang/:part/:item"'));
   assert.ok(app.includes('path="/phan-nha-thau/:chapter"'));
   assert.ok(app.includes('path="/quan-quanh-kts/:chapter"'));
