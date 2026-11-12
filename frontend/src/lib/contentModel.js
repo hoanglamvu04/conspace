@@ -50,3 +50,9 @@ export function toggleOpenLayerRole(current, role, open) {
   if (open) return addOpenLayerRole(roles, role);
   return roles.filter((item) => item !== role);
 }
+
+export function chapterDisplayLabel(bookSlug, chapterNo, title) {
+  if (typeof title === 'string' && title.trim()) return title;
+  const prefix = bookSlug === 'cam-nang-kien-truc-hoa-lac' ? 'Phần ' : 'Chương ';
+  return prefix + Number(chapterNo);
+}
