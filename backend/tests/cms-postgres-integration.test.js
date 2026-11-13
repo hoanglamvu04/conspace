@@ -137,9 +137,13 @@ test('real PostgreSQL flow: login -> create -> technical review -> chief review 
   const coverDraft=await editorApi('POST','/api/admin/articles/',{
     slug:'ci-cover-path-'+uuidSuffix,title:'Bản nháp kiểm thử cover nội bộ',coverImageUrl:internalCover,
     body:'Chỉ kiểm tra validator đường dẫn cover.',audienceRole:'homeowner',sensitivityAssessed:true,
+    sources:[{title:'Nguồn thử cover',citation:'CI only'}],
   });
   assert.equal(coverDraft.status,201,JSON.stringify(coverDraft.body));
   assert.equal(coverDraft.body.data.cover_image_url,internalCover);
+  const coverSubmit=await editorApi('POST','/api/admin/articles/'+coverDraft.body.data.id+'/submit',{});
+  assert.equal(coverSubmit.status,409,JSON.stringify(coverSubmit.body));
+  assert.equal(coverSubmit.body.error.code,'MEDIA_RELATION_REQUIRED');
 
   const slug='ci-reviewed-'+uuidSuffix;
   const created=await editorApi('POST','/api/admin/articles/',{
