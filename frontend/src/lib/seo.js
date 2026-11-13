@@ -29,7 +29,7 @@ function absolute(path){
   try{return new URL(path,SITE_ORIGIN).href;}catch{return SITE_ORIGIN+'/';}
 }
 
-export function applySeoMetadata({
+export function buildSeoState({
   title,
   description,
   canonicalPath='/',
@@ -43,10 +43,19 @@ export function applySeoMetadata({
   const finalTitle=cleanTitle?cleanTitle+' | CONSPACE · Sự thật ngành Xây':DEFAULT_TITLE;
   const finalDescription=String(description||DEFAULT_DESCRIPTION).trim().slice(0,320);
   const canonicalUrl=absolute(canonicalPath);
+  return {
+    finalTitle,finalDescription,canonicalUrl,index,type,image,publishedTime,modifiedTime,
+    robots:index?'index,follow,max-image-preview:large':'noindex,nofollow',
+  };
+}
+
+export function applySeoMetadata(options={}){
+  const state=buildSeoState(options);
+  const {finalTitle,finalDescription,canonicalUrl,index,type,image,publishedTime,modifiedTime}=state;
   document.title=finalTitle;
 
   ensureMeta('meta[name="description"]',{name:'description'}).setAttribute('content',finalDescription);
-  ensureMeta('meta[name="robots"]',{name:'robots'}).setAttribute('content',index?'index,follow,max-image-preview:large':'noindex,nofollow');
+  ensureMeta('meta[name="robots"]',{name:'robots'}).setAttribute('content',state.robots);
   ensureMeta('meta[property="og:title"]',{property:'og:title'}).setAttribute('content',finalTitle);
   ensureMeta('meta[property="og:description"]',{property:'og:description'}).setAttribute('content',finalDescription);
   ensureMeta('meta[property="og:type"]',{property:'og:type'}).setAttribute('content',type);
@@ -72,7 +81,7 @@ export function applySeoMetadata({
   if(type==='article'&&publishedTime) published.setAttribute('content',publishedTime); else published.removeAttribute('content');
   if(type==='article'&&modifiedTime) modified.setAttribute('content',modifiedTime); else modified.removeAttribute('content');
 
-  return {title:finalTitle,description:finalDescription,canonicalUrl,index,type};
+  return state;
 }
 
 export function useSeoMetadata(options){
