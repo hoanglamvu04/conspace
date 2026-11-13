@@ -16,18 +16,35 @@ export function createMediaRouter(db=pool,mediaService=createMediaService(db)){
   router.get('/',asyncHandler(async(req,res)=>{
     const query=validate(z.strictObject({
       category:z.enum(['IMAGE','DOCUMENT']).optional(),
+      rights:z.enum(['confirmed','unconfirmed']).optional(),
+      search:z.string().trim().max(120).optional(),
       page:z.coerce.number().int().min(1).default(1),
       limit:z.coerce.number().int().min(1).max(100).default(30),
     }),req.query);
+    const rightsValue=query.rights==='confirmed'?true:query.rights==='unconfirmed'?false:null;
     const result=await db.query(
       'SELECT m.id,m.original_filename AS "originalFilename",m.mime_type AS "mimeType",m.size_bytes AS "sizeBytes",'+
       'm.category,m.alt_text AS "altText",m.rights_confirmed AS "rightsConfirmed",m.rights_note AS "rightsNote",'+
-      'm.created_at AS "createdAt",u.display_name AS "uploadedBy" FROM conspace.media_assets m '+
-      'LEFT JOIN conspace.cms_users u ON u.id=m.uploaded_by_user_id WHERE m.deleted_at IS NULL AND ($1::text IS NULL OR m.category=$1) '+
-      'ORDER BY m.created_at DESC LIMIT $2 OFFSET $3',
-      [query.category??null,query.limit,(query.page-1)*query.limit]
+      'm.created_at AS "createdAt",u.display_name AS "uploadedBy",'+
+      '(SELECT count(*)::integer FROM conspace.article_media am WHERE am.media_id=m.id) AS "articleUsageCount",'+
+      '(SELECT count(*)::integer FROM conspace.field_note_media fm WHERE fm.media_id=m.id) AS "fieldNoteUsageCount",'+
+      '(SELECT count(*)::integer FROM conspace.reader_question_media qm WHERE qm.media_id=m.id) AS "questionUsageCount",'+
+      "(EXISTS(SELECT 1 FROM conspace.article_media am JOIN conspace.articles a ON a.id=am.article_id WHERE am.media_id=m.id AND a.status='PUBLISHED') OR "+
+      "EXISTS(SELECT 1 FROM conspace.field_note_media fm JOIN conspace.field_notes f ON f.id=fm.field_note_id JOIN conspace.articles a ON a.id=f.article_id WHERE fm.media_id=m.id AND a.status='PUBLISHED') OR "+
+      "EXISTS(SELECT 1 FROM conspace.reader_question_media qm JOIN conspace.question_answers qa ON qa.question_id=qm.question_id WHERE qm.media_id=m.id AND qa.status='PUBLISHED')) AS \"usedPublicly\" "+
+      'FROM conspace.media_assets m LEFT JOIN conspace.cms_users u ON u.id=m.uploaded_by_user_id '+
+      'WHERE m.deleted_at IS NULL AND ($1::text IS NULL OR m.category=$1) AND ($2::boolean IS NULL OR m.rights_confirmed=$2) '+
+      "AND ($3::text IS NULL OR m.original_filename ILIKE '%' || $3 || '%' OR COALESCE(m.alt_text,'') ILIKE '%' || $3 || '%' OR COALESCE(m.rights_note,'') ILIKE '%' || $3 || '%') "+
+      'ORDER BY m.created_at DESC LIMIT $4 OFFSET $5',
+      [query.category??null,rightsValue,query.search??null,query.limit,(query.page-1)*query.limit]
     );
-    res.json({ok:true,data:result.rows});
+    const count=await db.query(
+      'SELECT count(*)::integer AS total FROM conspace.media_assets m WHERE m.deleted_at IS NULL '+
+      'AND ($1::text IS NULL OR m.category=$1) AND ($2::boolean IS NULL OR m.rights_confirmed=$2) '+
+      "AND ($3::text IS NULL OR m.original_filename ILIKE '%' || $3 || '%' OR COALESCE(m.alt_text,'') ILIKE '%' || $3 || '%' OR COALESCE(m.rights_note,'') ILIKE '%' || $3 || '%')",
+      [query.category??null,rightsValue,query.search??null]
+    );
+    res.json({ok:true,data:result.rows,meta:{total:count.rows[0].total,page:query.page,limit:query.limit}});
   }));
 
   router.post('/',requireRoles('EDITOR','EDITOR_IN_CHIEF'),asyncHandler(async(req,res)=>{
@@ -85,7 +102,8 @@ export function createMediaRouter(db=pool,mediaService=createMediaService(db)){
       if(!current.rows[0]) throw new RequestError(404,'NOT_FOUND','Media not found');
       const linked=await client.query(
         "SELECT EXISTS(SELECT 1 FROM conspace.article_media am JOIN conspace.articles a ON a.id=am.article_id WHERE am.media_id=$1 AND a.status='PUBLISHED') OR "+
-        "EXISTS(SELECT 1 FROM conspace.field_note_media fm JOIN conspace.field_notes f ON f.id=fm.field_note_id JOIN conspace.articles a ON a.id=f.article_id WHERE fm.media_id=$1 AND a.status='PUBLISHED') AS used_publicly",
+        "EXISTS(SELECT 1 FROM conspace.field_note_media fm JOIN conspace.field_notes f ON f.id=fm.field_note_id JOIN conspace.articles a ON a.id=f.article_id WHERE fm.media_id=$1 AND a.status='PUBLISHED') OR "+
+        "EXISTS(SELECT 1 FROM conspace.reader_question_media qm JOIN conspace.question_answers qa ON qa.question_id=qm.question_id WHERE qm.media_id=$1 AND qa.status='PUBLISHED') AS used_publicly",
         [id]
       );
       if(linked.rows[0].used_publicly) throw new RequestError(409,'MEDIA_IN_USE','Media linked to published content cannot be deleted');
