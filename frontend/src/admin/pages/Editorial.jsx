@@ -9,28 +9,139 @@ import { Markdown } from '../../components/Markdown.jsx';
 
 function NichePicker({value=[],onChange,disabled}) {const niches=useAdminList('/niches');return <FormField label="Ngách liên quan"><div className="cms-check-list cms-check-list--columns">{niches.status==='success'?niches.data.filter(x=>x.isActive).map(x=><label key={x.id}><input type="checkbox" checked={value.includes(x.id)} disabled={disabled} onChange={e=>onChange(e.target.checked?[...value,x.id]:value.filter(v=>v!==x.id))}/>{x.name}</label>):<span>{niches.status==='error'?niches.error.message:'Đang tải danh mục…'}</span>}</div></FormField>}
 function ListPane({items,selected,onSelect,kind,status}){return <>{status==='loading'?<div className="cms-inline-state">Đang tải danh sách…</div>:status==='error'?<EmptyState title="Không tải được dữ liệu" description={items.error?.message} icon="alert"/>:!items.data.length?<EmptyState title="Chưa có dữ liệu" description="Không hiển thị hồ sơ mẫu hoặc bản ghi giả." icon={kind}/>:<div className="cms-work-list">{items.data.map(x=><button type="button" key={x.id} className={`cms-work-list-row ${selected===x.id?'is-selected':''}`} onClick={()=>onSelect(x.id)}><span className="cms-work-list-icon"><CmsIcon name={kind}/></span><div><strong>{x.title||x.term||x.description?.slice(0,70)||'Hồ sơ chưa có tên'}</strong><small>{x.slug||x.guessedNiche||x.createdAt||''}</small></div><Pill value={x.status}/></button>)}</div>}</>}
-const fieldEmpty={title:'',slug:'',excerpt:'',body:'',audienceRole:'homeowner',phenomenon:'',rootCause:'',interventionPoint:'',repairCostAmount:'',repairCostSource:'',unitAnonymized:false,addressAnonymized:false,photoRightsConfirmed:false,anonymizationNote:'',nicheIds:[],mediaIds:[],sources:[],sensitivityFlags:['IDENTIFIABLE_ENTITY_RISK']};
-function fieldNormalize(d){return {...fieldEmpty,title:d.title||'',slug:d.slug||'',excerpt:d.excerpt||'',body:d.body||'',audienceRole:d.audienceRole||'homeowner',phenomenon:d.phenomenon||'',rootCause:d.root_cause||d.rootCause||'',interventionPoint:d.intervention_point||d.interventionPoint||'',repairCostAmount:d.repair_cost_amount??d.repairCostAmount??'',repairCostSource:d.repair_cost_source||d.repairCostSource||'',unitAnonymized:Boolean(d.unit_anonymized??d.unitAnonymized),addressAnonymized:Boolean(d.address_anonymized??d.addressAnonymized),photoRightsConfirmed:Boolean(d.photo_rights_confirmed??d.photoRightsConfirmed),anonymizationNote:d.anonymization_note||d.anonymizationNote||'',mediaIds:(d.media||[]).map(x=>x.id),articleId:d.articleId||d.article_id||null,status:d.status||'DRAFT'};}
+const fieldEmpty={title:'',slug:'',excerpt:'',body:'',audienceRole:'homeowner',phenomenon:'',rootCause:'',interventionPoint:'',repairCostAmount:'',repairCostSource:'',unitAnonymized:false,addressAnonymized:false,photoRightsConfirmed:false,anonymizationNote:'',nicheIds:[],mediaIds:[],media:[],sources:[],sensitivityFlags:['IDENTIFIABLE_ENTITY_RISK']};
+function fieldNormalize(d){return {...fieldEmpty,title:d.title||'',slug:d.slug||'',excerpt:d.excerpt||'',body:d.body||'',audienceRole:d.audienceRole||'homeowner',phenomenon:d.phenomenon||'',rootCause:d.root_cause||d.rootCause||'',interventionPoint:d.intervention_point||d.interventionPoint||'',repairCostAmount:d.repair_cost_amount??d.repairCostAmount??'',repairCostSource:d.repair_cost_source||d.repairCostSource||'',unitAnonymized:Boolean(d.unit_anonymized??d.unitAnonymized),addressAnonymized:Boolean(d.address_anonymized??d.addressAnonymized),photoRightsConfirmed:Boolean(d.photo_rights_confirmed??d.photoRightsConfirmed),anonymizationNote:d.anonymization_note||d.anonymizationNote||'',nicheIds:d.nicheIds||[],mediaIds:(d.media||[]).map(x=>x.id),media:d.media||[],sources:(d.sources||[]).map(x=>({title:x.title||'',url:x.url||'',citation:x.citation||''})),sensitivityFlags:d.sensitivityFlags||['IDENTIFIABLE_ENTITY_RISK'],articleId:d.articleId||d.article_id||null,status:d.status||'DRAFT'};}
+
 export function FieldNotes(){
-  const {can}=useSession(),{notice}=useNotices();const [selected,setSelected]=useState(null),[creating,setCreating]=useState(false),[form,setForm]=useState({...fieldEmpty}),[busy,setBusy]=useState(false),[dirty,setDirty]=useState(false),[preview,setPreview]=useState(false),[confirm,setConfirm]=useState(false),[file,setFile]=useState(null),[rightsNote,setRightsNote]=useState('');
-  const records=useAdminList('/field-notes',{},can('field-notes:read'));
+  const {can}=useSession(),{notice}=useNotices();
+  const [selected,setSelected]=useState(null),[creating,setCreating]=useState(false),[form,setForm]=useState({...fieldEmpty}),[busy,setBusy]=useState(false),[dirty,setDirty]=useState(false),[preview,setPreview]=useState(false),[confirm,setConfirm]=useState(false),[file,setFile]=useState(null),[rightsNote,setRightsNote]=useState('');
+  const [page,setPage]=useState(1),[search,setSearch]=useState(''),[statusFilter,setStatusFilter]=useState(''),[complianceFilter,setComplianceFilter]=useState('');
+  const records=useAdminList('/field-notes',{page,limit:20,search:search||undefined,status:statusFilter||undefined,compliance:complianceFilter||undefined},can('field-notes:read'));
   const detail=useAdminObject(selected&&!creating?`/field-notes/${selected}`:null,Boolean(selected)&&!creating);
+
   useEffect(()=>{if(detail.status==='success'){setForm(fieldNormalize(detail.data));setDirty(false);}},[detail.status,detail.data]);
   const edit=(k,v)=>{setForm(f=>({...f,[k]:v}));setDirty(true);};
-  async function save(e){e?.preventDefault();if(!can(creating?'field-notes:create':'field-notes:write'))return;
+  const mediaRightsOk=(form.media||[]).every(item=>item.rightsConfirmed!==false);
+  const costSourceOk=form.repairCostAmount===''||form.repairCostAmount===null||Boolean(form.repairCostSource.trim());
+  const submitChecks=[
+    {ok:Boolean(form.body.trim()),label:'Có nội dung mô tả để duyệt'},
+    {ok:(form.sources||[]).some(source=>source.title.trim()),label:'Có ít nhất một nguồn truy vết'},
+    {ok:form.unitAnonymized,label:'Đã ẩn danh đơn vị'},
+    {ok:form.addressAnonymized,label:'Đã ẩn danh địa chỉ'},
+    {ok:form.photoRightsConfirmed,label:'Đã xác nhận quyền sử dụng ảnh'},
+    {ok:mediaRightsOk,label:'Mọi ảnh liên kết đã có quyền'},
+    {ok:costSourceOk,label:'Chi phí có nguồn chứng từ nếu được khai báo'},
+    {ok:!dirty,label:'Đã lưu mọi thay đổi'},
+  ];
+  const readyToSubmit=submitChecks.every(item=>item.ok);
+
+  async function save(e){
+    e?.preventDefault();
+    if(!can(creating?'field-notes:create':'field-notes:write'))return;
     if(!form.title.trim()||!form.phenomenon.trim()||!form.rootCause.trim()||!form.interventionPoint.trim()){notice('Cần hiện tượng, nguyên nhân và mốc dừng nghiệm thu.','error');return;}
-    if(form.repairCostAmount!==''&&!form.repairCostSource.trim()){notice('Giá sửa chữa phải có nguồn số liệu thực tế.','error');return;}
-    setBusy(true);try{const payload={title:form.title.trim(),slug:slugify(form.slug||form.title),excerpt:form.excerpt||'',body:form.body||'',audienceRole:form.audienceRole,nicheIds:form.nicheIds||[],mediaIds:form.mediaIds||[],sensitivityFlags:form.sensitivityFlags||['IDENTIFIABLE_ENTITY_RISK'],phenomenon:form.phenomenon,rootCause:form.rootCause,interventionPoint:form.interventionPoint,repairCostAmount:form.repairCostAmount===''?null:Number(form.repairCostAmount),repairCostSource:form.repairCostSource.trim()||null,unitAnonymized:form.unitAnonymized,addressAnonymized:form.addressAnonymized,photoRightsConfirmed:form.photoRightsConfirmed,anonymizationNote:form.anonymizationNote||null};const item=await adminObject(creating?'/field-notes':`/field-notes/${selected}`,{method:creating?'POST':'PATCH',data:payload});notice('Backend đã lưu ca hiện trường.');records.retry();setDirty(false);if(creating){setCreating(false);setSelected(item.id);}else detail.retry();}catch(error){notice(error.message,'error');}finally{setBusy(false);}}
-  async function upload(){if(!file)return;setBusy(true);try{const result=await uploadAdminImage(file,{rightsConfirmed:form.photoRightsConfirmed,rightsNote,altText:'Ảnh hiện trường'});edit('mediaIds',[...new Set([...(form.mediaIds||[]),result.id])]);setFile(null);notice('Đã tải tệp lên Backend. Nhớ lưu hồ sơ để liên kết.');}catch(e){notice(e.message,'error');}finally{setBusy(false);}}
-  async function submit(){setConfirm(false);if(!form.articleId||!can('field-notes:submit')||dirty)return;setBusy(true);try{await adminRequest(`/articles/${form.articleId}/submit`,{method:'POST',data:{}});notice('Ca đã được gửi duyệt thông qua bài viết liên kết.');records.retry();detail.retry();}catch(e){notice(e.message,'error');}finally{setBusy(false);}}
+    if(!costSourceOk){notice('Giá sửa chữa phải có nguồn số liệu thực tế.','error');return;}
+    setBusy(true);
+    try{
+      const payload={
+        title:form.title.trim(),slug:slugify(form.slug||form.title),excerpt:form.excerpt||'',body:form.body||'',
+        audienceRole:form.audienceRole,nicheIds:form.nicheIds||[],mediaIds:form.mediaIds||[],
+        sources:(form.sources||[]).filter(source=>source.title.trim()).map(source=>({title:source.title.trim(),url:source.url.trim()||null,citation:source.citation.trim()||null})),
+        sensitivityFlags:form.sensitivityFlags||['IDENTIFIABLE_ENTITY_RISK'],
+        phenomenon:form.phenomenon,rootCause:form.rootCause,interventionPoint:form.interventionPoint,
+        repairCostAmount:form.repairCostAmount===''?null:Number(form.repairCostAmount),repairCostSource:form.repairCostSource.trim()||null,
+        unitAnonymized:form.unitAnonymized,addressAnonymized:form.addressAnonymized,photoRightsConfirmed:form.photoRightsConfirmed,
+        anonymizationNote:form.anonymizationNote||null,
+      };
+      const item=await adminObject(creating?'/field-notes':`/field-notes/${selected}`,{method:creating?'POST':'PATCH',data:payload});
+      notice('Backend đã lưu ca hiện trường.');
+      records.retry();setDirty(false);
+      if(creating){setCreating(false);setSelected(item.id);}else detail.retry();
+    }catch(error){notice(error.message,'error');}finally{setBusy(false);}
+  }
+
+  async function upload(){
+    if(!file)return;
+    setBusy(true);
+    try{
+      const result=await uploadAdminImage(file,{rightsConfirmed:form.photoRightsConfirmed,rightsNote,altText:'Ảnh hiện trường'});
+      setForm(current=>({...current,mediaIds:[...new Set([...(current.mediaIds||[]),result.id])],media:[...(current.media||[]),{id:result.id,filename:result.originalFilename,rightsConfirmed:result.rightsConfirmed}]}));
+      setDirty(true);setFile(null);setRightsNote('');
+      notice('Đã tải tệp lên Backend. Nhớ lưu hồ sơ để liên kết.');
+    }catch(e){notice(e.message,'error');}finally{setBusy(false);}
+  }
+
+  function removeMedia(id){
+    setForm(current=>({...current,mediaIds:(current.mediaIds||[]).filter(x=>x!==id),media:(current.media||[]).filter(x=>x.id!==id)}));
+    setDirty(true);
+  }
+
+  async function submit(){
+    setConfirm(false);
+    if(!form.articleId||!can('field-notes:submit')||!readyToSubmit)return;
+    setBusy(true);
+    try{
+      await adminRequest(`/articles/${form.articleId}/submit`,{method:'POST',data:{}});
+      notice('Ca đã được gửi duyệt thông qua bài viết liên kết.');
+      records.retry();detail.retry();
+    }catch(e){notice(e.message,'error');}finally{setBusy(false);}
+  }
+
   const open=creating||selected&&detail.status==='success';
-  return <><PageHeading kicker="HIỆN TRƯỜNG / CA THẬT" title="Nhật ký hiện trường" description="Không suy diễn từ ảnh, ẩn danh đầy đủ và chỉ sử dụng chi phí có chứng từ." icon="field" actions={can('field-notes:create')?<button className="cms-btn cms-btn--primary" type="button" onClick={()=>{setCreating(true);setSelected(null);setForm({...fieldEmpty});setDirty(false);}}><CmsIcon name="plus"/> Ghi ca mới</button>:null}/><div className="cms-two-pane"><Surface className="cms-list-pane" title="Hồ sơ công trường" description="Dữ liệu không phải ví dụ minh họa."><ListPane items={records} status={records.status} kind="field" selected={selected} onSelect={x=>{setSelected(x);setCreating(false);}}/></Surface><Surface className="cms-editor-side" title={creating?'Nhập ca mới':'Biên tập hồ sơ'} description="Mỗi trường gắn với một mốc nghiệm thu hoặc căn cứ thật.">
-    {!open&&<EmptyState title="Chọn ca hiện trường" description={detail.error?.message||'Chỉ ca đã được nhập vào API mới xuất hiện tại đây.'} icon="field"/>}
-    {open&&<form className="cms-stack-form" onSubmit={save}><FormField label="Tiêu đề" required><input value={form.title} required disabled={!can('field-notes:write')} onChange={e=>{edit('title',e.target.value);if(creating)edit('slug',slugify(e.target.value));}}/></FormField><FormField label="Slug"><input value={form.slug} disabled={!can('field-notes:write')} onChange={e=>edit('slug',slugify(e.target.value))}/></FormField><FormField label="Hiện tượng (quan sát nguyên trạng)" required><textarea rows={5} value={form.phenomenon} disabled={!can('field-notes:write')} onChange={e=>edit('phenomenon',e.target.value)} required/></FormField><FormField label="Nguyên nhân gốc (có đối chiếu)" required><textarea rows={5} value={form.rootCause} disabled={!can('field-notes:write')} onChange={e=>edit('rootCause',e.target.value)} required/></FormField><FormField label="Điểm dừng nghiệm thu" required><textarea rows={4} value={form.interventionPoint} disabled={!can('field-notes:write')} onChange={e=>edit('interventionPoint',e.target.value)} required/></FormField><div className="cms-form-two"><FormField label="Chi phí sửa (chỉ nếu có thật)"><input type="number" min={0} value={form.repairCostAmount} onChange={e=>edit('repairCostAmount',e.target.value)}/></FormField><FormField label="Nguồn chứng từ chi phí"><input value={form.repairCostSource} onChange={e=>edit('repairCostSource',e.target.value)}/></FormField></div><NichePicker value={form.nicheIds} onChange={v=>edit('nicheIds',v)} disabled={!can('field-notes:write')}/><div className="cms-list-editor-head"><h3>Nội dung mô tả bổ sung</h3><button className="cms-btn cms-btn--light" type="button" onClick={()=>setPreview(!preview)}>Preview / Soạn</button></div>{preview?<div className="cms-markdown cms-preview"><Markdown body={form.body}/></div>:<textarea className="cms-body-textarea" rows={8} value={form.body} onChange={e=>edit('body',e.target.value)} />}
-      <FormField label="Ảnh và tài liệu"><div className="cms-check-list">{form.mediaIds.map(id=><span key={id}><a href={`/api/admin/media/${id}/download`} target="_blank" rel="noreferrer">Mở tệp {id.slice(0,8)}</a> <button type="button" className="cms-text-danger" onClick={()=>edit('mediaIds',form.mediaIds.filter(x=>x!==id))}>Bỏ liên kết</button></span>)}</div><input type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>setFile(e.target.files?.[0]||null)}/><input placeholder="Căn cứ quyền sử dụng ảnh" aria-label="Căn cứ quyền ảnh" value={rightsNote} onChange={e=>setRightsNote(e.target.value)}/><button type="button" disabled={busy||!file||form.photoRightsConfirmed&&!rightsNote.trim()} className="cms-btn cms-btn--secondary" onClick={upload}>Tải ảnh lên Backend</button></FormField>
-      <FormField label="Ghi chú ẩn danh"><textarea rows={3} value={form.anonymizationNote} onChange={e=>edit('anonymizationNote',e.target.value)} placeholder="Cách che địa chỉ, tên đơn vị, biển hiệu…"/></FormField>{[['unitAnonymized','Đã ẩn danh đơn vị'],['addressAnonymized','Đã ẩn danh địa chỉ'],['photoRightsConfirmed','Đã kiểm tra quyền sử dụng ảnh']].map(([key,label])=><label className="cms-sensitive-check" key={key}><input type="checkbox" checked={form[key]} onChange={e=>edit(key,e.target.checked)} /><span>{label}</span></label>)}<SectionNote kind="warning">Trước khi duyệt, cả ba xác nhận phải đúng và mọi ảnh phải có quyền riêng. Backend sẽ chặn hồ sơ không hợp lệ.</SectionNote>
-      <div className="cms-form-footer">{dirty?'Thay đổi chưa lưu':<Pill value={form.status}/>}<div className="cms-btn-row">{can('field-notes:write')&&<button className="cms-btn cms-btn--primary" disabled={busy}>{busy?'Đang lưu…':'Lưu ca'}</button>}{selected&&form.articleId&&can('field-notes:submit')&&['DRAFT','NEEDS_CHANGES'].includes(form.status)&&<button className="cms-btn cms-btn--secondary" type="button" disabled={dirty||busy||!form.unitAnonymized||!form.addressAnonymized||!form.photoRightsConfirmed} onClick={()=>setConfirm(true)}>Gửi duyệt bài hiện trường</button>}</div></div>{form.articleId&&<Link className="cms-text-link" to={`/admin/articles/${form.articleId}/edit`}>Xem bài viết của ca →</Link>}</form>}
-    </Surface></div><ConfirmDialog open={confirm} title="Gửi duyệt ca hiện trường?" description="Sẽ gửi qua endpoint duyệt bài viết liên kết. Backend kiểm tra nguồn và quyền ảnh." onClose={()=>setConfirm(false)} onConfirm={submit} confirmText="Gửi duyệt"/>
+  const summary=records.meta||{};
+
+  return <><PageHeading kicker="HIỆN TRƯỜNG / COMPLIANCE" title="Nhật ký hiện trường" description="Theo dõi ca thật theo trạng thái ẩn danh, nguồn, quyền ảnh và khả năng gửi duyệt. Backend vẫn là ranh giới chặn cuối." icon="field" actions={<>{can('field-notes:create')&&<button className="cms-btn cms-btn--primary" type="button" onClick={()=>{setCreating(true);setSelected(null);setForm({...fieldEmpty,sources:[],media:[],mediaIds:[],nicheIds:[]});setDirty(false);}}><CmsIcon name="plus"/> Ghi ca mới</button>}<button type="button" className="cms-btn cms-btn--secondary" onClick={records.retry}><CmsIcon name="refresh"/> Tải lại</button></>}/>
+
+    <div className="cms-compliance-grid">
+      <div className="cms-compliance-card"><span>Tổng hồ sơ</span><strong>{summary.total??'—'}</strong><small>Dữ liệu thật từ Field Notes</small></div>
+      <div className="cms-compliance-card"><span>Đủ compliance</span><strong>{summary.complianceReady??'—'}</strong><small>Ẩn danh + quyền ảnh + chi phí</small></div>
+      <div className="cms-compliance-card"><span>Đang bị chặn</span><strong>{summary.blocked??'—'}</strong><small>Thiếu một hoặc nhiều điều kiện</small></div>
+      <div className="cms-compliance-card"><span>Sẵn sàng gửi duyệt</span><strong>{summary.readyToSubmit??'—'}</strong><small>Compliance + nội dung + nguồn</small></div>
+      <div className="cms-compliance-card"><span>Cần chỉnh sửa</span><strong>{summary.needsChanges??'—'}</strong><small>Reviewer đã trả lại</small></div>
+    </div>
+
+    <Surface title="Bộ lọc compliance" description="Lọc trực tiếp ở Backend, không lọc giả trên tập dữ liệu đã tải.">
+      <div className="cms-table-tools">
+        <input value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}} placeholder="Tiêu đề / slug / hiện tượng…" aria-label="Tìm ca hiện trường"/>
+        <select value={statusFilter} onChange={e=>{setStatusFilter(e.target.value);setPage(1);}} aria-label="Lọc trạng thái"><option value="">Mọi trạng thái</option>{['DRAFT','NEEDS_CHANGES','SUBMITTED','TECHNICAL_REVIEW','EDITOR_IN_CHIEF_REVIEW','APPROVED','SCHEDULED','PUBLISHED','REJECTED','WITHDRAWN','ARCHIVED'].map(status=><option key={status} value={status}>{status}</option>)}</select>
+        <select value={complianceFilter} onChange={e=>{setComplianceFilter(e.target.value);setPage(1);}} aria-label="Lọc compliance"><option value="">Mọi mức compliance</option><option value="ready">Đủ compliance</option><option value="blocked">Đang bị chặn</option></select>
+      </div>
+    </Surface>
+
+    <div className="cms-two-pane"><Surface className="cms-list-pane" title="Hồ sơ công trường" description="Mỗi dòng hiển thị readiness tính từ dữ liệu thật.">
+      {records.status==='loading'?<div className="cms-inline-state">Đang tải hồ sơ…</div>:records.status==='error'?<EmptyState title="Không tải được hiện trường" description={records.error?.message} icon="alert"/>:records.data.length?<><div className="cms-work-list">{records.data.map(item=><button type="button" key={item.id} className={`cms-work-list-row ${selected===item.id?'is-selected':''}`} onClick={()=>{setSelected(item.id);setCreating(false);}}><span className="cms-work-list-icon"><CmsIcon name="field"/></span><div><strong>{item.title}</strong><small>{item.sourceCount||0} nguồn · {item.mediaCount||0} ảnh · {item.unconfirmedMediaCount||0} ảnh thiếu quyền</small><small>{item.fieldComplianceReady?'Đủ compliance':'Compliance chưa đủ'} · {item.reviewReady?'Có thể gửi duyệt':'Chưa sẵn sàng gửi duyệt'}</small></div><Pill value={item.status}/></button>)}</div><Pager page={page} setPage={setPage} total={summary.total} limit={20}/></>:<EmptyState title="Không có ca phù hợp" description="Không có dữ liệu khớp bộ lọc hiện tại." icon="field"/>}
+    </Surface>
+
+    <Surface className="cms-editor-side" title={creating?'Nhập ca mới':'Biên tập hồ sơ'} description="Mỗi trường phải gắn với quan sát, nguồn hoặc mốc nghiệm thu thật.">
+      {!open&&<EmptyState title="Chọn ca hiện trường" description={detail.error?.message||'Chỉ ca đã được nhập vào API mới xuất hiện tại đây.'} icon="field"/>}
+      {open&&<form className="cms-stack-form" onSubmit={save}>
+        <FormField label="Tiêu đề" required><input value={form.title} required disabled={!can('field-notes:write')} onChange={e=>{edit('title',e.target.value);if(creating)edit('slug',slugify(e.target.value));}}/></FormField>
+        <FormField label="Slug"><input value={form.slug} disabled={!can('field-notes:write')} onChange={e=>edit('slug',slugify(e.target.value))}/></FormField>
+        <FormField label="Hiện tượng (quan sát nguyên trạng)" required><textarea rows={5} value={form.phenomenon} disabled={!can('field-notes:write')} onChange={e=>edit('phenomenon',e.target.value)} required/></FormField>
+        <FormField label="Nguyên nhân gốc (có đối chiếu)" required><textarea rows={5} value={form.rootCause} disabled={!can('field-notes:write')} onChange={e=>edit('rootCause',e.target.value)} required/></FormField>
+        <FormField label="Điểm dừng nghiệm thu" required><textarea rows={4} value={form.interventionPoint} disabled={!can('field-notes:write')} onChange={e=>edit('interventionPoint',e.target.value)} required/></FormField>
+
+        <div className="cms-form-two"><FormField label="Chi phí sửa (chỉ nếu có thật)"><input type="number" min={0} value={form.repairCostAmount} onChange={e=>edit('repairCostAmount',e.target.value)}/></FormField><FormField label="Nguồn chứng từ chi phí"><input value={form.repairCostSource} onChange={e=>edit('repairCostSource',e.target.value)}/></FormField></div>
+
+        <NichePicker value={form.nicheIds} onChange={v=>edit('nicheIds',v)} disabled={!can('field-notes:write')}/>
+
+        <FormField label="Nguồn truy vết"><div className="cms-stack-form">{(form.sources||[]).map((source,index)=><div className="cms-source-editor" key={index}><input disabled={!can('field-notes:write')} value={source.title} onChange={e=>edit('sources',form.sources.map((x,i)=>i===index?{...x,title:e.target.value}:x))} placeholder="Tên nguồn / hồ sơ / biên bản"/><input disabled={!can('field-notes:write')} value={source.url} onChange={e=>edit('sources',form.sources.map((x,i)=>i===index?{...x,url:e.target.value}:x))} placeholder="URL https nếu có"/><input disabled={!can('field-notes:write')} value={source.citation} onChange={e=>edit('sources',form.sources.map((x,i)=>i===index?{...x,citation:e.target.value}:x))} placeholder="Trích dẫn / số hồ sơ"/>{can('field-notes:write')&&<button type="button" className="cms-btn cms-btn--light" onClick={()=>edit('sources',form.sources.filter((_,i)=>i!==index))}>Bỏ nguồn</button>}</div>)}{can('field-notes:write')&&<button type="button" className="cms-btn cms-btn--light" onClick={()=>edit('sources',[...(form.sources||[]),{title:'',url:'',citation:''}])}><CmsIcon name="plus"/> Thêm nguồn</button>}</div></FormField>
+
+        <div className="cms-list-editor-head"><h3>Nội dung mô tả bổ sung</h3><button className="cms-btn cms-btn--light" type="button" onClick={()=>setPreview(!preview)}>Preview / Soạn</button></div>
+        {preview?<div className="cms-markdown cms-preview"><Markdown body={form.body}/></div>:<textarea className="cms-body-textarea" rows={8} value={form.body} onChange={e=>edit('body',e.target.value)} />}
+
+        <FormField label="Ảnh và tài liệu"><div className="cms-check-list">{(form.media||[]).map(item=><span key={item.id}><a href={`/api/admin/media/${item.id}/download`} target="_blank" rel="noreferrer">Mở {item.filename||item.id.slice(0,8)}</a> · {item.rightsConfirmed?'đã có quyền':'chưa có quyền'} {can('field-notes:write')&&<button type="button" className="cms-text-danger" onClick={()=>removeMedia(item.id)}>Bỏ liên kết</button>}</span>)}</div><input type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>setFile(e.target.files?.[0]||null)}/><input placeholder="Căn cứ quyền sử dụng ảnh" aria-label="Căn cứ quyền ảnh" value={rightsNote} onChange={e=>setRightsNote(e.target.value)}/><button type="button" disabled={busy||!file||form.photoRightsConfirmed&&!rightsNote.trim()} className="cms-btn cms-btn--secondary" onClick={upload}>Tải ảnh lên Backend</button></FormField>
+
+        <FormField label="Ghi chú ẩn danh"><textarea rows={3} value={form.anonymizationNote} onChange={e=>edit('anonymizationNote',e.target.value)} placeholder="Cách che địa chỉ, tên đơn vị, biển hiệu…"/></FormField>
+        {[['unitAnonymized','Đã ẩn danh đơn vị'],['addressAnonymized','Đã ẩn danh địa chỉ'],['photoRightsConfirmed','Đã kiểm tra quyền sử dụng ảnh']].map(([key,label])=><label className="cms-sensitive-check" key={key}><input type="checkbox" checked={form[key]} onChange={e=>edit(key,e.target.checked)} /><span>{label}</span></label>)}
+
+        <div className="cms-submit-checklist"><h3>Điều kiện gửi duyệt hiện trường</h3>{submitChecks.map(item=><p key={item.label} className={item.ok?'is-ok':'is-missing'}><CmsIcon name={item.ok?'check':'alert'} size={16}/> {item.label}</p>)}</div>
+
+        <div className="cms-form-footer">{dirty?'Thay đổi chưa lưu':<Pill value={form.status}/>}<div className="cms-btn-row">{can('field-notes:write')&&<button className="cms-btn cms-btn--primary" disabled={busy}>{busy?'Đang lưu…':'Lưu ca'}</button>}{selected&&form.articleId&&can('field-notes:submit')&&['DRAFT','NEEDS_CHANGES'].includes(form.status)&&<button className="cms-btn cms-btn--secondary" type="button" disabled={busy||!readyToSubmit} onClick={()=>setConfirm(true)}>Gửi duyệt bài hiện trường</button>}</div></div>
+        {form.articleId&&<Link className="cms-text-link" to={`/admin/articles/${form.articleId}/edit`}>Xem bài viết của ca →</Link>}
+      </form>}
+    </Surface></div>
+
+    <ConfirmDialog open={confirm} title="Gửi duyệt ca hiện trường?" description="Backend sẽ kiểm tra lại nội dung, nguồn, ẩn danh và quyền media trước khi chuyển trạng thái." onClose={()=>setConfirm(false)} onConfirm={submit} confirmText="Gửi duyệt"/>
   </>;
 }
 
