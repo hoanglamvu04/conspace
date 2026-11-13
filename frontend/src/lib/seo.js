@@ -86,11 +86,12 @@ export function applySeoMetadata(options={}){
 
 export function useSeoMetadata(options){
   const {
-    title,description,canonicalPath,index=true,type='website',image=null,publishedTime=null,modifiedTime=null,
+    title,description,canonicalPath,index=true,type='website',image=null,publishedTime=null,modifiedTime=null,enabled=true,
   }=options||{};
   useEffect(()=>{
+    if(!enabled)return;
     applySeoMetadata({title,description,canonicalPath,index,type,image,publishedTime,modifiedTime});
-  },[title,description,canonicalPath,index,type,image,publishedTime,modifiedTime]);
+  },[title,description,canonicalPath,index,type,image,publishedTime,modifiedTime,enabled]);
 }
 
 export const SEO_DEFAULTS=Object.freeze({SITE_ORIGIN,DEFAULT_TITLE,DEFAULT_DESCRIPTION});
