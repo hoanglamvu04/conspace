@@ -49,7 +49,7 @@ export function DictionaryAdmin(){
 export function Questions(){
   const {can}=useSession(),{notice}=useNotices();const [page,setPage]=useState(1),[selected,setSelected]=useState(null),[body,setBody]=useState(''),[flags,setFlags]=useState([]),[assessed,setAssessed]=useState(false),[preview,setPreview]=useState(false),[busy,setBusy]=useState(false),[moderation,setModeration]=useState('');
   const list=useAdminList('/questions',{page,limit:15});const detail=useAdminObject(selected?`/questions/${selected}`:null,Boolean(selected));
-  useEffect(()=>{if(detail.status==='success'){setBody(detail.data.answerBody||'');setFlags([]);setAssessed(false);setModeration('');}},[detail.status,detail.data]);
+  useEffect(()=>{if(detail.status==='success'){setBody(detail.data.answerBody||'');setFlags(detail.data.answerSensitivityFlags||[]);setAssessed(Boolean(detail.data.answerSensitivityAssessed));setModeration('');}},[detail.status,detail.data]);
   const q=detail.data;
   async function saveAnswer(){if(!selected||!body.trim())return;setBusy(true);try{await adminObject(`/questions/${selected}/answer`,{method:'POST',data:{body:body.trim(),sensitivityFlags:flags,sensitivityAssessed:assessed}});notice('Backend đã lưu câu trả lời và trạng thái nháp.');list.retry();detail.retry();}catch(e){notice(e.message,'error');}finally{setBusy(false);}}
   async function answerAction(action){setBusy(true);try{await adminRequest(`/questions/${selected}/answer/${action}`,{method:'POST',data:{}});notice('Backend đã ghi nhận chuyển trạng thái.');detail.retry();list.retry();}catch(e){notice(e.message,'error');}finally{setBusy(false);}}
