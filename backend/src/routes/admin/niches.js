@@ -65,17 +65,31 @@ export function createNichesRouter(db=pool){
  }));
  router.put('/:id/sections/:sectionNo',requireRoles('EDITOR'),asyncHandler(async(req,res)=>{
   const p=validate(z.strictObject({id:uuid,sectionNo:z.coerce.number().int().min(1).max(12)}),req.params),x=validate(sectionSchema,req.body);
-  const niche=await db.query('SELECT template_key FROM conspace.niches WHERE id=$1',[p.id]);if(!niche.rows[0])throw new RequestError(404,'NOT_FOUND','Niche not found');
-  if(niche.rows[0].template_key==='TEMPLATE_B'){
-   if(p.sectionNo>7)throw new RequestError(404,'NOT_FOUND','Architectural template has seven sections');
-   if(x.audienceRole!==undefined&&x.audienceRole!==null)throw new RequestError(400,'TEMPLATE_LAYER_NOT_SUPPORTED','Template B uses shared sections only');
-   const r=await db.query(`INSERT INTO conspace.architectural_sections(niche_id,section_no,content,source_ref,status,created_by_user_id,updated_by_user_id,sensitivity_assessed,sensitivity_flags,requires_chief_review) VALUES($1,$2,$3,$4,'DRAFT',$5,$5,$6,$7,$8) ON CONFLICT(niche_id,section_no) DO UPDATE SET content=EXCLUDED.content,source_ref=EXCLUDED.source_ref,status='DRAFT',updated_by_user_id=EXCLUDED.updated_by_user_id,sensitivity_assessed=EXCLUDED.sensitivity_assessed,sensitivity_flags=EXCLUDED.sensitivity_flags,requires_chief_review=EXCLUDED.requires_chief_review,updated_at=now() RETURNING *`,[p.id,p.sectionNo,x.content,x.sourceRef??null,req.auth.id,x.sensitivityAssessed,x.sensitivityFlags,x.sensitivityFlags.length>0]);
-   await writeAudit(db,{actorUserId:req.auth.id,action:'ARCHITECTURAL_SECTION_UPDATED',entityType:'ARCHITECTURAL_SECTION',entityId:r.rows[0].id,after:{sectionNo:p.sectionNo,status:r.rows[0].status,sensitivityFlags:r.rows[0].sensitivity_flags,sourceRef:r.rows[0].source_ref},req});
-   return res.json({ok:true,data:{...r.rows[0],templateType:'TEMPLATE_B'}});
-  }
-  const r=await db.query(`INSERT INTO conspace.niche_sections(niche_id,section_no,audience_role,content,source_ref,status,created_by_user_id,updated_by_user_id,sensitivity_assessed,sensitivity_flags,requires_chief_review) VALUES($1,$2,$3,$4,$5,'DRAFT',$6,$6,$7,$8,$9) ON CONFLICT(niche_id,section_no,audience_role) DO UPDATE SET content=EXCLUDED.content,source_ref=EXCLUDED.source_ref,status='DRAFT',updated_by_user_id=EXCLUDED.updated_by_user_id,sensitivity_assessed=EXCLUDED.sensitivity_assessed,sensitivity_flags=EXCLUDED.sensitivity_flags,requires_chief_review=EXCLUDED.requires_chief_review,updated_at=now() RETURNING *`,[p.id,p.sectionNo,x.audienceRole??null,x.content,x.sourceRef??null,req.auth.id,x.sensitivityAssessed,x.sensitivityFlags,x.sensitivityFlags.length>0]);
-  await writeAudit(db,{actorUserId:req.auth.id,action:'NICHE_SECTION_UPDATED',entityType:'NICHE_SECTION',entityId:r.rows[0].id,after:{sectionNo:p.sectionNo,audienceRole:x.audienceRole??null,status:r.rows[0].status,sensitivityFlags:r.rows[0].sensitivity_flags,sourceRef:r.rows[0].source_ref},req});
-  res.json({ok:true,data:{...r.rows[0],templateType:'TEMPLATE_A'}});
+  const result=await inTransaction(db,async(client)=>{
+   const niche=await client.query('SELECT template_key FROM conspace.niches WHERE id=$1',[p.id]);if(!niche.rows[0])throw new RequestError(404,'NOT_FOUND','Niche not found');
+   const isB=niche.rows[0].template_key==='TEMPLATE_B';
+   if(isB&&p.sectionNo>7)throw new RequestError(404,'NOT_FOUND','Architectural template has seven sections');
+   if(isB&&x.audienceRole!==undefined&&x.audienceRole!==null)throw new RequestError(400,'TEMPLATE_LAYER_NOT_SUPPORTED','Template B uses shared sections only');
+   const flags=!isB&&p.sectionNo===6?[...new Set([...x.sensitivityFlags,'INDUSTRY_DARK_SIDE'])]:x.sensitivityFlags;
+   const requiresChief=flags.length>0;
+   const current=isB
+    ? await client.query('SELECT * FROM conspace.architectural_sections WHERE niche_id=$1 AND section_no=$2 FOR UPDATE',[p.id,p.sectionNo])
+    : await client.query('SELECT * FROM conspace.niche_sections WHERE niche_id=$1 AND section_no=$2 AND audience_role IS NOT DISTINCT FROM $3::text FOR UPDATE',[p.id,p.sectionNo,x.audienceRole??null]);
+   if(current.rows[0]&&!['DRAFT','NEEDS_CHANGES','REJECTED'].includes(current.rows[0].status)){
+    const code=current.rows[0].status==='PUBLISHED'?'PUBLISHED_REVISION_REQUIRED':'INVALID_STATE';
+    const message=current.rows[0].status==='PUBLISHED'
+      ? 'Published sections cannot be overwritten; create a revision workflow before changing live content'
+      : 'Sections in review or awaiting publication cannot be edited';
+    throw new RequestError(409,code,message);
+   }
+   const r=isB
+    ? await client.query(`INSERT INTO conspace.architectural_sections(niche_id,section_no,content,source_ref,status,created_by_user_id,updated_by_user_id,sensitivity_assessed,sensitivity_flags,requires_chief_review) VALUES($1,$2,$3,$4,'DRAFT',$5,$5,$6,$7,$8) ON CONFLICT(niche_id,section_no) DO UPDATE SET content=EXCLUDED.content,source_ref=EXCLUDED.source_ref,status='DRAFT',updated_by_user_id=EXCLUDED.updated_by_user_id,sensitivity_assessed=EXCLUDED.sensitivity_assessed,sensitivity_flags=EXCLUDED.sensitivity_flags,requires_chief_review=EXCLUDED.requires_chief_review,updated_at=now() RETURNING *`,[p.id,p.sectionNo,x.content,x.sourceRef??null,req.auth.id,x.sensitivityAssessed,flags,requiresChief])
+    : await client.query(`INSERT INTO conspace.niche_sections(niche_id,section_no,audience_role,content,source_ref,status,created_by_user_id,updated_by_user_id,sensitivity_assessed,sensitivity_flags,requires_chief_review) VALUES($1,$2,$3,$4,$5,'DRAFT',$6,$6,$7,$8,$9) ON CONFLICT(niche_id,section_no,audience_role) DO UPDATE SET content=EXCLUDED.content,source_ref=EXCLUDED.source_ref,status='DRAFT',updated_by_user_id=EXCLUDED.updated_by_user_id,sensitivity_assessed=EXCLUDED.sensitivity_assessed,sensitivity_flags=EXCLUDED.sensitivity_flags,requires_chief_review=EXCLUDED.requires_chief_review,updated_at=now() RETURNING *`,[p.id,p.sectionNo,x.audienceRole??null,x.content,x.sourceRef??null,req.auth.id,x.sensitivityAssessed,flags,requiresChief]);
+   const entityType=isB?'ARCHITECTURAL_SECTION':'NICHE_SECTION';
+   await writeAudit(client,{actorUserId:req.auth.id,action:isB?'ARCHITECTURAL_SECTION_UPDATED':'NICHE_SECTION_UPDATED',entityType,entityId:r.rows[0].id,before:current.rows[0]??null,after:{sectionNo:p.sectionNo,audienceRole:isB?null:x.audienceRole??null,status:r.rows[0].status,sensitivityFlags:r.rows[0].sensitivity_flags,sourceRef:r.rows[0].source_ref},req});
+   return {...r.rows[0],templateType:isB?'TEMPLATE_B':'TEMPLATE_A'};
+  });
+  res.json({ok:true,data:result});
  }));
 
  router.post('/:id/sections/:sectionNo/submit',requireRoles('EDITOR'),asyncHandler(async(req,res)=>{
