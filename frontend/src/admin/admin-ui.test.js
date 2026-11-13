@@ -7,6 +7,7 @@ const dashboard = readFileSync(new URL('./pages/Dashboard.jsx', import.meta.url)
 const articles = readFileSync(new URL('./pages/Articles.jsx', import.meta.url), 'utf8');
 const system = readFileSync(new URL('./pages/System.jsx', import.meta.url), 'utf8');
 const reviews = readFileSync(new URL('./pages/Reviews.jsx', import.meta.url), 'utf8');
+const editorial = readFileSync(new URL('./pages/Editorial.jsx', import.meta.url), 'utf8');
 
 test('ADMIN CMS navigation is limited to system administration and read-only article access', () => {
   assert.match(api, /ADMIN: \[\.\.\.EVERYONE, 'users:read', 'users:write', 'settings:write'\]/);
@@ -36,4 +37,18 @@ test('editorial review UI can inspect and decide niche sections through the Back
   assert.ok(reviews.includes('queue.data.nicheSections'));
   assert.ok(reviews.includes('/reviews/niche-sections/'));
   assert.ok(reviews.includes('templateType:selected.templateType'));
+});
+
+test('user governance UI exposes person identity, grant history and session revocation', () => {
+  assert.ok(system.includes('personId'));
+  assert.ok(system.includes('Lịch sử nguồn cấp vai trò'));
+  assert.ok(system.includes('/revoke-sessions'));
+  assert.ok(system.includes('activeSessionCount'));
+});
+
+test('field note UI exposes backend-backed compliance readiness and preserves sources', () => {
+  assert.ok(editorial.includes("compliance:complianceFilter||undefined"));
+  assert.ok(editorial.includes('Điều kiện gửi duyệt hiện trường'));
+  assert.ok(editorial.includes('Nguồn truy vết'));
+  assert.ok(editorial.includes('fieldComplianceReady'));
 });
