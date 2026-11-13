@@ -8,7 +8,7 @@ import { chapterPath, chapterDisplayLabel } from '../lib/contentModel.js';
 import { useSeoMetadata } from '../lib/seo.js';
 import { sortByLens } from '../lib/readerLens.js';
 import { Markdown } from '../components/Markdown.jsx';
-import { Breadcrumbs, PageIntro, SectionHeading, StatusPanel } from '../components/UI.jsx';
+import { Breadcrumbs, PageIntro, ReaderSwitch, SectionHeading, StatusPanel } from '../components/UI.jsx';
 import { Icon } from '../components/Icons.jsx';
 
 function usePageMeta(title, description, options={}) {
@@ -404,7 +404,7 @@ function useDebounced(value, delay) {
   return debounced;
 }
 
-function useSearchResults(query, page, role) {
+function useSearchResults(query, page, role, type='all', niche='') {
   const [state, setState] = useState({ status: 'idle', data: [], meta: null, error: null, loadingMore: false });
   useEffect(() => {
     if (query.length < 2) {
@@ -415,7 +415,7 @@ function useSearchResults(query, page, role) {
     setState((current) => page === 1
       ? { status: 'loading', data: [], meta: null, error: null, loadingMore: false }
       : { ...current, loadingMore: true, error: null });
-    getJson(apiUrl('/search', { q: query, type: 'all', limit: 20, page }), { signal: controller.signal })
+    getJson(apiUrl('/search', { q: query, type, role, niche: niche || undefined, limit: 20, page }), { signal: controller.signal })
       .then((payload) => {
         if (controller.signal.aborted) return;
         setState((current) => ({
@@ -430,37 +430,122 @@ function useSearchResults(query, page, role) {
         if (!controller.signal.aborted) setState((current) => ({ ...current, status: page === 1 ? 'error' : current.status, error, loadingMore: false }));
       });
     return () => controller.abort();
-  }, [query, page]);
-  return { ...state, data: sortByLens(state.data, role) };
+  }, [query, page, role, type, niche]);
+  return state;
 }
 
 const RESULT_LABELS = { article: 'Bài viết', niche: 'Lĩnh vực', term: 'Thuật ngữ', chapter: 'Chương sách', field_note: 'Hiện trường' };
+const SEARCH_TYPES = [
+  ['all','Tất cả'],
+  ['article','Bài viết'],
+  ['niche','Lĩnh vực'],
+  ['term','Thuật ngữ'],
+  ['chapter','Chương sách'],
+  ['field_note','Hiện trường'],
+];
 
 function resultPath(item) {
   if (item.type === 'article') return '/bai-viet/' + encodeURIComponent(item.slug);
-  if (item.type === 'niche') return '/ngach/' + encodeURIComponent(item.slug);
-  if (item.type === 'term') return '/tu-dien?q=' + encodeURIComponent(item.title);
+  if (item.type === 'niche') return (item.nicheGroup === 'design' ? '/mang/' : '/ngach/') + encodeURIComponent(item.slug);
+  if (item.type === 'term') return '/tu-dien/' + encodeURIComponent(item.slug);
   if (item.type === 'chapter') return chapterPath(item.bookSlug, item.chapterNo);
   if (item.type === 'field_note') return '/hien-truong/' + item.id;
   return '/tra-nhanh';
 }
 
+function DefinedTermSchema({ data }) {
+  useEffect(() => {
+    if (!data) return undefined;
+    const script = document.createElement('script');
+    script.type = 'application/ld+json';
+    script.dataset.conspaceSchema = 'defined-term';
+    script.textContent = JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'DefinedTerm',
+      name: data.term,
+      description: data.definition,
+      url: 'https://conspace.vn/tu-dien/' + encodeURIComponent(data.slug),
+      inDefinedTermSet: {
+        '@type': 'DefinedTermSet',
+        name: 'Từ điển CONSPACE',
+        url: 'https://conspace.vn/tra-nhanh',
+      },
+    }).replace(/</g, '\\u003c');
+    document.head.appendChild(script);
+    return () => script.remove();
+  }, [data]);
+  return null;
+}
+
+export function TermDetail() {
+  const { slug } = useParams();
+  const validSlug = typeof slug === 'string' && /^[a-z0-9][a-z0-9-]*$/.test(slug);
+  const term = useResource(validSlug ? apiUrl('/terms/' + slug) : null, { list: false, enabled: validSlug });
+  const data = term.status === 'success' ? term.data : null;
+  usePageMeta(
+    data ? data.term : null,
+    data ? data.definition : null,
+    { canonicalPath: validSlug ? '/tu-dien/' + slug : '/tra-nhanh', index: term.status === 'success' }
+  );
+  if (!validSlug) return <main className="container content-page"><StatusPanel status="empty" title="Đường dẫn thuật ngữ không hợp lệ"/></main>;
+  if (term.status === 'loading') return <main className="container content-page"><StatusPanel status="loading" kind="articles"/></main>;
+  if (term.status === 'error') return <main className="container content-page"><Breadcrumbs items={[{ label: 'Tra nhanh', to: '/tra-nhanh' }]}/><StatusPanel status="error" title={term.error?.status === 404 ? 'Thuật ngữ chưa được xuất bản' : 'Chưa thể tải thuật ngữ'} description={term.error?.status === 404 ? 'Thuật ngữ không tồn tại hoặc chưa qua kiểm duyệt kỹ thuật.' : term.error?.message} onRetry={term.error?.status === 404 ? undefined : term.retry}/></main>;
+
+  const sourceUrl = safeSourceUrl(data.sourceRef);
+  const niches = Array.isArray(data.niches) ? data.niches : [];
+  return <>
+    <DefinedTermSchema data={data}/>
+    <PageIntro eyebrow="TỪ ĐIỂN / ĐÃ KIỂM DUYỆT" title={data.term} description="Định nghĩa chỉ được công khai sau khi có nguồn và đã qua kiểm duyệt kỹ thuật."/>
+    <main className="container content-page">
+      <Breadcrumbs items={[{ label: 'Tra nhanh', to: '/tra-nhanh' }, { label: 'Thuật ngữ' }, { label: data.term }]}/>
+      <article className="public-term-detail">
+        <div className="public-term-definition">
+          <span className="eyebrow">ĐỊNH NGHĨA</span>
+          <p>{data.definition}</p>
+        </div>
+        <aside className="public-term-meta">
+          <div><span className="eyebrow">NGUỒN ĐỐI CHIẾU</span>{sourceUrl ? <a href={sourceUrl} target="_blank" rel="noopener noreferrer">{data.sourceRef} <Icon name="upRight" size={14}/></a> : <p>{data.sourceRef}</p>}</div>
+          {data.reviewedAt && <div><span className="eyebrow">KIỂM DUYỆT KỸ THUẬT</span><p>{formatDate(data.reviewedAt)}</p></div>}
+        </aside>
+      </article>
+      {niches.length > 0 && <section className="public-term-related"><SectionHeading eyebrow="LIÊN QUAN" title="Mảng / ngách liên quan"/><div className="tag-list">{niches.map((niche) => <Link key={niche.id || niche.slug} to={(niche.group === 'design' ? '/mang/' : '/ngach/') + encodeURIComponent(niche.slug)}>{niche.name || niche.slug}<Icon name="upRight" size={14}/></Link>)}</div></section>}
+      <div className="section-inline-note"><Icon name="info" size={19}/><p>Thuật ngữ là nội dung tra cứu biên tập, không thay thế quy chuẩn, tiêu chuẩn, hợp đồng hoặc tư vấn chuyên môn áp dụng cho một công trình cụ thể.</p></div>
+      <Link className="text-link" to={'/tra-nhanh?q=' + encodeURIComponent(data.term)}>Tìm nội dung liên quan <Icon name="arrow" size={16}/></Link>
+    </main>
+  </>;
+}
+
 export function Lookup() {
   const [params, setParams] = useSearchParams();
   const activeQuery = (params.get('q') || '').trim();
+  const rawType = params.get('type') || 'all';
+  const activeType = SEARCH_TYPES.some(([value]) => value === rawType) ? rawType : 'all';
+  const activeNiche = (params.get('niche') || '').trim();
   const [input, setInput] = useState(activeQuery);
   const [page, setPage] = useState(1);
   const { reader } = useReader();
+  const niches = useNiches();
   const debounced = useDebounced(activeQuery, 300);
-  const results = useSearchResults(debounced, page, reader);
-  useEffect(() => { setInput(activeQuery); setPage(1); }, [activeQuery]);
+  const results = useSearchResults(debounced, page, reader, activeType, activeNiche);
+
+  useEffect(() => { setInput(activeQuery); setPage(1); }, [activeQuery, activeType, activeNiche, reader]);
+
+  function commitParams(nextValues) {
+    const next = new URLSearchParams(params);
+    for (const [key, value] of Object.entries(nextValues)) {
+      if (value && value !== 'all') next.set(key, value);
+      else next.delete(key);
+    }
+    setParams(next);
+  }
+
   function submit(event) {
     event.preventDefault();
     setPage(1);
-    if (input.trim()) setParams({ q: input.trim() });
-    else setParams({});
+    commitParams({ q: input.trim(), type: activeType, niche: activeNiche });
   }
 
+  const facets = results.meta?.facets || {};
   return <>
     <PageIntro eyebrow="TRA NHANH / TÌM ĐÚNG CHỖ" title="Bạn thấy gì, cần xem mục nào?" description="Tìm trong bài viết, ngách, chương sách, ca hiện trường và thuật ngữ đã được xuất bản. Không có tư vấn tự động hoặc kết luận không nguồn."/>
     <main className="container content-page">
@@ -471,17 +556,33 @@ export function Lookup() {
         <input id="quick-lookup" type="search" autoComplete="off" value={input} onChange={(event) => setInput(event.target.value)} placeholder="Ví dụ: nứt tường, chống thấm, nghiệm thu..."/>
         <button type="submit" className="button button--primary">Tìm kiếm <Icon name="arrow" size={18}/></button>
       </form>
+
+      <div className="lookup-controls">
+        <div className="lookup-lens"><div><span className="eyebrow">ƯU TIÊN GÓC NHÌN</span><p>Đổi góc nhìn chỉ thay thứ tự ưu tiên, không ẩn nội dung công khai.</p></div><ReaderSwitch/></div>
+        <div className="lookup-niche-filter">
+          <label htmlFor="lookup-niche">Lọc theo mảng / ngách</label>
+          <select id="lookup-niche" value={activeNiche} onChange={(event) => { setPage(1); commitParams({ niche:event.target.value, type:activeType, q:activeQuery }); }}>
+            <option value="">Tất cả lĩnh vực</option>
+            {niches.status === 'success' && niches.data.map((item) => <option key={item.id} value={item.slug}>{item.name}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {activeQuery.length >= 2 && <div className="lookup-facets" aria-label="Lọc loại kết quả">{SEARCH_TYPES.map(([value,label]) => <button type="button" key={value} className={activeType === value ? 'is-active' : ''} onClick={() => { setPage(1); commitParams({ type:value, q:activeQuery, niche:activeNiche }); }}>
+        <span>{label}</span><strong>{Number(facets[value] || 0).toLocaleString('vi-VN')}</strong>
+      </button>)}</div>}
+
       {!activeQuery && <div className="lookup-intro"><div><Icon name="compass" size={37}/><h2>Bắt đầu từ điều bạn đang thấy.</h2><p>Tra nhanh tìm trong kho nội dung công khai. Kết quả không bao gồm bản nháp, câu hỏi chưa trả lời hoặc hồ sơ chưa duyệt.</p></div><div className="lookup-shortcuts"><Link to="/ngach"><Icon name="grid" size={22}/> Duyệt kho ngách <Icon name="arrow" size={17}/></Link><Link to="/tu-sach"><Icon name="book" size={22}/> Mở tủ sách <Icon name="arrow" size={17}/></Link><Link to="/hoi-dap/gui-cau-hoi"><Icon name="users" size={22}/> Gửi câu hỏi ẩn danh <Icon name="arrow" size={17}/></Link></div></div>}
       {activeQuery.length === 1 && <StatusPanel status="empty" title="Nhập thêm ít nhất một ký tự" description="Tìm kiếm yêu cầu tối thiểu hai ký tự."/>}
       {activeQuery.length >= 2 && results.status === 'loading' && <StatusPanel status="loading" kind="articles"/>}
       {activeQuery.length >= 2 && results.status === 'error' && <StatusPanel status="error" title="Chưa thể tra cứu" description={results.error?.message} onRetry={() => setPage(1)}/>}
       {activeQuery.length >= 2 && results.status === 'success' && <>
         <p className="results-count" role="status">{results.meta?.total ?? results.data.length} kết quả cho “{activeQuery}” · ưu tiên {reader === 'homeowner' ? 'chủ nhà' : reader === 'architect' ? 'kiến trúc sư' : 'nhà thầu'}, không ẩn kết quả của hai phía còn lại</p>
-        {results.data.length ? <div className="public-search-results">{results.data.map((item, index) => <Link className="public-search-result" to={resultPath(item)} key={item.type + '-' + item.id}>
+        {results.data.length ? <div className="public-search-results">{results.data.map((item) => <Link className="public-search-result" to={resultPath(item)} key={item.type + '-' + item.id}>
           <span className="public-search-type">{RESULT_LABELS[item.type] || 'Nội dung'}</span>
           <span><strong>{item.title}</strong>{item.snippet && <small>{item.snippet}</small>}</span>
           <Icon name="arrow" size={17}/>
-        </Link>)}</div> : <StatusPanel status="empty" title="Không tìm thấy kết quả" description="Thử một từ khóa khác hoặc mở kho ngách để duyệt danh mục đã có."/>}
+        </Link>)}</div> : <StatusPanel status="empty" title="Không tìm thấy kết quả" description="Thử một từ khóa khác, bỏ bộ lọc hoặc mở kho ngách để duyệt danh mục đã có."/>}
         {results.meta?.hasMore && <div className="pagination-actions"><button type="button" className="button button--outline" disabled={results.loadingMore} onClick={() => setPage((value) => value + 1)}>{results.loadingMore ? 'Đang tải...' : 'Tải thêm kết quả'} <Icon name="arrow" size={17}/></button></div>}
       </>}
     </main>
