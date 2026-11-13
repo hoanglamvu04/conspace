@@ -79,6 +79,30 @@ async function replaceArticleRelations(client, articleId, input) {
   }
 }
 
+
+async function createArticleWithClient(client, actor, input, req) {
+  const authorId = input.authorId || await authorForUser(client, actor);
+  const flags = input.sensitivityFlags || [];
+  const requiresChief = flags.some((flag) => CHIEF_FLAGS.has(flag));
+  const inserted = await client.query(
+    'INSERT INTO conspace.articles ' +
+    '(slug,title,excerpt,body,cover_image_url,author_id,audience_role,content_type,status,' +
+    'created_by_user_id,updated_by_user_id,requires_chief_review,sensitivity_assessed,sensitivity_flags) ' +
+    "VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'DRAFT',$9,$9,$10,$11,$12) RETURNING *",
+    [input.slug,input.title,input.excerpt ?? '',input.body ?? '',input.coverImageUrl ?? null,
+      authorId,input.audienceRole ?? null,input.contentType ?? 'EDITORIAL',actor.id,requiresChief,input.sensitivityAssessed ?? false,flags]
+  );
+  const article = inserted.rows[0];
+  await replaceArticleRelations(client, article.id, input);
+  const snapshot = await snapshotArticle(client, article.id);
+  await client.query(
+    'INSERT INTO conspace.article_revisions (article_id,version_no,snapshot,change_reason,created_by_user_id) VALUES ($1,1,$2::jsonb,$3,$4)',
+    [article.id,JSON.stringify(snapshot),'Initial draft',actor.id]
+  );
+  await writeAudit(client,{actorUserId:actor.id,action:'ARTICLE_CREATED',entityType:'ARTICLE',entityId:article.id,after:snapshot,req});
+  return { ...article, nicheIds: input.nicheIds ?? [], tags: input.tags ?? [], sources: input.sources ?? [], mediaIds: input.mediaIds ?? [] };
+}
+
 export function createEditorialService(db = pool) {
   return {
     async listArticles({ status, role, search, page = 1, limit = 20 }) {
@@ -122,28 +146,11 @@ export function createEditorialService(db = pool) {
     },
 
     async createArticle(actor, input, req) {
-      return inTransaction(db, async (client) => {
-        const authorId = input.authorId || await authorForUser(client, actor);
-        const flags = input.sensitivityFlags || [];
-        const requiresChief = flags.some((flag) => CHIEF_FLAGS.has(flag));
-        const inserted = await client.query(
-          'INSERT INTO conspace.articles ' +
-          '(slug,title,excerpt,body,cover_image_url,author_id,audience_role,content_type,status,' +
-          'created_by_user_id,updated_by_user_id,requires_chief_review,sensitivity_assessed,sensitivity_flags) ' +
-          "VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'DRAFT',$9,$9,$10,$11,$12) RETURNING *",
-          [input.slug,input.title,input.excerpt ?? '',input.body ?? '',input.coverImageUrl ?? null,
-            authorId,input.audienceRole ?? null,input.contentType ?? 'EDITORIAL',actor.id,requiresChief,input.sensitivityAssessed ?? false,flags]
-        );
-        const article = inserted.rows[0];
-        await replaceArticleRelations(client, article.id, input);
-        const snapshot = await snapshotArticle(client, article.id);
-        await client.query(
-          'INSERT INTO conspace.article_revisions (article_id,version_no,snapshot,change_reason,created_by_user_id) VALUES ($1,1,$2::jsonb,$3,$4)',
-          [article.id,JSON.stringify(snapshot),'Initial draft',actor.id]
-        );
-        await writeAudit(client,{actorUserId:actor.id,action:'ARTICLE_CREATED',entityType:'ARTICLE',entityId:article.id,after:snapshot,req});
-        return { ...article, nicheIds: input.nicheIds ?? [], tags: input.tags ?? [], sources: input.sources ?? [], mediaIds: input.mediaIds ?? [] };
-      });
+      return inTransaction(db, (client) => createArticleWithClient(client, actor, input, req));
+    },
+
+    async createArticleInTransaction(client, actor, input, req) {
+      return createArticleWithClient(client, actor, input, req);
     },
 
     async updateArticle(actor, id, input, req) {
@@ -191,6 +198,10 @@ export function createEditorialService(db = pool) {
         if (!article) throw new RequestError(404,'NOT_FOUND','Article not found');
         if (!['DRAFT','NEEDS_CHANGES'].includes(article.status)) throw new RequestError(409,'INVALID_STATE','Article cannot be submitted from its current state');
         if (!article.sensitivity_assessed) throw new RequestError(409,'SENSITIVITY_ASSESSMENT_REQUIRED','Editor must explicitly assess sensitive-content flags before submission');
+        if (!article.body?.trim()) throw new RequestError(409,'ARTICLE_CONTENT_REQUIRED','Article body is required before submission');
+        if (!article.audience_role) throw new RequestError(409,'AUDIENCE_REQUIRED','Primary reader audience is required before submission');
+        const sourceCount = await client.query('SELECT count(*)::integer AS total FROM conspace.article_sources WHERE article_id=$1',[id]);
+        if (sourceCount.rows[0].total < 1) throw new RequestError(409,'SOURCE_REQUIRED','At least one traceable source is required before submission');
         await assertArticleMediaRights(client, id);
         if (article.content_type === 'FIELD_CASE') {
           const field = await client.query('SELECT * FROM conspace.field_notes WHERE article_id=$1',[id]);
