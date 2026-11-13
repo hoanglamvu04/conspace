@@ -45,16 +45,17 @@ test('books, field notes, reader questions and quick search use real public API 
   assert.ok(publicPages.includes('repairCostSource'));
 });
 
-test('robots and sitemap expose only stable canonical public pages', () => {
-  const sitemap = readFileSync(new URL('../../public/sitemap.xml', import.meta.url), 'utf8');
+test('robots and dynamic sitemap expose only canonical public surfaces', () => {
+  const sitemapRoute = readFileSync(new URL('../../../backend/src/routes/seo.js', import.meta.url), 'utf8');
   const robots = readFileSync(new URL('../../public/robots.txt', import.meta.url), 'utf8');
-  assert.ok(sitemap.includes('https://conspace.vn/'));
-  assert.ok(sitemap.includes('https://conspace.vn/tu-sach'));
-  assert.ok(sitemap.includes('https://conspace.vn/ngach'));
-  assert.ok(sitemap.includes('https://conspace.vn/lien-he'));
-  assert.ok(!sitemap.includes('/tra-cuu'));
-  assert.ok(!sitemap.includes('/tu-dien'));
-  assert.ok(!sitemap.includes('/tra-nhanh'));
+  assert.ok(sitemapRoute.includes("router.get('/sitemap.xml'"));
+  assert.ok(sitemapRoute.includes("'/ngach'"));
+  assert.ok(sitemapRoute.includes("'/tu-sach'"));
+  assert.ok(sitemapRoute.includes("'/tra-nhanh'"));
+  assert.ok(sitemapRoute.includes("'/lien-he'"));
+  assert.ok(sitemapRoute.includes("a.status='PUBLISHED'"));
+  assert.ok(!sitemapRoute.includes("'/tra-cuu'"));
+  assert.ok(!sitemapRoute.includes("'/tu-dien'"));
   assert.ok(robots.includes('Disallow: /admin'));
   assert.ok(robots.includes('Sitemap: https://conspace.vn/sitemap.xml'));
 });
