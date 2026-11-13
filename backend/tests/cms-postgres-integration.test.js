@@ -596,7 +596,7 @@ test('local demo seed builds visible workflow fixtures without touching non-demo
   });
   assert.equal(rerun.niche.slug,'luxury');
   const noDuplicateArticles=await pool.query("SELECT count(*)::integer AS total FROM conspace.articles WHERE slug=ANY($1::text[])",[[
-    'demo-review-needs-changes','demo-submitted-review-queue','demo-chief-review-queue','demo-approved-ready-publish','demo-public-house-overview','demo-field-ready','demo-field-blocked'
+    'demo-review-needs-changes','demo-submitted-review-queue','demo-chief-review-queue','demo-approved-ready-publish','demo-public-design-overview','demo-field-ready','demo-field-blocked'
   ]]);
   assert.equal(noDuplicateArticles.rows[0].total,7);
 });
