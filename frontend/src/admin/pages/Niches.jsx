@@ -6,6 +6,7 @@ import { useAdminList, useAdminObject } from '../hooks.js';
 import { useSession, useNotices } from '../Session.jsx';
 import { CmsIcon, DataState, EmptyState, FormField, PageHeading, Pill, SectionNote, SearchFilters, Surface, Timestamp } from '../ui.jsx';
 import { Markdown } from '../../components/Markdown.jsx';
+import { ReviewFeedback } from '../ReviewFeedback.jsx';
 import {
   TEMPLATE_A_ROLES,
   mapSectionCells,
@@ -194,6 +195,7 @@ export default function Niches(){
 
               {cell.status==='PUBLISHED'&&<SectionNote kind="warning">Khối đang live. Backend chặn ghi đè trực tiếp để nội dung công khai không biến mất. Cần workflow revision riêng cho lần sửa sau.</SectionNote>}
               {cell.status==='NEEDS_CHANGES'&&<SectionNote kind="warning">Khối đã bị trả về. Chỉnh đúng nội dung/nguồn rồi lưu và gửi duyệt lại.</SectionNote>}
+              {cell.id&&<ReviewFeedback entityType={isTemplateB?'ARCHITECTURAL_SECTION':'NICHE_SECTION'} entityId={cell.id} status={cell.status}/>}
               {['SUBMITTED','TECHNICAL_REVIEW','EDITOR_IN_CHIEF_REVIEW'].includes(cell.status)&&<SectionNote>Khối đang trong quy trình duyệt. Mở Hàng đợi duyệt để xử lý theo vai trò.</SectionNote>}
               {cell.submittedAt&&<p><small>Gửi duyệt: <Timestamp value={cell.submittedAt}/></small></p>}
               {cell.approvedAt&&<p><small>Phê duyệt: <Timestamp value={cell.approvedAt}/></small></p>}
