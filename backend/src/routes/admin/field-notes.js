@@ -51,13 +51,23 @@ export function createFieldNotesRouter(db=pool,editorial=createEditorialService(
     if(input.repairCostAmount!==undefined && input.repairCostAmount!==null && !input.repairCostSource) {
       throw new RequestError(400,'COST_SOURCE_REQUIRED','A real source is required when repair cost is supplied');
     }
-    const article=await editorial.createArticle(req.auth,{
-      slug:input.slug,title:input.title,excerpt:input.excerpt??'',body:input.body??'',
-      authorId:input.authorId,audienceRole:input.audienceRole??'homeowner',
-      contentType:'FIELD_CASE',nicheIds:input.nicheIds??[],sources:input.sources??[],
-      sensitivityFlags:input.sensitivityFlags??['IDENTIFIABLE_ENTITY_RISK'],sensitivityAssessed:true,
-    },req);
     const result=await inTransaction(db,async(client)=>{
+      const mediaRows=[];
+      for(const mediaId of (input.mediaIds??[])){
+        const media=await client.query(
+          "SELECT id,category,rights_confirmed FROM conspace.media_assets WHERE id=$1 AND deleted_at IS NULL",
+          [mediaId]
+        );
+        if(!media.rows[0] || media.rows[0].category!=='IMAGE') throw new RequestError(400,'INVALID_FIELD_IMAGE','Field notes can only attach active image media');
+        if(input.photoRightsConfirmed && !media.rows[0].rights_confirmed) throw new RequestError(409,'MEDIA_RIGHTS_REQUIRED','Each field image needs confirmed usage rights');
+        mediaRows.push(media.rows[0]);
+      }
+      const article=await editorial.createArticleInTransaction(client,req.auth,{
+        slug:input.slug,title:input.title,excerpt:input.excerpt??'',body:input.body??'',
+        authorId:input.authorId,audienceRole:input.audienceRole??'homeowner',
+        contentType:'FIELD_CASE',nicheIds:input.nicheIds??[],sources:input.sources??[],
+        sensitivityFlags:input.sensitivityFlags??['IDENTIFIABLE_ENTITY_RISK'],sensitivityAssessed:true,
+      },req);
       const inserted=await client.query(
         'INSERT INTO conspace.field_notes (article_id,phenomenon,root_cause,intervention_point,repair_cost_amount,repair_cost_source,'+
         'unit_anonymized,address_anonymized,photo_rights_confirmed,anonymization_note) '+
@@ -65,22 +75,16 @@ export function createFieldNotesRouter(db=pool,editorial=createEditorialService(
         [article.id,input.phenomenon,input.rootCause,input.interventionPoint,input.repairCostAmount??null,
           input.repairCostSource??null,input.unitAnonymized,input.addressAnonymized,input.photoRightsConfirmed,input.anonymizationNote??null]
       );
-      for(const [index,mediaId] of (input.mediaIds??[]).entries()){
-        const media=await client.query(
-          "SELECT id,category,rights_confirmed FROM conspace.media_assets WHERE id=$1 AND deleted_at IS NULL",
-          [mediaId]
-        );
-        if(!media.rows[0] || media.rows[0].category!=='IMAGE') throw new RequestError(400,'INVALID_FIELD_IMAGE','Field notes can only attach active image media');
-        if(input.photoRightsConfirmed && !media.rows[0].rights_confirmed) throw new RequestError(409,'MEDIA_RIGHTS_REQUIRED','Each field image needs confirmed usage rights');
+      for(const [index,media] of mediaRows.entries()){
         await client.query(
           'INSERT INTO conspace.field_note_media (field_note_id,media_id,position) VALUES ($1,$2,$3)',
-          [inserted.rows[0].id,mediaId,index]
+          [inserted.rows[0].id,media.id,index]
         );
       }
       await writeAudit(client,{actorUserId:req.auth.id,action:'FIELD_NOTE_CREATED',entityType:'FIELD_NOTE',entityId:inserted.rows[0].id,after:inserted.rows[0],req});
-      return inserted.rows[0];
+      return {...inserted.rows[0],articleId:article.id};
     });
-    res.status(201).json({ok:true,data:{...result,articleId:article.id}});
+    res.status(201).json({ok:true,data:result});
   }));
 
   router.get('/:id',asyncHandler(async(req,res)=>{
