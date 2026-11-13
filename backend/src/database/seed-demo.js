@@ -45,9 +45,9 @@ async function resetDemoEntities(client){
     await client.query('DELETE FROM conspace.articles WHERE id=ANY($1::uuid[])',[articleIds]);
   }
 
-  const terms=await client.query("SELECT id FROM conspace.terms WHERE slug='demo-thuat-ngu-can-sua'");
-  if(terms.rows[0]){
-    const id=terms.rows[0].id;
+  const terms=await client.query("SELECT id FROM conspace.terms WHERE slug=ANY($1::text[])",[['demo-thuat-ngu-can-sua','demo-thuat-ngu-cong-khai']]);
+  for(const row of terms.rows){
+    const id=row.id;
     await client.query("DELETE FROM conspace.editorial_reviews WHERE entity_type='TERM' AND entity_id=$1",[id]);
     await client.query("DELETE FROM conspace.workflow_events WHERE entity_type='TERM' AND entity_id=$1",[id]);
     await client.query("DELETE FROM conspace.audit_logs WHERE entity_type='TERM' AND entity_id=$1",[id]);
@@ -255,6 +255,13 @@ export async function seedDemo(db=pool,options={}){
     await addDecision(client,{entityType:'TERM',entityId:term.rows[0].id,stage:'TECHNICAL',decision:'REQUEST_CHANGES',reason:termReason,reviewer});
     await addWorkflow(client,{entityType:'TERM',entityId:term.rows[0].id,fromStatus:'TECHNICAL_REVIEW',toStatus:'NEEDS_CHANGES',action:'REQUEST_CHANGES',actorUserId:reviewer.id,reason:termReason,stage:'TECHNICAL'});
 
+    const publicTerm=await client.query(
+      "INSERT INTO conspace.terms(term,slug,definition,status,reviewed_by,reviewed_at,source_ref,created_by_user_id,updated_by_user_id,approved_by_user_id,approved_at) VALUES($1,'demo-thuat-ngu-cong-khai',$2,'PUBLISHED',$3,now()-interval '2 hours',$4,$5,$5,$6,now()-interval '2 hours') RETURNING id",
+      ['[DEMO] Thuật ngữ công khai','Định nghĩa demo đã có nguồn và qua kiểm duyệt để thử trang từ điển công khai.',reviewer.authorId,DEMO_SOURCE,editor.id,reviewer.id]
+    );
+    await client.query('INSERT INTO conspace.term_niches(term_id,niche_id) VALUES($1,$2)',[publicTerm.rows[0].id,niche.id]);
+    await addWorkflow(client,{entityType:'TERM',entityId:publicTerm.rows[0].id,fromStatus:'APPROVED',toStatus:'PUBLISHED',action:'PUBLISH',actorUserId:chief.id,stage:'EDITOR_IN_CHIEF'});
+
     const question=await client.query(
       "INSERT INTO conspace.reader_questions(description,guessed_niche_id,status,moderation_note) VALUES($1,$2,'IN_REVIEW',$3) RETURNING id",
       ['[DEMO] Câu hỏi mô phỏng để thử Q&A và phản hồi reviewer.',niche.id,'[DEMO] Chỉ dùng local']
@@ -275,6 +282,7 @@ export async function seedDemo(db=pool,options={}){
       users:[editor,reviewer,chief].map(({email,displayName,role})=>({email,displayName,role})),
       articles:{returnedId,submittedId,chiefQueueId,approvedId,publicId,fieldReadyArticleId,fieldBlockedArticleId},
       termId:term.rows[0].id,
+      publicTermId:publicTerm.rows[0].id,
       questionId:question.rows[0].id,
       sections,
     };
