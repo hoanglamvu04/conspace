@@ -9,6 +9,7 @@ import { ArticleDetail, ArticleIndex } from './pages/Articles.jsx';
 import { About, NotFound, Principles } from './pages/Sections.jsx';
 import { Contact } from './pages/Contact.jsx';
 import { BookIndex, BookDetail, ChapterDetail, FieldNotes, FieldNoteDetail, Questions, QuestionDetail, QuestionForm, Lookup } from './pages/PublicPages.jsx';
+import { useSeoMetadata } from './lib/seo.js';
 
 // Separate route bundle: readers never download the private CMS application.
 const AdminApp = lazy(() => import('./admin/AdminApp.jsx'));
@@ -28,21 +29,24 @@ const META = {
 };
 function DocumentMeta() {
   const { pathname } = useLocation();
-  useEffect(() => {
-    const canonicalPath = ['/tra-cuu', '/tu-dien'].includes(pathname) ? '/tra-nhanh' : pathname;
-    const info = META[canonicalPath] || (pathname.startsWith('/ngach/') ? ['Ngách thi công', 'Hồ sơ ngách thi công đã có nguồn.'] : pathname.startsWith('/mang/') ? ['Mảng kiến trúc', 'Hồ sơ mảng kiến trúc theo cấu trúc riêng.'] : pathname.startsWith('/bai-viet/') ? ['Đọc bài viết', 'Bài viết đã xuất bản từ CONSPACE.'] : pathname.startsWith('/hien-truong/') ? ['Ca hiện trường', 'Hồ sơ hiện trường đã được ẩn danh và xuất bản.'] : pathname.startsWith('/hoi-dap/') ? ['Hỏi đáp', 'Câu hỏi và câu trả lời đã xuất bản.'] : pathname.startsWith('/tu-sach/') ? ['Đầu sách', 'Danh sách chương đã được duyệt và xuất bản.'] : pathname.startsWith('/cam-nang/') || pathname.startsWith('/phan-nha-thau/') || pathname.startsWith('/quan-quanh-kts/') ? ['Chương sách', 'Chương sách đã được duyệt và xuất bản.'] : ['CONSPACE', 'Sự thật ngành Xây.']);
-    document.title = `${info[0]} | CONSPACE · Sự thật ngành Xây`;
-    const meta = document.querySelector('meta[name="description"]');
-    if (meta) meta.setAttribute('content', info[1]);
-    const ogTitle = document.querySelector('meta[property="og:title"]');
-    if (ogTitle) ogTitle.setAttribute('content', document.title);
-    const ogDescription = document.querySelector('meta[property="og:description"]');
-    if (ogDescription) ogDescription.setAttribute('content', info[1]);
-    const canonical = document.querySelector('link[rel="canonical"]') || document.createElement('link');
-    canonical.rel = 'canonical';
-    canonical.href = `${window.location.origin}${canonicalPath}`;
-    if (!canonical.isConnected) document.head.appendChild(canonical);
-  }, [pathname]);
+  const canonicalPath = ['/tra-cuu', '/tu-dien'].includes(pathname) ? '/tra-nhanh' : pathname;
+  const exact = META[canonicalPath];
+  const dynamic = pathname.startsWith('/ngach/') ? ['Ngách thi công', 'Hồ sơ ngách thi công đã có nguồn.']
+    : pathname.startsWith('/mang/') ? ['Mảng kiến trúc', 'Hồ sơ mảng kiến trúc theo cấu trúc riêng.']
+      : pathname.startsWith('/bai-viet/') ? ['Đọc bài viết', 'Bài viết đã xuất bản từ CONSPACE.']
+        : pathname.startsWith('/hien-truong/') ? ['Ca hiện trường', 'Hồ sơ hiện trường đã được ẩn danh và xuất bản.']
+          : pathname.startsWith('/hoi-dap/') ? ['Hỏi đáp', 'Câu hỏi và câu trả lời đã xuất bản.']
+            : pathname.startsWith('/tu-sach/') ? ['Đầu sách', 'Danh sách chương đã được duyệt và xuất bản.']
+              : pathname.startsWith('/cam-nang/') || pathname.startsWith('/phan-nha-thau/') || pathname.startsWith('/quan-quanh-kts/') ? ['Chương sách', 'Chương sách đã được duyệt và xuất bản.']
+                : null;
+  const info = exact || dynamic || ['CONSPACE', 'Sự thật ngành Xây.'];
+  const known = Boolean(exact || dynamic || pathname === '/');
+  const index = known && pathname !== '/hoi-dap/gui-cau-hoi';
+  useSeoMetadata({title:info[0],description:info[1],canonicalPath,index});
+  return null;
+}
+function AdminNoIndexMeta(){
+  useSeoMetadata({title:'Tòa soạn CONSPACE',description:'Khu quản trị nội bộ CONSPACE.',canonicalPath:'/admin',index:false});
   return null;
 }
 function ScrollManager() {
@@ -53,7 +57,7 @@ function ScrollManager() {
 function Site() {
   const { pathname } = useLocation();
   if (pathname === '/admin' || pathname.startsWith('/admin/')) {
-    return <Suspense fallback={<div role="status" aria-live="polite" style={{ padding: 48, fontFamily: 'sans-serif' }}>Đang tải tòa soạn CONSPACE…</div>}><AdminApp/></Suspense>;
+    return <><AdminNoIndexMeta/><Suspense fallback={<div role="status" aria-live="polite" style={{ padding: 48, fontFamily: 'sans-serif' }}>Đang tải tòa soạn CONSPACE…</div>}><AdminApp/></Suspense></>;
   }
   return <><DocumentMeta/><ScrollManager/><a className="skip-link" href="#main-content">Bỏ qua điều hướng, đến nội dung</a><Header/><div id="main-content"><Routes>
     <Route path="/" element={<HomeV1/>}/>
