@@ -18,6 +18,7 @@ test('IA public routes include the new sections and keep legacy aliases working'
   assert.ok(app.includes('path="/phan-nha-thau/:chapter"'));
   assert.ok(app.includes('path="/quan-quanh-kts/:chapter"'));
   assert.ok(app.includes('path="/hoi-dap/gui-cau-hoi"'));
+  assert.ok(app.includes('path="/tu-dien/:slug"'));
 });
 
 test('homepage keeps the architectural drawing and presents three reader choices without a carousel', () => {
@@ -43,6 +44,9 @@ test('books, field notes, reader questions and quick search use real public API 
   assert.ok(publicPages.includes('useFieldNotes(null, 12, offset, reader)'), 'Field notes must use the selected reader lens.');
   assert.ok(publicPages.includes('publishedChapterCount'));
   assert.ok(publicPages.includes('repairCostSource'));
+  assert.ok(publicPages.includes("role, niche: niche || undefined"), 'Search must send the selected reader lens and niche filter to Backend.');
+  assert.ok(publicPages.includes('results.meta?.facets'), 'Search must expose backend facets in the public UI.');
+  assert.ok(publicPages.includes("'/tu-dien/' + encodeURIComponent(item.slug)"), 'Published term results must open a dedicated dictionary detail page.');
 });
 
 test('robots and dynamic sitemap expose only canonical public surfaces', () => {
