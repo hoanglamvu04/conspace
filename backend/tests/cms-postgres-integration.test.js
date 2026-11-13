@@ -548,10 +548,21 @@ test('real PostgreSQL flow: login -> create -> technical review -> chief review 
   assert.equal(scheduled.body.data.status,'SCHEDULED');
   assert.equal((await api(base)('GET','/api/v1/articles/'+scheduledSlug)).status,404);
 
+  const sitemapBefore=await fetch(base+'/sitemap.xml');
+  assert.equal(sitemapBefore.status,200);
+  assert.match(sitemapBefore.headers.get('content-type')||'',/application\/xml/);
+  const sitemapBeforeXml=await sitemapBefore.text();
+  assert.ok(sitemapBeforeXml.includes('/mang/'+designNiche.slug));
+  assert.equal(sitemapBeforeXml.includes('/bai-viet/'+scheduledSlug),false,'Future scheduled content must not be indexed');
+
   // Simulate time passing *only on this ephemeral CI database*.
   await pool.query("UPDATE conspace.articles SET scheduled_at=now()-interval '1 second' WHERE id=$1",[scheduledId]);
   assert.ok((await createEditorialService(pool).publishDueArticles())>=1);
   assert.equal((await api(base)('GET','/api/v1/articles/'+scheduledSlug)).status,200);
+  const sitemapAfter=await fetch(base+'/sitemap.xml');
+  assert.equal(sitemapAfter.status,200);
+  const sitemapAfterXml=await sitemapAfter.text();
+  assert.ok(sitemapAfterXml.includes('/bai-viet/'+scheduledSlug),'Published due content must enter the sitemap');
 });
 
 
