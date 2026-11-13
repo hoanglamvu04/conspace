@@ -15,6 +15,7 @@ import { createTermsRouter } from './terms.js';
 import { createQuestionsRouter } from './questions.js';
 import { createMediaRouter } from './media.js';
 import { createReviewsRouter } from './reviews.js';
+import { createAuditRouter } from './audit.js';
 import { createEditorialService } from '../../services/editorial.js';
 
 export function createAdminRouter(db=pool,config=env){
@@ -32,7 +33,7 @@ export function createAdminRouter(db=pool,config=env){
 
   router.get('/',(req,res)=>{
     res.json({ok:true,data:{user:req.auth,modules:[
-      'users','authors','articles','niches','books','chapters','field-notes','terms','questions','media','reviews',
+      'users','authors','articles','niches','books','chapters','field-notes','terms','questions','media','reviews','audit',
     ]}});
   });
 
@@ -47,6 +48,7 @@ export function createAdminRouter(db=pool,config=env){
   router.use('/questions',createQuestionsRouter(db,config));
   router.use('/media',createMediaRouter(db));
   router.use('/reviews',createReviewsRouter(db,editorial));
+  router.use('/audit',createAuditRouter(db));
 
   router.use((_req,_res,next)=>{
     next(new RequestError(404,'NOT_FOUND','Admin endpoint not found'));
