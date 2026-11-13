@@ -78,7 +78,7 @@ export async function adminObject(resource, options = {}) {
 
 // UI visibility follows *server-verified* session role; the API authorizes
 // every operation again and is the security boundary. No editable roles in JS.
-const EVERYONE = ['dashboard:read', 'articles:read', 'settings:read'];
+const EVERYONE = ['dashboard:read', 'articles:read', 'settings:read', 'audit:read'];
 const EDITOR = ['articles:create','articles:write','articles:submit','articles:schedule', 'niches:read','niches:write','books:read','books:write','chapters:read','chapters:create','chapters:write','field-notes:read','field-notes:create','field-notes:write','field-notes:submit','dictionary:read','dictionary:create','dictionary:write','dictionary:submit','questions:read','questions:write','questions:submit','media:read','media:upload','media:write','authors:read'];
 const REVIEWER = ['reviews:read','reviews:technical:decide','niches:read','dictionary:read','questions:read'];
 const CHIEF = ['reviews:read','reviews:chief:decide','niches:read','questions:read','questions:publish','niches:publish','articles:publish','articles:schedule','articles:withdraw'];
