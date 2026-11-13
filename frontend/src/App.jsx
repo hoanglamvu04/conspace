@@ -8,7 +8,7 @@ import NicheDetailV1 from './pages/NicheDetailV1.jsx';
 import { ArticleDetail, ArticleIndex } from './pages/Articles.jsx';
 import { About, NotFound, Principles } from './pages/Sections.jsx';
 import { Contact } from './pages/Contact.jsx';
-import { BookIndex, BookDetail, ChapterDetail, FieldNotes, FieldNoteDetail, Questions, QuestionDetail, QuestionForm, Lookup } from './pages/PublicPages.jsx';
+import { BookIndex, BookDetail, ChapterDetail, FieldNotes, FieldNoteDetail, Questions, QuestionDetail, QuestionForm, Lookup, TermDetail } from './pages/PublicPages.jsx';
 import { useSeoMetadata } from './lib/seo.js';
 
 // Separate route bundle: readers never download the private CMS application.
@@ -37,8 +37,9 @@ function DocumentMeta() {
         : pathname.startsWith('/hien-truong/') ? ['Ca hiện trường', 'Hồ sơ hiện trường đã được ẩn danh và xuất bản.']
           : pathname.startsWith('/hoi-dap/') ? ['Hỏi đáp', 'Câu hỏi và câu trả lời đã xuất bản.']
             : pathname.startsWith('/tu-sach/') ? ['Đầu sách', 'Danh sách chương đã được duyệt và xuất bản.']
-              : pathname.startsWith('/cam-nang/') || pathname.startsWith('/phan-nha-thau/') || pathname.startsWith('/quan-quanh-kts/') ? ['Chương sách', 'Chương sách đã được duyệt và xuất bản.']
-                : null;
+              : pathname.startsWith('/tu-dien/') ? ['Thuật ngữ', 'Định nghĩa đã có nguồn và qua kiểm duyệt kỹ thuật.']
+                : pathname.startsWith('/cam-nang/') || pathname.startsWith('/phan-nha-thau/') || pathname.startsWith('/quan-quanh-kts/') ? ['Chương sách', 'Chương sách đã được duyệt và xuất bản.']
+                  : null;
   const info = exact || dynamic || ['CONSPACE', 'Sự thật ngành Xây.'];
   const detailRoute = Boolean(dynamic) && pathname !== '/hoi-dap/gui-cau-hoi';
   const known = Boolean(exact || pathname === '/' || pathname === '/hoi-dap/gui-cau-hoi');
@@ -77,6 +78,7 @@ function Site() {
     <Route path="/hoi-dap/:id" element={<QuestionDetail/>}/>
     <Route path="/tra-nhanh" element={<Lookup/>}/>
     <Route path="/tra-cuu" element={<Lookup/>}/>
+    <Route path="/tu-dien/:slug" element={<TermDetail/>}/>
     <Route path="/tu-dien" element={<Lookup/>}/>
     <Route path="/bai-viet" element={<ArticleIndex/>}/>
     <Route path="/bai-viet/:slug" element={<ArticleDetail/>}/>
