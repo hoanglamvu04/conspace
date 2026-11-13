@@ -10,12 +10,14 @@ const uuid=z.string().uuid();
 const flag=z.enum(['INDUSTRY_DARK_SIDE','PRICE_OR_RATE','WARRANTY_PERIOD','IDENTIFIABLE_ENTITY_RISK','LEGAL_CONTENT']);
 const tagSchema=z.strictObject({slug:z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).max(100),name:z.string().trim().min(1).max(80)});
 const sourceSchema=z.strictObject({title:z.string().trim().min(1).max(300),url:z.string().url().max(2000).nullable().optional(),citation:z.string().max(2000).nullable().optional()});
+const internalMediaPath=z.string().regex(/^\/api\/v1\/media\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i).max(2000);
+const coverImageSchema=z.union([z.string().url().max(2000),internalMediaPath]);
 const articleSchema=z.strictObject({
   slug:z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).max(120),
   title:z.string().trim().min(1).max(300),
   excerpt:z.string().max(1000).optional(),
   body:z.string().max(200000).optional(),
-  coverImageUrl:z.string().url().max(2000).nullable().optional(),
+  coverImageUrl:coverImageSchema.nullable().optional(),
   authorId:uuid.optional(),
   audienceRole:z.enum(['homeowner','architect','contractor']).nullable().optional(),
   contentType:z.enum(['REFERENCE','NON_FICTION','FICTIONALIZED','FIELD_CASE','Q_AND_A','REGULATION','EDITORIAL']).optional(),
