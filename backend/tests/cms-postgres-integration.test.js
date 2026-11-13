@@ -232,6 +232,37 @@ test('real PostgreSQL flow: login -> create -> technical review -> chief review 
   const delegatedWithdraw=await publisherApi('POST','/api/admin/articles/'+secondId+'/withdraw',{reason:'Requires separate withdrawal grant'});
   assert.equal(delegatedWithdraw.status,403);
 
+  // REQUEST_CHANGES feedback must remain queryable and the editor can resubmit after a reasoned correction.
+  const feedbackSlug='ci-feedback-'+uuidSuffix;
+  const feedbackDraft=await editorApi('POST','/api/admin/articles/',{
+    slug:feedbackSlug,title:'Bài kiểm thử phản hồi reviewer',
+    body:'Nội dung ban đầu có nguồn nhưng cần reviewer yêu cầu chỉnh sửa.',
+    audienceRole:'homeowner',contentType:'EDITORIAL',sensitivityAssessed:true,sensitivityFlags:[],
+    sources:[{title:'Nguồn feedback CI',citation:'CI review feedback fixture'}],
+  });
+  assert.equal(feedbackDraft.status,201,JSON.stringify(feedbackDraft.body));
+  const feedbackId=feedbackDraft.body.data.id;
+  assert.equal((await editorApi('POST','/api/admin/articles/'+feedbackId+'/submit',{})).status,200);
+  assert.equal((await reviewerApi('POST','/api/admin/reviews/articles/'+feedbackId+'/start',{})).status,200);
+  const feedbackReason='Cần làm rõ căn cứ kỹ thuật ở đoạn kết trước khi duyệt';
+  const returnedFeedback=await reviewerApi('POST','/api/admin/reviews/articles/'+feedbackId+'/decision',{
+    stage:'TECHNICAL',decision:'REQUEST_CHANGES',reason:feedbackReason,
+  });
+  assert.equal(returnedFeedback.status,200,JSON.stringify(returnedFeedback.body));
+  assert.equal(returnedFeedback.body.data.status,'NEEDS_CHANGES');
+  const feedbackAudit=await editorApi('GET','/api/admin/audit?entityType=ARTICLE&entityId='+feedbackId+'&limit=30');
+  assert.equal(feedbackAudit.status,200,JSON.stringify(feedbackAudit.body));
+  const feedbackEvent=feedbackAudit.body.data.find(event=>event.eventType==='WORKFLOW'&&event.action==='REQUEST_CHANGES');
+  assert.ok(feedbackEvent);
+  assert.equal(feedbackEvent.reason,feedbackReason);
+  assert.equal(feedbackEvent.toStatus,'NEEDS_CHANGES');
+  const correctedFeedback=await editorApi('PATCH','/api/admin/articles/'+feedbackId,{
+    body:'Nội dung đã bổ sung căn cứ kỹ thuật ở đoạn kết theo phản hồi reviewer.',
+    changeReason:'Sửa theo REQUEST_CHANGES của duyệt kỹ thuật',
+  });
+  assert.equal(correctedFeedback.status,200,JSON.stringify(correctedFeedback.body));
+  assert.equal((await editorApi('POST','/api/admin/articles/'+feedbackId+'/submit',{})).status,200);
+
   // Explicit CONTENT_PUBLISH delegates publication only; ADMIN without that grant cannot publish.
   const termDraft=await editorApi('POST','/api/admin/terms/',{
     term:'CI term '+uuidSuffix,slug:'ci-term-'+uuidSuffix,
@@ -409,7 +440,10 @@ test('real PostgreSQL flow: login -> create -> technical review -> chief review 
   })).status,200);
   const publicDesign=await api(base)('GET','/api/v1/niches/'+designNiche.slug+'?role=architect');
   assert.equal(publicDesign.status,200,JSON.stringify(publicDesign.body));
+  assert.equal(publicDesign.body.data.sections.length,7);
   assert.equal(publicDesign.body.data.sections[0].content,'Đặc thù loại công trình đã được kiểm chứng.');
+  assert.ok(publicDesign.body.data.sections[0].sourceRef);
+  assert.equal(publicDesign.body.data.sections.filter(section=>section.content).length,1,'Template B must expose only reviewed published section content');
 
   const fieldNotes=await api(base)('GET','/api/v1/field-notes');
   assert.equal(fieldNotes.status,200,JSON.stringify(fieldNotes.body));
