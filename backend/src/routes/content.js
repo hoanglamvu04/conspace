@@ -59,5 +59,20 @@ export function createContentRouter(repository = createContentRepository()) {
     res.json({ ok: true, data: rows, meta: { total } });
   }));
 
+  router.get('/terms/:slug', handle(async (req, res) => {
+    const { slug } = validate(articleParamsSchema, req.params);
+    const row = await repository.termBySlug(slug);
+    if (!row) throw new RequestError(404, 'NOT_FOUND', 'Term not found');
+    res.json({
+      ok: true,
+      data: {
+        id: row.id, term: row.term, slug: row.slug, definition: row.definition,
+        sourceRef: row.sourceRef, reviewedAt: row.reviewedAt ? new Date(row.reviewedAt).toISOString() : null,
+        updatedAt: row.updatedAt ? new Date(row.updatedAt).toISOString() : null,
+        niches: row.niches ?? [],
+      },
+    });
+  }));
+
   return router;
 }
