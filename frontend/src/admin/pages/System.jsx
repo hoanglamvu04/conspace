@@ -47,81 +47,131 @@ export function Media(){
     <ConfirmDialog open={Boolean(deleteId)} danger busy={busy} title="Xóa tệp này?" description="Backend sẽ kiểm tra lại mọi liên kết public, bao gồm bài viết, hiện trường và Q&A." confirmText="Xóa tệp" onConfirm={remove} onClose={()=>setDeleteId(null)}/>
   </>;
 }
-const blankUser={email:'',displayName:'',role:'EDITOR',extraRoles:[],permissions:[],roleReason:'',permissionReason:'',password:''};
+const blankUser={email:'',displayName:'',role:'EDITOR',extraRoles:[],permissions:[],personId:'',roleReason:'',identityReason:'',permissionReason:'',password:'',isActive:true};
 const permissionOptions=[
   {value:'CONTENT_PUBLISH',label:'Được xuất bản nội dung đã qua duyệt'},
   {value:'CONTENT_WITHDRAW',label:'Được thu hồi nội dung đã xuất bản'},
 ];
 const sameValues=(a,b)=>JSON.stringify([...(a||[])].sort())===JSON.stringify([...(b||[])].sort());
+
 export function Users(){
-  const {can}=useSession(),{notice}=useNotices();
+  const {can,user}=useSession(),{notice}=useNotices();
   const [search,setSearch]=useState(''),[selected,setSelected]=useState(null),[creating,setCreating]=useState(false);
-  const [form,setForm]=useState({...blankUser,extraRoles:[],permissions:[]}),[busy,setBusy]=useState(false),[confirm,setConfirm]=useState(false);
+  const [form,setForm]=useState({...blankUser,extraRoles:[],permissions:[]}),[busy,setBusy]=useState(false),[confirm,setConfirm]=useState(false),[revokeTarget,setRevokeTarget]=useState(null);
   const users=useAdminList('/users',{},can('users:read'));
-  const filtered=useMemo(()=>users.data.filter(x=>(x.email+' '+x.displayName).toLowerCase().includes(search.toLowerCase())),[users.data,search]);
+  const filtered=useMemo(()=>users.data.filter(x=>(x.email+' '+x.displayName+' '+(x.personId||'')).toLowerCase().includes(search.toLowerCase())),[users.data,search]);
+  const identities=useMemo(()=>{
+    const map=new Map();
+    for(const item of users.data){
+      if(!item.personId)continue;
+      if(!map.has(item.personId))map.set(item.personId,{personId:item.personId,people:[]});
+      map.get(item.personId).people.push(item);
+    }
+    return [...map.values()];
+  },[users.data]);
   const assignedRoles=[form.role,...(form.extraRoles||[])].filter((x,i,a)=>a.indexOf(x)===i);
   const originalRoles=selected?(selected.roles?.length?selected.roles:[selected.role]):[];
   const originalPermissions=selected?.permissions||[];
-  const rolesChanged=Boolean(selected)&&!sameValues(assignedRoles,originalRoles);
+  const primaryRoleChanged=Boolean(selected)&&form.role!==selected.role;
+  const rolesChanged=Boolean(selected)&&(primaryRoleChanged||!sameValues(assignedRoles,originalRoles));
   const permissionsChanged=Boolean(selected)&&!sameValues(form.permissions||[],originalPermissions);
+  const identityChanged=Boolean(selected)&&Boolean(form.personId)&&form.personId!==selected.personId;
+  const identityReasonRequired=creating?Boolean(form.personId):identityChanged;
+  const identityPeers=form.personId?users.data.filter(x=>x.personId===form.personId&&x.id!==selected?.id):[];
+
   function open(x){
     const roles=x.roles?.length?x.roles:[x.role];
-    setSelected(x);setCreating(false);
-    setForm({email:x.email||'',displayName:x.displayName||'',role:x.role,extraRoles:roles.filter(role=>role!==x.role),permissions:x.permissions||[],roleReason:'',permissionReason:'',isActive:Boolean(x.isActive),password:''});
+    setSelected(x);setCreating(false);setConfirm(false);
+    setForm({email:x.email||'',displayName:x.displayName||'',role:x.role,extraRoles:roles.filter(role=>role!==x.role),permissions:x.permissions||[],personId:x.personId||'',roleReason:'',identityReason:'',permissionReason:'',isActive:Boolean(x.isActive),password:''});
   }
-  function newUser(){setCreating(true);setSelected(null);setForm({...blankUser,extraRoles:[],permissions:[]});}
+  function newUser(){setCreating(true);setSelected(null);setConfirm(false);setForm({...blankUser,extraRoles:[],permissions:[]});}
   async function save(){
     if(!can('users:write'))return;
     const roles=[form.role,...(form.extraRoles||[])].filter((x,i,a)=>a.indexOf(x)===i);
     const payload=creating
       ? {email:form.email.trim(),displayName:form.displayName.trim(),role:form.role,password:form.password,
           ...(roles.length>1?{roles,roleReason:form.roleReason.trim()}:{}),
+          ...(form.personId?{personId:form.personId,identityReason:form.identityReason.trim()}:{}),
           ...(form.permissions?.length?{permissions:form.permissions,permissionReason:form.permissionReason.trim()}:{})}
       : {displayName:form.displayName.trim(),isActive:form.isActive,
           ...(rolesChanged?{role:form.role,roles,roleReason:form.roleReason.trim()}:{}),
+          ...(identityChanged?{personId:form.personId,identityReason:form.identityReason.trim()}:{}),
           ...(permissionsChanged?{permissions:form.permissions,permissionReason:form.permissionReason.trim()}:{}),
           ...(form.password?{password:form.password}:{})};
     setBusy(true);
     try{
       const resource=creating?'/users':'/users/'+selected.id;
       await adminObject(resource,{method:creating?'POST':'PATCH',data:payload});
-      notice(creating?'Đã tạo nhân sự nội bộ với vai trò được cấp.':'Backend đã cập nhật vai trò và quyền được ủy quyền.');
+      notice(creating?'Đã tạo nhân sự nội bộ với vai trò được cấp.':'Backend đã cập nhật tài khoản, vai trò và quyền được ủy quyền.');
       users.retry();setCreating(false);setSelected(null);setConfirm(false);setForm({...blankUser,extraRoles:[],permissions:[]});
     }catch(e){notice(e.message,'error');}finally{setBusy(false);}
   }
+  async function revokeSessions(){
+    if(!revokeTarget||revokeTarget.id===user?.id)return;
+    setBusy(true);
+    try{
+      const result=await adminObject('/users/'+revokeTarget.id+'/revoke-sessions',{method:'POST',data:{}});
+      notice(`Đã thu hồi ${result.revokedSessions||0} phiên đăng nhập của ${revokeTarget.displayName}.`);
+      setRevokeTarget(null);users.retry();
+    }catch(e){notice(e.message,'error');}finally{setBusy(false);}
+  }
+
   const editable=can('users:write');
   const roleReasonRequired=creating?assignedRoles.length>1:rolesChanged;
   const permissionReasonRequired=creating?(form.permissions||[]).length>0:permissionsChanged;
-  const validReasons=(!roleReasonRequired||form.roleReason.trim().length>=3)&&(!permissionReasonRequired||form.permissionReason.trim().length>=3);
-  return <><PageHeading kicker="TÀI KHOẢN / RBAC" title="Nhân sự tòa soạn" description="Tài khoản nội bộ do ADMIN tạo. Một người có thể kiêm nhiệm nhiều vai trò; quyền xuất bản bổ sung phải có lý do và được audit." icon="users" actions={editable?<button type="button" className="cms-btn cms-btn--primary" onClick={newUser}><CmsIcon name="plus"/> Thêm nhân sự</button>:null}/>
-    <Surface title="Danh sách tài khoản" description="Backend kiểm soát vai trò, quyền bổ sung và chống khóa nhầm quản trị viên cuối cùng.">
-      <label className="cms-search cms-collection-search"><CmsIcon name="search"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Tên hoặc email…" aria-label="Tìm tài khoản"/></label>
+  const validReasons=(!roleReasonRequired||form.roleReason.trim().length>=3)&&(!identityReasonRequired||form.identityReason.trim().length>=3)&&(!permissionReasonRequired||form.permissionReason.trim().length>=3);
+
+  return <><PageHeading kicker="TÀI KHOẢN / RBAC" title="Nhân sự tòa soạn" description="Quản lý tài khoản, person identity, vai trò kiêm nhiệm, quyền bổ sung và phiên đăng nhập. Mọi thay đổi nhạy cảm đều được Backend audit." icon="users" actions={editable?<button type="button" className="cms-btn cms-btn--primary" onClick={newUser}><CmsIcon name="plus"/> Thêm nhân sự</button>:null}/>
+    <Surface title="Danh sách tài khoản" description="Person ID là ranh giới chống tự duyệt: nhiều tài khoản cùng personId vẫn được coi là cùng một người.">
+      <label className="cms-search cms-collection-search"><CmsIcon name="search"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Tên, email hoặc personId…" aria-label="Tìm tài khoản"/></label>
       <DataState data={users} title="Chưa có nhân sự" empty="Chỉ tài khoản nội bộ thực tế từ API." icon="users">
-        <TableWrap><thead><tr><th>Nhân sự</th><th>Vai trò và quyền</th><th>Trạng thái</th><th>Ngày tạo</th><th>Quản lý</th></tr></thead><tbody>{filtered.map(x=><tr key={x.id}>
-          <td><div className="cms-person"><span>{x.displayName?.slice(0,1).toUpperCase()||'C'}</span><div><strong>{x.displayName}</strong><small>{x.email}</small></div></div></td>
+        <TableWrap><thead><tr><th>Nhân sự</th><th>Vai trò và quyền</th><th>Danh tính</th><th>Phiên / đăng nhập</th><th>Trạng thái</th><th>Quản lý</th></tr></thead><tbody>{filtered.map(x=><tr key={x.id}>
+          <td><div className="cms-person"><span>{x.displayName?.slice(0,1).toUpperCase()||'C'}</span><div><strong>{x.displayName}</strong><small>{x.email}</small><small>Tạo <Timestamp value={x.createdAt}/></small></div></div></td>
           <td><div className="cms-role-tags">{(x.roles?.length?x.roles:[x.role]).map(role=><span className="cms-pill" key={role}>{ROLES[role]||role}</span>)}{(x.permissions||[]).map(permission=><span className="cms-pill cms-pill--orange" key={permission}>{permission==='CONTENT_PUBLISH'?'Quyền xuất bản':'Quyền thu hồi'}</span>)}</div></td>
-          <td><Pill value={x.isActive?'ACTIVE':'INACTIVE'}/></td><td><Timestamp value={x.createdAt}/></td>
-          <td>{editable&&<button type="button" className="cms-btn cms-btn--light cms-btn--small" onClick={()=>open(x)}>Sửa quyền</button>}</td>
+          <td><code className="cms-identity-code">{x.personId?.slice(0,8)||'—'}</code>{users.data.filter(peer=>peer.personId&&peer.personId===x.personId).length>1&&<small className="cms-field-help">Có tài khoản khác cùng danh tính</small>}</td>
+          <td><strong>{x.activeSessionCount||0} phiên</strong><small>{x.lastLoginAt?<><br/>Lần cuối <Timestamp value={x.lastLoginAt} withTime/></>:' · Chưa đăng nhập'}</small>{x.mustChangePassword&&<p><span className="cms-pill cms-pill--orange">Phải đổi mật khẩu</span></p>}</td>
+          <td><Pill value={x.isActive?'ACTIVE':'INACTIVE'}/></td>
+          <td>{editable&&<div className="cms-btn-row"><button type="button" className="cms-btn cms-btn--light cms-btn--small" onClick={()=>open(x)}>Sửa</button><button type="button" className="cms-btn cms-btn--light cms-btn--small" disabled={!x.activeSessionCount||x.id===user?.id} onClick={()=>setRevokeTarget(x)}>Thu hồi phiên</button></div>}</td>
         </tr>)}</tbody></TableWrap>
       </DataState>
     </Surface>
+
     {(creating||selected)&&<div className="cms-dialog-layer" onMouseDown={e=>{if(e.target===e.currentTarget){setCreating(false);setSelected(null);}}}>
       <form className="cms-dialog cms-dialog--large" role="dialog" aria-modal="true" aria-labelledby="cms-user-editor" onSubmit={e=>{e.preventDefault();if(validReasons)setConfirm(true);}}>
-        <h2 id="cms-user-editor">{creating?'Tạo nhân sự nội bộ':'Thay đổi quyền tài khoản'}</h2>
+        <h2 id="cms-user-editor">{creating?'Tạo nhân sự nội bộ':'Quản trị tài khoản & quyền'}</h2>
         {creating&&<FormField label="Email"><input type="email" required value={form.email} onChange={e=>setForm(f=>({...f,email:e.target.value}))}/></FormField>}
         <FormField label="Họ tên"><input minLength={2} maxLength={120} required value={form.displayName} onChange={e=>setForm(f=>({...f,displayName:e.target.value}))}/></FormField>
+
+        <FormField label="Danh tính nhân sự (personId)">
+          <select value={form.personId} onChange={e=>setForm(f=>({...f,personId:e.target.value}))}>
+            {creating&&<option value="">Tạo personId mới riêng cho tài khoản này</option>}
+            {!creating&&form.personId&&!identities.some(x=>x.personId===form.personId)&&<option value={form.personId}>{form.personId}</option>}
+            {identities.map(identity=><option key={identity.personId} value={identity.personId}>{identity.people.map(x=>x.displayName).join(' / ')} · {identity.personId.slice(0,8)}</option>)}
+          </select>
+          <span className="cms-field-help">Chỉ chọn personId của người khác khi đây thật sự là tài khoản thứ hai của cùng một con người. Backend dùng personId để chặn tự duyệt.</span>
+        </FormField>
+        {identityPeers.length>0&&<SectionNote kind="warning">Danh tính này đang được dùng bởi: {identityPeers.map(x=>x.displayName+' ('+x.email+')').join(', ')}.</SectionNote>}
+        {identityReasonRequired&&<FormField label="Lý do liên kết/thay đổi danh tính"><textarea rows={2} minLength={3} maxLength={500} required value={form.identityReason} onChange={e=>setForm(f=>({...f,identityReason:e.target.value}))}/></FormField>}
+
         <FormField label="Vai trò chính"><select value={form.role} onChange={e=>setForm(f=>({...f,role:e.target.value,extraRoles:(f.extraRoles||[]).filter(role=>role!==e.target.value)}))}>{roleOptions.map(x=><option key={x.value} value={x.value}>{x.label}</option>)}</select></FormField>
         <div className="cms-field"><span className="cms-field-help">Vai trò kiêm nhiệm — chỉ cấp khi người này thực sự đảm nhiệm nhiều trách nhiệm.</span><div className="cms-stack-form">{roleOptions.filter(x=>x.value!==form.role).map(x=><label className="cms-sensitive-check" key={x.value}><input type="checkbox" checked={(form.extraRoles||[]).includes(x.value)} onChange={e=>setForm(f=>({...f,extraRoles:e.target.checked?[...(f.extraRoles||[]),x.value]:(f.extraRoles||[]).filter(role=>role!==x.value)}))}/><span>{x.label}</span></label>)}</div></div>
         {roleReasonRequired&&<FormField label="Lý do cấp/thay đổi vai trò"><textarea rows={2} minLength={3} maxLength={500} required value={form.roleReason} onChange={e=>setForm(f=>({...f,roleReason:e.target.value}))}/></FormField>}
+
         <div className="cms-field"><span className="cms-field-help">Quyền bổ sung — không tự phát sinh từ vai trò.</span><div className="cms-stack-form">{permissionOptions.map(x=><label className="cms-sensitive-check" key={x.value}><input type="checkbox" checked={(form.permissions||[]).includes(x.value)} onChange={e=>setForm(f=>({...f,permissions:e.target.checked?[...(f.permissions||[]),x.value]:(f.permissions||[]).filter(permission=>permission!==x.value)}))}/><span>{x.label}</span></label>)}</div></div>
         {permissionReasonRequired&&<FormField label="Lý do cấp/thu hồi quyền bổ sung"><textarea rows={2} minLength={3} maxLength={500} required value={form.permissionReason} onChange={e=>setForm(f=>({...f,permissionReason:e.target.value}))}/></FormField>}
-        <FormField label={creating?'Mật khẩu khởi tạo (ít nhất 14 ký tự)':'Mật khẩu mới (để trống nếu giữ nguyên)'}><input type="password" autoComplete="new-password" minLength={14} maxLength={256} required={creating} value={form.password} onChange={e=>setForm(f=>({...f,password:e.target.value}))}/></FormField>
+
+        {!creating&&selected?.roleAssignments?.length>0&&<details className="cms-assignment-history"><summary>Lịch sử nguồn cấp vai trò</summary>{selected.roleAssignments.map(item=><p key={item.role}><strong>{ROLES[item.role]||item.role}</strong> · {item.grantSource}{item.legacyCompat?' · legacy':''}<br/><small>{item.grantReason} · {item.grantedBy||'Hệ thống'} · <Timestamp value={item.grantedAt}/></small></p>)}</details>}
+        {!creating&&selected?.permissionAssignments?.length>0&&<details className="cms-assignment-history"><summary>Lịch sử quyền bổ sung</summary>{selected.permissionAssignments.map(item=><p key={item.permission}><strong>{item.permission}</strong><br/><small>{item.grantReason} · {item.grantedBy||'Hệ thống'} · <Timestamp value={item.grantedAt}/></small></p>)}</details>}
+
+        <FormField label={creating?'Mật khẩu khởi tạo (ít nhất 14 ký tự)':'Đặt lại mật khẩu (để trống nếu giữ nguyên)'}><input type="password" autoComplete="new-password" minLength={14} maxLength={256} required={creating} value={form.password} onChange={e=>setForm(f=>({...f,password:e.target.value}))}/></FormField>
         {!creating&&<label className="cms-sensitive-check"><input type="checkbox" checked={form.isActive} onChange={e=>setForm(f=>({...f,isActive:e.target.checked}))}/><span>Tài khoản đang hoạt động</span></label>}
-        <SectionNote kind="warning">ADMIN chỉ quản trị hệ thống. Quyền duyệt kỹ thuật, chủ bút và xuất bản phải được cấp tường minh; người viết không được tự duyệt nội dung của mình.</SectionNote>
+        <SectionNote kind="warning">ADMIN chỉ quản trị hệ thống. Quyền duyệt kỹ thuật, Chủ bút và xuất bản phải được cấp tường minh; mọi tài khoản cùng personId được coi là cùng một người khi kiểm tra tự duyệt.</SectionNote>
         <div className="cms-dialog-actions"><button type="button" className="cms-btn cms-btn--secondary" onClick={()=>{setCreating(false);setSelected(null);}}>Hủy</button><button type="submit" className="cms-btn cms-btn--primary" disabled={busy||!validReasons}>Xác nhận dữ liệu</button></div>
       </form>
     </div>}
-    <ConfirmDialog open={confirm} busy={busy} title="Xác nhận thay đổi nhân sự?" description="Backend sẽ xác thực ADMIN, cập nhật vai trò và quyền, ghi lý do vào audit log và thu hồi phiên khi cần thiết." confirmText="Lưu tài khoản" onClose={()=>setConfirm(false)} onConfirm={save}/>
+
+    <ConfirmDialog open={confirm} busy={busy} title="Xác nhận thay đổi nhân sự?" description="Backend sẽ xác thực ADMIN, cập nhật person identity, vai trò/quyền, ghi lý do vào audit log và thu hồi phiên khi cần." confirmText="Lưu tài khoản" onClose={()=>setConfirm(false)} onConfirm={save}/>
+    <ConfirmDialog open={Boolean(revokeTarget)} busy={busy} danger title="Thu hồi toàn bộ phiên?" description={revokeTarget?`Tài khoản ${revokeTarget.displayName} sẽ phải đăng nhập lại trên mọi thiết bị. Thao tác được ghi Audit History.`:''} confirmText="Thu hồi phiên" onClose={()=>setRevokeTarget(null)} onConfirm={revokeSessions}/>
   </>;
 }
 export function Settings(){
