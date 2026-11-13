@@ -915,3 +915,28 @@ svg { flex-shrink: 0; }
 .public-contact-action strong { color: #284d63; font-size: 14px; }
 .public-contact-action span { color: #79919e; font-size: 12px; line-height: 1.6; }
 @media (max-width: 620px) { .public-contact-panel { padding: 20px 16px; } .public-contact-action { align-items: flex-start; flex-direction: column; } }
+
+
+/* Faceted public lookup and dictionary detail */
+.lookup-controls { display:grid; grid-template-columns:minmax(0,1.5fr) minmax(240px,.7fr); gap:16px; margin:18px 0; }
+.lookup-lens, .lookup-niche-filter { border:1px solid #dceaf1; border-radius:14px; background:#fff; padding:18px; }
+.lookup-lens { display:flex; justify-content:space-between; gap:18px; align-items:center; }
+.lookup-lens p { margin:5px 0 0; color:#718b9a; font-size:13px; }
+.lookup-niche-filter { display:grid; gap:8px; align-content:center; }
+.lookup-niche-filter label { color:#31546a; font-size:12px; font-weight:800; letter-spacing:.04em; text-transform:uppercase; }
+.lookup-niche-filter select { width:100%; min-height:42px; border:1px solid #cedde5; border-radius:10px; background:#fff; padding:0 12px; color:#23485e; }
+.lookup-facets { display:flex; gap:8px; flex-wrap:wrap; margin:0 0 20px; }
+.lookup-facets button { border:1px solid #d6e4eb; background:#f8fbfc; color:#36566a; border-radius:999px; min-height:38px; padding:7px 12px; display:inline-flex; align-items:center; gap:8px; cursor:pointer; }
+.lookup-facets button strong { min-width:24px; height:24px; border-radius:999px; background:#eaf3f7; display:grid; place-items:center; font-size:11px; }
+.lookup-facets button.is-active { background:#173f59; color:#fff; border-color:#173f59; }
+.lookup-facets button.is-active strong { background:rgba(255,255,255,.16); }
+.public-term-detail { display:grid; grid-template-columns:minmax(0,1.6fr) minmax(260px,.7fr); gap:22px; margin:10px 0 26px; }
+.public-term-definition, .public-term-meta { border:1px solid #dceaf1; border-radius:15px; background:#fff; padding:26px; }
+.public-term-definition p { margin:10px 0 0; color:#28495d; font-size:19px; line-height:1.85; }
+.public-term-meta { display:grid; gap:22px; align-content:start; background:#f8fbfc; }
+.public-term-meta p, .public-term-meta a { margin:8px 0 0; color:#4d6b7b; font-size:13px; line-height:1.7; word-break:break-word; }
+.public-term-related { margin:28px 0; }
+@media (max-width:900px) {
+  .lookup-controls, .public-term-detail { grid-template-columns:1fr; }
+  .lookup-lens { align-items:flex-start; flex-direction:column; }
+}
