@@ -47,7 +47,7 @@ export default function Dashboard(){
       {can('audit:read')&&<Metric title="Nhật ký kiểm soát" value={show(total(audit))} icon="clock" to="/admin/audit" note="Audit + workflow events"/>}
     </div>
 
-    <div className="cms-dashboard-grid">
+    {(can('reviews:read')||can('articles:write')||can('articles:schedule'))&&<div className="cms-dashboard-grid">
       <Surface title="Việc cần tôi xử lý" description="Ưu tiên hồ sơ đúng với quyền hiện tại.">
         {can('reviews:read')?(
           queue.status==='loading'?<div className="cms-inline-state">Đang tải hàng đợi…</div>
@@ -60,7 +60,7 @@ export default function Dashboard(){
       <Surface title="Lịch xuất bản" description="Chỉ hiển thị bài SCHEDULED có thời điểm thật từ Backend.">
         {scheduled.status==='success'&&scheduled.data.length?<div className="cms-schedule-list">{scheduled.data.filter(x=>x.scheduledAt).map(x=><div className="cms-schedule-item" key={x.id}><div className="cms-schedule-day"><CmsIcon name="calendar"/></div><div><strong>{x.title}</strong><p><Timestamp value={x.scheduledAt} withTime/></p></div><Pill value="SCHEDULED"/></div>)}</div>:<EmptyState title={scheduled.status==='error'?'Chưa thể tải lịch':'Chưa có bài lên lịch'} description={scheduled.error?.message||'Không có lịch xuất bản đang chờ.'} icon="calendar"/>}
       </Surface>
-    </div>
+    </div>}
 
     {can('audit:read')&&<Surface title="Hoạt động kiểm soát gần đây" description="Nguồn: audit_logs và workflow_events, không suy diễn từ thời gian cập nhật.">
       {audit.status==='success'&&audit.data.length?<div className="cms-task-list">{audit.data.map(event=><div className="cms-task" key={event.eventType+event.id}><span className="cms-task-dot"/><div><strong>{event.action}</strong><p>{event.actorName||'Hệ thống'} · {event.entityType}{event.toStatus?' · '+event.toStatus:''}</p></div><Timestamp value={event.createdAt} withTime/></div>)}</div>:<EmptyState title="Chưa có audit event" description={audit.error?.message||'Nhật ký hiện chưa có dữ liệu.'} icon="clock"/>}
