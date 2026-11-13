@@ -134,14 +134,16 @@ test('real PostgreSQL flow: login -> create -> technical review -> chief review 
   assert.equal(invalidStillHidden.status,404);
 
   const slug='ci-reviewed-'+uuidSuffix;
+  const internalCover='/api/v1/media/00000000-0000-4000-8000-000000000001';
   const created=await editorApi('POST','/api/admin/articles/',{
-    slug,title:'Ghi chép được kiểm chứng',excerpt:'Nội dung có nguồn',
+    slug,title:'Ghi chép được kiểm chứng',excerpt:'Nội dung có nguồn',coverImageUrl:internalCover,
     body:'Ghi chép thử nghiệm từ CI về một công trình, không có tên đơn vị.',
     audienceRole:'homeowner',contentType:'EDITORIAL',
     sensitivityAssessed:true,sensitivityFlags:['INDUSTRY_DARK_SIDE'],
     sources:[{title:'Nguồn kỹ thuật thử nghiệm',citation:'CI test only'}],
   });
   assert.equal(created.status,201,JSON.stringify(created.body));
+  assert.equal(created.body.data.cover_image_url,internalCover);
   const id=created.body.data.id;
   assert.ok(id);
   const edited=await editorApi('PATCH','/api/admin/articles/'+id,{
