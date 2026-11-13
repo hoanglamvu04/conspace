@@ -71,3 +71,15 @@ test('CMS Nginx snippets keep intended rate limit and backend proxy',()=>{
   assert.ok(l.includes('location = /api/admin/media {'), 'upload POST without trailing slash must be rate limited');
   assert.ok(!l.includes('alias /var/lib/conspace/media/private'));
 });
+
+
+test('SEO Nginx snippets keep dynamic sitemap and admin noindex policy',()=>{
+  const appLocations=fs.readFileSync(path.join(root,'ops/nginx/conspace-app-locations.conf.example'),'utf8');
+  const cmsLocations=fs.readFileSync(path.join(root,'ops/nginx/conspace-cms-https-locations.conf.example'),'utf8');
+  const robots=fs.readFileSync(path.join(root,'frontend/public/robots.txt'),'utf8');
+  assert.ok(appLocations.includes('location = /sitemap.xml {'));
+  assert.ok(appLocations.includes('proxy_pass http://127.0.0.1:5088/sitemap.xml;'));
+  assert.ok(cmsLocations.includes('X-Robots-Tag "noindex, nofollow"'));
+  assert.ok(robots.includes('Disallow: /admin'));
+  assert.ok(robots.includes('Sitemap: https://conspace.vn/sitemap.xml'));
+});
