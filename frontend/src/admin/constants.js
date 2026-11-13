@@ -11,6 +11,7 @@ export const ADMIN_NAV = [
   { label: 'Từ điển nghề', href: '/admin/dictionary', icon: 'dictionary', permission: 'dictionary:read' },
   { label: 'Hỏi đáp', href: '/admin/questions', icon: 'question', permission: 'questions:read' },
   { label: 'Thư viện ảnh', href: '/admin/media', icon: 'media', section: 'HỆ THỐNG', permission: 'media:read' },
+  { label: 'Nhật ký Audit', href: '/admin/audit', icon: 'clock', permission: 'audit:read' },
   { label: 'Người dùng', href: '/admin/users', icon: 'users', permission: 'users:read' },
   { label: 'Cài đặt', href: '/admin/settings', icon: 'settings', permission: 'settings:read' },
 ];
