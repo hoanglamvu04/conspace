@@ -10,6 +10,7 @@ import { createPublicQuestionsRouter } from './routes/public-questions.js';
 import { createPublicMediaRouter } from './routes/public-media.js';
 import { createPublishingRouter } from './routes/publishing.js';
 import { createPublicSearchRouter } from './routes/search.js';
+import { createSeoRouter } from './routes/seo.js';
 import { errorMiddleware } from './http/validation.js';
 import { createEditorialService } from './services/editorial.js';
 
@@ -50,6 +51,8 @@ app.get('/api/ready', async (_req, res) => {
     checks: { database: ready ? 'up' : 'down' },
   });
 });
+
+app.use(createSeoRouter());
 
 app.use('/api/admin', createAdminRouter());
 app.use('/api/v1', createContentRouter());
