@@ -66,7 +66,7 @@ Tài khoản demo dùng cùng mật khẩu từ `DEMO_USER_PASSWORD`:
 - `reviewer.demo@conspace.local` — TECHNICAL_REVIEWER.
 - `chief.demo@conspace.local` — EDITOR_IN_CHIEF.
 
-Fixture gồm bài `NEEDS_CHANGES`, bài chờ technical review, bài chờ Chief review, bài APPROVED chờ publish, một bài public, Q&A và thuật ngữ bị trả lại, hai Field Note (ready/blocked), cùng ba trạng thái Template B trên mảng được chọn: section 1 PUBLISHED, section 2 NEEDS_CHANGES, section 4 EDITOR_IN_CHIEF_REVIEW. Chạy lại seed sẽ tái tạo các fixture demo có slug/email cố định thay vì nhân bản chúng.
+Fixture gồm bài `NEEDS_CHANGES`, bài chờ technical review, bài chờ Chief review, bài APPROVED chờ publish, một bài public, Q&A và thuật ngữ bị trả lại, một thuật ngữ public `demo-thuat-ngu-cong-khai`, hai Field Note (ready/blocked), cùng ba trạng thái Template B trên mảng được chọn: section 1 PUBLISHED, section 2 NEEDS_CHANGES, section 4 EDITOR_IN_CHIEF_REVIEW. Chạy lại seed sẽ tái tạo các fixture demo có slug/email cố định thay vì nhân bản chúng.
 
 Nếu mảng `house` đã có section thật, script sẽ dừng thay vì ghi đè. Chọn một mảng thiết kế đang trống khác bằng `DEMO_NICHE_SLUG`, ví dụ `luxury`.
 
