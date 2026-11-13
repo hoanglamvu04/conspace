@@ -43,7 +43,7 @@ Returns active, source-backed niches only. Niche detail is available at `GET /ap
 {"ok":true,"data":[{"id":"uuid","slug":"house","name":"HOUSE","group":"design","summary":"","articleCount":0}],"meta":{"total":1}}
 ```
 
-The confirmed design categories are HOUSE, LUXURY, F&B, STAY, OFFICE, PROJECT, FACTORY and SACRED. The model supports up to 30 construction niches and five construction groups, but their names must be entered from approved source material. Do not seed guessed names. `articleCount` counts published, approved articles from the database.
+The confirmed design categories are HOUSE, LUXURY, F&B, STAY, OFFICE, PROJECT, FACTORY and SACRED. The model supports up to 30 construction niches and five construction groups, but their names must be entered from approved source material. Do not seed guessed names. `articleCount` counts published, approved articles from the database. Niche detail always returns the approved template shape: Template A exposes 12 section slots with reader layers; Template B exposes seven architecture section slots with shared `content` and `sourceRef`. Template B content is non-null only when that exact section is approved, published, due, sourced and non-empty; draft/review content is never exposed.
 
 ### GET /api/v1/articles?role=homeowner|architect|contractor&niche=slug&limit=12&cursor=...
 
@@ -248,7 +248,7 @@ Allowed file signatures: JPEG, PNG, WebP and PDF. Admin upload maximum is 10 MB.
 
 ## Audit, revisions and privacy
 
-- `GET /api/admin/audit?entityType=&entityId=&action=&page=&limit=` returns one chronological stream combining `audit_logs` and `workflow_events`, including actor, action, before/after snapshots, workflow status transitions, reason and metadata. Internal authenticated CMS roles can read this history; write access does not exist on this endpoint.
+- `GET /api/admin/audit?entityType=&entityId=&action=&page=&limit=` returns one chronological stream combining `audit_logs` and `workflow_events`, including actor, action, before/after snapshots, workflow status transitions, reason and metadata. Internal authenticated CMS roles can read this history; write access does not exist on this endpoint. CMS authoring surfaces use the retained `REQUEST_CHANGES` reason, reviewer identity, review stage and timestamp as the actionable NEEDS_CHANGES feedback; feedback is not stored only in frontend state.
 - Article revisions store versioned snapshots before each content edit.
 - Audit logs record actor, action, entity, before/after data, request IP and user-agent. Password hashes, session tokens, CSRF tokens and private phone plaintext are never written to audit data.
 - Workflow events record status transitions, actor, reason and timestamp.
