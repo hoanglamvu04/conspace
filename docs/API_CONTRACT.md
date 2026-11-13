@@ -142,7 +142,7 @@ All endpoints below are prefixed with `/api/admin`, require a valid session and 
 ### Auth and staff
 
 - `POST /auth/login`, `GET /auth/session`, `POST /auth/logout`, `POST /auth/password`.
-- `GET /users`, `POST /users`, `PATCH /users/:id`. ADMIN only. Create accepts `role`, optional `roles`, `roleReason`, `permissions`, `permissionReason` and `personId`. Additional roles and nonempty delegated grants require a reason; role/permission/identity changes revoke active sessions. User create/reset requires a 14+ character password. Password hashes are never returned.
+- `GET /users`, `POST /users`, `PATCH /users/:id`, `POST /users/:id/revoke-sessions`. ADMIN only. Staff rows include `personId`, explicit `roleAssignments`, `permissionAssignments`, `activeSessionCount`, last login and password-change status. Create accepts `role`, optional `roles`, `roleReason`, `permissions`, `permissionReason` and `personId`; linking/changing an existing person identity requires `identityReason`. Additional roles and nonempty delegated grants require a reason; role/permission/identity changes revoke active sessions. Session revocation is explicit and audited. User create/reset requires a 14+ character password. Password hashes are never returned.
 - `GET /authors`, `POST /authors`, `PATCH /authors/:id`, `DELETE /authors/:id`. ADMIN/EDITOR can manage author profiles; only ADMIN can change verification. Deactivation is soft.
 
 ### Articles
@@ -205,9 +205,11 @@ Chapter titles and body content are not fabricated. Chapters link to articles so
 
 ### Field notes
 
-- `GET /field-notes`, `POST /field-notes`, `GET /field-notes/:id`, `PATCH /field-notes/:id`, `DELETE /field-notes/:id`.
+- `GET /field-notes?status=&compliance=ready|blocked&search=&page=&limit=`, `POST /field-notes`, `GET /field-notes/:id`, `PATCH /field-notes/:id`, `DELETE /field-notes/:id`.
+- Field-note list rows include `sourceCount`, `mediaCount`, `unconfirmedMediaCount`, `fieldComplianceReady` and `reviewReady`; response metadata includes totals for compliant, blocked, ready-to-submit and returned cases.
+- Field-note detail includes the linked article niches, sources, sensitivity flags and media rights metadata so editing does not erase existing relations.
 
-Structured fields: phenomenon, root cause, intervention point, optional repair cost and its source, related niches, media, unit/company anonymization, address anonymization and photo-rights confirmation. A cost cannot be entered without a source. Field notes cannot be submitted until both anonymization flags and image-rights confirmation are true; every attached image must independently have confirmed usage rights.
+Structured fields: phenomenon, root cause, intervention point, optional repair cost and its source, related niches, media, unit/company anonymization, address anonymization and photo-rights confirmation. A cost cannot be entered without a source. Field notes cannot be submitted until both anonymization flags and image-rights confirmation are true; every attached image must independently have confirmed usage rights. Article body, audience, sensitivity assessment and at least one traceable source are also required before review.
 
 ### Dictionary terms
 
