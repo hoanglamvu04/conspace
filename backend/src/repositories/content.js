@@ -59,6 +59,7 @@ export function createContentRepository(db=pool){
   async articleBySlug(slug){
    const sql=[
     'SELECT a.id,a.slug,a.title,a.excerpt,a.body,a.published_at AS "publishedAt",a.updated_at AS "updatedAt",',
+    "COALESCE(a.cover_image_url,(SELECT '/api/v1/media/' || am.media_id::text FROM conspace.article_media am JOIN conspace.media_assets m ON m.id=am.media_id WHERE am.article_id=a.id AND am.role='COVER' AND m.rights_confirmed=true AND m.deleted_at IS NULL ORDER BY am.position LIMIT 1)) AS \"coverImage\",",
     'au.display_name AS "authorName",au.verified AS "authorVerified",'+nicheFields+',',
     "COALESCE((SELECT json_agg(json_build_object('title',s.title,'url',s.url,'citation',s.citation) ORDER BY s.position) FROM conspace.article_sources s WHERE s.article_id=a.id),'[]'::json) AS sources",
     'FROM conspace.articles a JOIN conspace.authors au ON au.id=a.author_id',
