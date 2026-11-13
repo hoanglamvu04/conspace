@@ -93,13 +93,13 @@ test('real PostgreSQL flow: login -> create -> technical review -> chief review 
     createdUsers[email]=created.body.data;
   }
 
-  const aliasCreated=await adminApi('POST','/api/admin/users/',{email:aliasEmail,displayName:'CI Reviewer Alias',role:'TECHNICAL_REVIEWER',personId:createdUsers[editorEmail].personId,password});
+  const aliasCreated=await adminApi('POST','/api/admin/users/',{email:aliasEmail,displayName:'CI Reviewer Alias',role:'TECHNICAL_REVIEWER',personId:createdUsers[editorEmail].personId,identityReason:'Same staff identity regression fixture',password});
   assert.equal(aliasCreated.status,201,JSON.stringify(aliasCreated.body));
   const hybridCreated=await adminApi('POST','/api/admin/users/',{email:hybridEmail,displayName:'CI Editor Reviewer',role:'EDITOR',roles:['EDITOR','TECHNICAL_REVIEWER'],roleReason:'Regression test for creator self-review',password});
   assert.equal(hybridCreated.status,201,JSON.stringify(hybridCreated.body));
   const adminChiefCreated=await adminApi('POST','/api/admin/users/',{email:adminChiefEmail,displayName:'CI Admin Chief',role:'ADMIN',roles:['ADMIN','EDITOR_IN_CHIEF'],roleReason:'Regression test for technical-review separation',password});
   assert.equal(adminChiefCreated.status,201,JSON.stringify(adminChiefCreated.body));
-  const selfAlias=await adminApi('POST','/api/admin/users/',{email:'self-alias-'+uuidSuffix+'@conspace.test',displayName:'Forbidden Self Alias',role:'TECHNICAL_REVIEWER',personId:admin.personId,password});
+  const selfAlias=await adminApi('POST','/api/admin/users/',{email:'self-alias-'+uuidSuffix+'@conspace.test',displayName:'Forbidden Self Alias',role:'TECHNICAL_REVIEWER',personId:admin.personId,identityReason:'Attempted self identity link must stay forbidden',password});
   assert.equal(selfAlias.status,403);
   const editor=await login(base,editorEmail,password);
   const reviewer=await login(base,reviewerEmail,password);
@@ -170,6 +170,15 @@ test('real PostgreSQL flow: login -> create -> technical review -> chief review 
 
   const adminStart=await adminApi('POST','/api/admin/reviews/articles/'+id+'/start',{});assert.equal(adminStart.status,403);
   const aliasStart=await reviewerAliasApi('POST','/api/admin/reviews/articles/'+id+'/start',{});assert.equal(aliasStart.status,403);
+  const usersAfterLogin=await adminApi('GET','/api/admin/users/');
+  assert.equal(usersAfterLogin.status,200,JSON.stringify(usersAfterLogin.body));
+  const aliasRow=usersAfterLogin.body.data.find(item=>item.email===aliasEmail);
+  assert.equal(aliasRow.personId,createdUsers[editorEmail].personId);
+  assert.ok(aliasRow.roleAssignments.some(item=>item.role==='TECHNICAL_REVIEWER'&&item.grantReason));
+  assert.ok(Number.isInteger(aliasRow.activeSessionCount)&&aliasRow.activeSessionCount>=1);
+  const revokedAlias=await adminApi('POST','/api/admin/users/'+aliasRow.id+'/revoke-sessions',{});
+  assert.equal(revokedAlias.status,200,JSON.stringify(revokedAlias.body));
+  assert.ok(revokedAlias.body.data.revokedSessions>=1);
   const queue=await reviewerApi('GET','/api/admin/reviews/queue?stage=TECHNICAL');
   assert.equal(queue.status,200,JSON.stringify(queue.body));
   assert.ok(queue.body.data.articles.some(a=>a.id===id));
@@ -418,6 +427,26 @@ test('real PostgreSQL flow: login -> create -> technical review -> chief review 
   assert.equal(failedField.body.error.code,'INVALID_FIELD_IMAGE');
   const orphanArticle=await pool.query('SELECT id FROM conspace.articles WHERE slug=$1',[failedFieldSlug]);
   assert.equal(orphanArticle.rowCount,0,'failed field-note creation must rollback its article');
+
+  const readyFieldSlug='ci-field-ready-'+uuidSuffix;
+  const readyField=await editorApi('POST','/api/admin/field-notes/',{
+    slug:readyFieldSlug,title:'Ca hiện trường đủ compliance',body:'Mô tả hiện trường đã được kiểm chứng.',
+    audienceRole:'homeowner',nicheIds:[designNiche.id],sources:[{title:'Biên bản nghiệm thu CI',citation:'CI field fixture'}],
+    phenomenon:'Quan sát bề mặt có dấu hiệu cần kiểm tra',rootCause:'Nguyên nhân được đối chiếu trong hồ sơ CI',interventionPoint:'Dừng trước bước nghiệm thu tiếp theo',
+    unitAnonymized:true,addressAnonymized:true,photoRightsConfirmed:true,anonymizationNote:'Đã ẩn toàn bộ định danh trong fixture CI',
+  });
+  assert.equal(readyField.status,201,JSON.stringify(readyField.body));
+  const fieldDashboard=await editorApi('GET','/api/admin/field-notes?compliance=ready&search=Ca%20hi%E1%BB%87n%20tr%C6%B0%E1%BB%9Dng&page=1&limit=20');
+  assert.equal(fieldDashboard.status,200,JSON.stringify(fieldDashboard.body));
+  const readyRow=fieldDashboard.body.data.find(item=>item.id===readyField.body.data.id);
+  assert.ok(readyRow);
+  assert.equal(readyRow.fieldComplianceReady,true);
+  assert.equal(readyRow.reviewReady,true);
+  assert.ok(fieldDashboard.body.meta.complianceReady>=1);
+  const readyDetail=await editorApi('GET','/api/admin/field-notes/'+readyField.body.data.id);
+  assert.equal(readyDetail.status,200,JSON.stringify(readyDetail.body));
+  assert.equal(readyDetail.body.data.sources[0].title,'Biên bản nghiệm thu CI');
+  assert.ok(readyDetail.body.data.nicheIds.includes(designNiche.id));
 
   const question=await api(base)('POST','/api/v1/questions',{
     description:'Câu hỏi kiểm thử giữ cờ nhạy cảm sau khi tải lại.',
