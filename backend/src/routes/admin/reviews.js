@@ -74,7 +74,7 @@ export function createReviewsRouter(db=pool,editorial=createEditorialService(db)
     res.json({ok:true,data});
   }));
 
-  router.post('/terms/:id/start',requireRoles('ADMIN','TECHNICAL_REVIEWER'),asyncHandler(async(req,res)=>{
+  router.post('/terms/:id/start',requireRoles('TECHNICAL_REVIEWER'),asyncHandler(async(req,res)=>{
     const id=validate(z.strictObject({id:uuid}),req.params).id;
     const result=await inTransaction(db,async(client)=>{
       const current=await client.query('SELECT * FROM conspace.terms WHERE id=$1 FOR UPDATE',[id]);
@@ -90,7 +90,7 @@ export function createReviewsRouter(db=pool,editorial=createEditorialService(db)
     res.json({ok:true,data:result});
   }));
 
-  router.post('/terms/:id/decision',requireRoles('ADMIN','TECHNICAL_REVIEWER'),asyncHandler(async(req,res)=>{
+  router.post('/terms/:id/decision',requireRoles('TECHNICAL_REVIEWER'),asyncHandler(async(req,res)=>{
     const id=validate(z.strictObject({id:uuid}),req.params).id;
     const input=validate(z.strictObject({
       decision:z.enum(['APPROVED','REQUEST_CHANGES','REJECTED']),
@@ -194,7 +194,7 @@ export function createReviewsRouter(db=pool,editorial=createEditorialService(db)
       const section=found.rows[0];if(!section)throw new RequestError(404,'NOT_FOUND','Niche section not found');
       const expected=technical?'TECHNICAL_REVIEW':'EDITOR_IN_CHIEF_REVIEW';
       if(section.status!==expected)throw new RequestError(409,'INVALID_STATE','Section is not at the requested review stage');
-      await assertDifferentPerson(client,section.updated_by_user_id,req.auth);
+      await assertDifferentPerson(client,section.created_by_user_id??section.updated_by_user_id,req.auth);
       const next=input.decision==='APPROVED'
         ? (technical&&section.requires_chief_review?'EDITOR_IN_CHIEF_REVIEW':'APPROVED')
         : input.decision==='REQUEST_CHANGES'?'NEEDS_CHANGES':'REJECTED';
