@@ -265,13 +265,16 @@ test('real PostgreSQL flow: login -> create -> technical review -> chief review 
   assert.equal((await editorApi('POST','/api/admin/articles/'+feedbackId+'/submit',{})).status,200);
 
   // Explicit CONTENT_PUBLISH delegates publication only; ADMIN without that grant cannot publish.
+  const termSlug='ci-term-'+uuidSuffix;
   const termDraft=await editorApi('POST','/api/admin/terms/',{
-    term:'CI term '+uuidSuffix,slug:'ci-term-'+uuidSuffix,
+    term:'CI term '+uuidSuffix,slug:termSlug,
     definition:'Định nghĩa kiểm chứng dành riêng cho kiểm thử CI.',
     sourceRef:'CI fixture: verified term source',
+    nicheIds:[designNiche.id],
   });
   assert.equal(termDraft.status,201,JSON.stringify(termDraft.body));
   const termId=termDraft.body.data.id;
+  assert.equal((await api(base)('GET','/api/v1/terms/'+termSlug)).status,404);
   assert.equal((await editorApi('POST','/api/admin/terms/'+termId+'/submit',{})).status,200);
   const adminChiefTermStart=await adminChiefApi('POST','/api/admin/reviews/terms/'+termId+'/start',{});
   assert.equal(adminChiefTermStart.status,403,JSON.stringify(adminChiefTermStart.body));
@@ -284,6 +287,16 @@ test('real PostgreSQL flow: login -> create -> technical review -> chief review 
   assert.equal(adminTermPublish.status,403);
   const delegatedTermPublish=await publisherApi('POST','/api/admin/terms/'+termId+'/publish',{});
   assert.equal(delegatedTermPublish.status,200,JSON.stringify(delegatedTermPublish.body));
+  const publicTerm=await api(base)('GET','/api/v1/terms/'+termSlug);
+  assert.equal(publicTerm.status,200,JSON.stringify(publicTerm.body));
+  assert.equal(publicTerm.body.data.slug,termSlug);
+  assert.equal(publicTerm.body.data.sourceRef,'CI fixture: verified term source');
+  assert.ok(publicTerm.body.data.niches.some(niche=>niche.slug===designNiche.slug));
+  const termSearch=await api(base)('GET','/api/v1/search?q=CI%20term&type=term&role=contractor&niche='+designNiche.slug);
+  assert.equal(termSearch.status,200,JSON.stringify(termSearch.body));
+  assert.ok(termSearch.body.data.some(item=>item.slug===termSlug&&item.type==='term'));
+  assert.ok(termSearch.body.meta.facets.term>=1);
+  assert.equal(termSearch.body.meta.preferredAudienceRole,'contractor');
 
   const lensArticles=await api(base)('GET','/api/v1/articles?role=homeowner&limit=50');
   assert.equal(lensArticles.status,200,JSON.stringify(lensArticles.body));
@@ -553,6 +566,7 @@ test('real PostgreSQL flow: login -> create -> technical review -> chief review 
   assert.match(sitemapBefore.headers.get('content-type')||'',/application\/xml/);
   const sitemapBeforeXml=await sitemapBefore.text();
   assert.ok(sitemapBeforeXml.includes('/mang/'+designNiche.slug));
+  assert.ok(sitemapBeforeXml.includes('/tu-dien/'+termSlug),'Published dictionary term must be indexed');
   assert.equal(sitemapBeforeXml.includes('/bai-viet/'+scheduledSlug),false,'Future scheduled content must not be indexed');
 
   // Simulate time passing *only on this ephemeral CI database*.
