@@ -382,7 +382,18 @@ async function assertArticleMediaRights(client,articleId){
     'SELECT count(*)::integer AS total FROM conspace.article_media am JOIN conspace.media_assets m ON m.id=am.media_id AND m.deleted_at IS NULL WHERE am.article_id=$1 AND m.rights_confirmed=false',
     [articleId]
   );
-  if(result.rows[0].total>0) throw new RequestError(409,'MEDIA_RIGHTS_REQUIRED','All article media must have confirmed usage rights before publication');
+  if(result.rows[0].total>0) throw new RequestError(409,'MEDIA_RIGHTS_REQUIRED','All article media must have confirmed usage rights before review');
+  const article=await client.query('SELECT cover_image_url FROM conspace.articles WHERE id=$1',[articleId]);
+  const cover=article.rows[0]?.cover_image_url||'';
+  if(cover.startsWith('/api/v1/media/')){
+    const mediaId=cover.slice('/api/v1/media/'.length);
+    const linked=await client.query(
+      'SELECT m.rights_confirmed FROM conspace.article_media am JOIN conspace.media_assets m ON m.id=am.media_id AND m.deleted_at IS NULL WHERE am.article_id=$1 AND am.media_id=$2::uuid',
+      [articleId,mediaId]
+    );
+    if(!linked.rows[0]) throw new RequestError(409,'MEDIA_RELATION_REQUIRED','Internal cover media must be linked to the article before review');
+    if(!linked.rows[0].rights_confirmed) throw new RequestError(409,'MEDIA_RIGHTS_REQUIRED','The cover image needs confirmed usage rights before review');
+  }
 }
 
 async function assertFieldCaseReady(client,article){
