@@ -14,10 +14,10 @@ test('ADMIN CMS navigation is limited to system administration and read-only art
   assert.match(api, /EDITOR_IN_CHIEF: \[\.\.\.EVERYONE,\.\.\.CHIEF, 'dictionary:publish'\]/);
 });
 
-test('system admin dashboard does not render editorial queues or publication schedule', () => {
-  assert.match(dashboard, /user\?\.role === 'ADMIN'/);
-  assert.match(dashboard, /user\?\.role !== 'ADMIN' && \(/);
-  assert.match(dashboard, /Tài khoản CMS/);
+test('system admin dashboard hides editorial lanes unless explicit capabilities are present', () => {
+  assert.match(dashboard, /can\('reviews:read'\)\|\|can\('articles:write'\)\|\|can\('articles:schedule'\)/);
+  assert.match(dashboard, /can\('users:read'\).*Tài khoản CMS/s);
+  assert.match(dashboard, /can\('audit:read'\).*Nhật ký kiểm soát/s);
 });
 
 test('system admin article route is explicitly read-only', () => {
