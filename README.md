@@ -43,6 +43,33 @@ curl -fsS http://127.0.0.1:5088/api/ready
 
 Lưu ý: `/api/ready` trả HTTP 503 cho đến khi backend có DATABASE_URL đúng và truy vấn PostgreSQL thành công.
 
+## Dữ liệu demo local để kiểm thử CMS
+
+Seed chuẩn `db:seed` chỉ chứa taxonomy đã được xác nhận. Dữ liệu mô phỏng được tách riêng ở `db:seed-demo`, gắn nhãn `[DEMO]` / `DEMO ONLY` và chỉ chạy khi `NODE_ENV=development`, PostgreSQL nằm ở localhost, database là `conspace`, user DB vẫn phải là `conspace_app`, đồng thời có xác nhận `DEMO_SEED_CONFIRM=LOCAL_DEMO_ONLY`. Script từ chối production/remote database và không ghi đè Template B section không phải demo.
+
+PowerShell:
+
+```powershell
+cd D:\conspace
+$env:NODE_ENV="development"
+$env:DEMO_SEED_CONFIRM="LOCAL_DEMO_ONLY"
+$env:DEMO_USER_PASSWORD="ConspaceDemo!2026"
+$env:DEMO_NICHE_SLUG="house"
+
+npm run db:migrate --prefix backend
+npm run db:seed --prefix backend
+npm run db:seed-demo --prefix backend
+```
+
+Tài khoản demo dùng cùng mật khẩu từ `DEMO_USER_PASSWORD`:
+- `editor.demo@conspace.local` — EDITOR.
+- `reviewer.demo@conspace.local` — TECHNICAL_REVIEWER.
+- `chief.demo@conspace.local` — EDITOR_IN_CHIEF.
+
+Fixture gồm bài `NEEDS_CHANGES`, bài chờ technical review, bài chờ Chief review, bài APPROVED chờ publish, một bài public, Q&A và thuật ngữ bị trả lại, hai Field Note (ready/blocked), cùng ba trạng thái Template B trên mảng được chọn: section 1 PUBLISHED, section 2 NEEDS_CHANGES, section 4 EDITOR_IN_CHIEF_REVIEW. Chạy lại seed sẽ tái tạo các fixture demo có slug/email cố định thay vì nhân bản chúng.
+
+Nếu mảng `house` đã có section thật, script sẽ dừng thay vì ghi đè. Chọn một mảng thiết kế đang trống khác bằng `DEMO_NICHE_SLUG`, ví dụ `luxury`.
+
 ## Quy trình Git cho 3 chat
 
 Nhánh chính duy nhất: `main`. Ba chat Backend, Frontend và DevOps commit/push **trực tiếp vào main** nhưng mỗi chat chỉ sửa phần thư mục được giao và đồng bộ code trước khi push. Không force-push. Xem `docs/WORKSTREAMS.md`, `docs/API_CONTRACT.md`.
