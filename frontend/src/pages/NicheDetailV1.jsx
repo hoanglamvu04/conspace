@@ -4,6 +4,7 @@ import { READERS } from '../config.js';
 import { useReader } from '../context/ReaderContext.jsx';
 import { useResource } from '../hooks/useResources.js';
 import { apiUrl } from '../lib/api.js';
+import { useSeoMetadata } from '../lib/seo.js';
 import { nicheLayersForRole, chapterPath, chapterDisplayLabel, addOpenLayerRole, toggleOpenLayerRole } from '../lib/contentModel.js';
 import { Markdown } from '../components/Markdown.jsx';
 import { ArticleCard, Breadcrumbs, PageIntro, ReaderSwitch, SectionHeading, StatusPanel } from '../components/UI.jsx';
@@ -58,12 +59,13 @@ export default function NicheDetailV1() {
   const niche = resource.status === 'success' ? resource.data : null;
   const selectedRole = READERS.find((item) => item.id === reader) || READERS[0];
 
-  useEffect(() => {
-    if (!niche) return;
-    document.title = niche.name + ' | CONSPACE · Sự thật ngành Xây';
-    const description = document.querySelector('meta[name="description"]');
-    if (description) description.setAttribute('content', niche.summary || 'Thông tin lĩnh vực từ kho tri thức CONSPACE.');
-  }, [niche]);
+  const canonicalPath=niche?(niche.group==='design'?'/mang/':'/ngach/')+niche.slug:(location.pathname.startsWith('/mang/')?'/mang/'+(slug||''):'/ngach/'+(slug||''));
+  useSeoMetadata({
+    title:niche?.name||(location.pathname.startsWith('/mang/')?'Mảng kiến trúc':'Ngách thi công'),
+    description:niche?.summary||'Thông tin lĩnh vực từ kho tri thức CONSPACE.',
+    canonicalPath,
+    index:resource.status==='success'&&Boolean(niche),
+  });
 
   if (!validSlug) return <main className="container content-page"><StatusPanel status="empty" title="Đường dẫn lĩnh vực không hợp lệ"/></main>;
   if (resource.status === 'loading') return <main className="container content-page"><StatusPanel status="loading" kind="articles"/></main>;
