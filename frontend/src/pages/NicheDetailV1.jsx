@@ -98,7 +98,7 @@ export default function NicheDetailV1() {
       {isConstruction ? <section className="public-layers-section">
         <SectionHeading eyebrow="TEMPLATE A / 12 KHỐI" title="Ba lớp nội dung cùng một trang" description="Chỉ các khối đã có nội dung, nguồn và trạng thái xuất bản mới được hiển thị. Mở thêm góc nhìn khác mà không đổi URL."/>
         <div className="public-layer-stack">{READERS.map((role) => <LayerAccordion key={role.id} role={role} sections={niche.sections || []} open={openRoles.includes(role.id)} onToggle={(id, open) => setOpenRoles((current) => toggleOpenLayerRole(current, id, open))}/>)}</div>
-      </section> : <DesignBlocks sections={niche.sections||[]} expected={niche.expectedSectionCount||7}/>} 
+      </section> : <DesignBlocks sections={niche.sections||[]} expected={niche.expectedSectionCount||7}/>}
 
       <section className="public-related-content">
         <SectionHeading eyebrow="BÀI VIẾT ĐÃ XUẤT BẢN" title="Đọc sâu trong lĩnh vực"/>
