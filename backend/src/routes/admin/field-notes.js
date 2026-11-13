@@ -137,7 +137,9 @@ export function createFieldNotesRouter(db=pool,editorial=createEditorialService(
   router.get('/:id',asyncHandler(async(req,res)=>{
     const id=validate(z.strictObject({id:uuid}),req.params).id;
     const result=await db.query(
-      'SELECT f.*,a.slug,a.title,a.excerpt,a.body,a.status,a.audience_role AS "audienceRole",' +
+      'SELECT f.*,a.slug,a.title,a.excerpt,a.body,a.status,a.audience_role AS "audienceRole",a.sensitivity_flags AS "sensitivityFlags",' +
+      'COALESCE((SELECT json_agg(an.niche_id ORDER BY an.niche_id) FROM conspace.article_niches an WHERE an.article_id=a.id),\'[]\'::json) AS "nicheIds",'+
+      'COALESCE((SELECT json_agg(json_build_object(\'title\',src.title,\'url\',src.url,\'citation\',src.citation) ORDER BY src.position) FROM conspace.article_sources src WHERE src.article_id=a.id),\'[]\'::json) AS sources,'+
       'COALESCE((SELECT json_agg(json_build_object(\'id\',m.id,\'filename\',m.original_filename,\'rightsConfirmed\',m.rights_confirmed) ORDER BY fm.position) '+
       'FROM conspace.field_note_media fm JOIN conspace.media_assets m ON m.id=fm.media_id WHERE fm.field_note_id=f.id AND m.deleted_at IS NULL),\'[]\'::json) AS media '+
       'FROM conspace.field_notes f JOIN conspace.articles a ON a.id=f.article_id WHERE f.id=$1',
