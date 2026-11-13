@@ -29,21 +29,68 @@ const baseSchema=z.strictObject({
   mediaIds:z.array(uuid).max(10).optional(),
 });
 const patchSchema=baseSchema.partial().extend({changeReason:z.string().max(500).optional()});
+const listSchema=z.strictObject({
+  status:z.enum(['DRAFT','SUBMITTED','TECHNICAL_REVIEW','EDITOR_IN_CHIEF_REVIEW','APPROVED','SCHEDULED','PUBLISHED','NEEDS_CHANGES','REJECTED','WITHDRAWN','ARCHIVED']).optional(),
+  compliance:z.enum(['ready','blocked']).optional(),
+  search:z.string().trim().max(120).optional(),
+  page:z.coerce.number().int().min(1).default(1),
+  limit:z.coerce.number().int().min(1).max(100).default(30),
+});
 
 export function createFieldNotesRouter(db=pool,editorial=createEditorialService(db)){
   const router=Router();
   router.use(requireRoles('EDITOR','EDITOR_IN_CHIEF'));
 
   router.get('/',asyncHandler(async(req,res)=>{
+    const query=validate(listSchema,req.query);
+    const offset=(query.page-1)*query.limit;
+    const base=`
+      WITH notes AS (
+        SELECT f.id,f.article_id AS "articleId",a.slug,a.title,a.status,a.published_at AS "publishedAt",a.updated_at AS "updatedAt",
+          a.body,a.audience_role AS "audienceRole",a.sensitivity_assessed AS "sensitivityAssessed",
+          f.phenomenon,f.root_cause AS "rootCause",f.intervention_point AS "interventionPoint",
+          f.repair_cost_amount AS "repairCostAmount",f.repair_cost_source AS "repairCostSource",
+          f.unit_anonymized AS "unitAnonymized",f.address_anonymized AS "addressAnonymized",
+          f.photo_rights_confirmed AS "photoRightsConfirmed",f.anonymization_note AS "anonymizationNote",
+          (SELECT count(*)::integer FROM conspace.article_sources src WHERE src.article_id=a.id) AS "sourceCount",
+          (SELECT count(*)::integer FROM conspace.field_note_media fm WHERE fm.field_note_id=f.id) AS "mediaCount",
+          (SELECT count(*)::integer FROM conspace.field_note_media fm
+            LEFT JOIN conspace.media_assets m ON m.id=fm.media_id
+            WHERE fm.field_note_id=f.id AND (m.id IS NULL OR m.deleted_at IS NOT NULL OR m.rights_confirmed=false)) AS "unconfirmedMediaCount"
+        FROM conspace.field_notes f JOIN conspace.articles a ON a.id=f.article_id
+      ), evaluated AS (
+        SELECT *,
+          ("unitAnonymized" AND "addressAnonymized" AND "photoRightsConfirmed"
+            AND ("repairCostAmount" IS NULL OR length(btrim(COALESCE("repairCostSource",'')))>=3)
+            AND "unconfirmedMediaCount"=0) AS "fieldComplianceReady"
+        FROM notes
+      ), ready AS (
+        SELECT *,
+          ("fieldComplianceReady" AND length(btrim(COALESCE(body,'')))>0 AND "audienceRole" IS NOT NULL
+            AND "sensitivityAssessed" AND "sourceCount">0) AS "reviewReady"
+        FROM evaluated
+      )
+    `;
+    const where=`
+      WHERE ($1::text IS NULL OR status=$1)
+        AND ($2::text IS NULL OR ($2='ready' AND "fieldComplianceReady") OR ($2='blocked' AND NOT "fieldComplianceReady"))
+        AND ($3::text IS NULL OR title ILIKE '%' || $3 || '%' OR slug ILIKE '%' || $3 || '%' OR phenomenon ILIKE '%' || $3 || '%')
+    `;
+    const params=[query.status??null,query.compliance??null,query.search??null];
     const result=await db.query(
-      'SELECT f.id,f.article_id AS "articleId",a.slug,a.title,a.status,a.published_at AS "publishedAt",' +
-      'f.phenomenon,f.root_cause AS "rootCause",f.intervention_point AS "interventionPoint",' +
-      'f.repair_cost_amount AS "repairCostAmount",f.repair_cost_source AS "repairCostSource",' +
-      'f.unit_anonymized AS "unitAnonymized",f.address_anonymized AS "addressAnonymized",' +
-      'f.photo_rights_confirmed AS "photoRightsConfirmed",f.anonymization_note AS "anonymizationNote" '+
-      'FROM conspace.field_notes f JOIN conspace.articles a ON a.id=f.article_id ORDER BY a.updated_at DESC'
+      base+`SELECT id,"articleId",slug,title,status,"publishedAt","updatedAt","rootCause","interventionPoint","repairCostAmount","repairCostSource","unitAnonymized","addressAnonymized","photoRightsConfirmed","anonymizationNote","sourceCount","mediaCount","unconfirmedMediaCount","fieldComplianceReady","reviewReady" FROM ready ${where} ORDER BY "updatedAt" DESC,id DESC LIMIT $4 OFFSET $5`,
+      [...params,query.limit,offset]
     );
-    res.json({ok:true,data:result.rows});
+    const summary=await db.query(
+      base+`SELECT count(*)::integer AS total,
+        count(*) FILTER (WHERE "fieldComplianceReady")::integer AS "complianceReady",
+        count(*) FILTER (WHERE NOT "fieldComplianceReady")::integer AS blocked,
+        count(*) FILTER (WHERE "reviewReady" AND status IN ('DRAFT','NEEDS_CHANGES'))::integer AS "readyToSubmit",
+        count(*) FILTER (WHERE status='NEEDS_CHANGES')::integer AS "needsChanges"
+        FROM ready ${where}`,
+      params
+    );
+    res.json({ok:true,data:result.rows,meta:{...summary.rows[0],page:query.page,limit:query.limit}});
   }));
 
   router.post('/',requireRoles('EDITOR'),asyncHandler(async(req,res)=>{
