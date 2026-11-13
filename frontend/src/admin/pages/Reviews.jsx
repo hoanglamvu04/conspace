@@ -39,7 +39,7 @@ function ReviewDetail({stage,selected,detail,canDecide,canStart,busy,reason,setR
     : (data.content||data.body||data.definition||'');
   const source=data.sourceRef||data.source_ref||null;
   const flags=sensitivityFor(selected,data);
-  const status=data.status||data.answerStatus||selected.status;
+  const status=selected.entityType==='QUESTION_ANSWER'?(data.answerStatus||selected.status):(data.status||selected.status);
   const expectedDecisionStatus=stage==='TECHNICAL'?'TECHNICAL_REVIEW':'EDITOR_IN_CHIEF_REVIEW';
   const decisionReady=selected.entityType==='QUESTION_ANSWER'
     ? status===expectedDecisionStatus
