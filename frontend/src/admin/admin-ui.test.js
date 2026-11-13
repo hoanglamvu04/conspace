@@ -8,6 +8,8 @@ const articles = readFileSync(new URL('./pages/Articles.jsx', import.meta.url), 
 const system = readFileSync(new URL('./pages/System.jsx', import.meta.url), 'utf8');
 const reviews = readFileSync(new URL('./pages/Reviews.jsx', import.meta.url), 'utf8');
 const editorial = readFileSync(new URL('./pages/Editorial.jsx', import.meta.url), 'utf8');
+const niches = readFileSync(new URL('./pages/Niches.jsx', import.meta.url), 'utf8');
+const reviewFeedback = readFileSync(new URL('./ReviewFeedback.jsx', import.meta.url), 'utf8');
 
 test('ADMIN CMS navigation is limited to system administration and read-only article access', () => {
   assert.match(api, /ADMIN: \[\.\.\.EVERYONE, 'users:read', 'users:write', 'settings:write'\]/);
@@ -51,4 +53,17 @@ test('field note UI exposes backend-backed compliance readiness and preserves so
   assert.ok(editorial.includes('Điều kiện gửi duyệt hiện trường'));
   assert.ok(editorial.includes('Nguồn truy vết'));
   assert.ok(editorial.includes('fieldComplianceReady'));
+});
+
+
+test('NEEDS_CHANGES feedback is actionable across CMS authoring surfaces', () => {
+  assert.ok(reviewFeedback.includes("REQUEST_CHANGES"));
+  assert.ok(reviewFeedback.includes('latestReturn.reason'));
+  assert.ok(reviewFeedback.includes('latestReturn.actorName'));
+  assert.ok(reviewFeedback.includes("status==='NEEDS_CHANGES'"));
+  assert.ok(articles.includes('<ReviewFeedback entityType="ARTICLE"'));
+  assert.ok(editorial.includes('<ReviewFeedback entityType="TERM"'));
+  assert.ok(editorial.includes('<ReviewFeedback entityType="QUESTION_ANSWER"'));
+  assert.ok(editorial.includes('<ReviewFeedback entityType="ARTICLE" entityId={form.articleId}'));
+  assert.ok(niches.includes("entityType={isTemplateB?'ARCHITECTURAL_SECTION':'NICHE_SECTION'}"));
 });
