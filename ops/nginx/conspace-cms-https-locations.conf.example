@@ -10,6 +10,7 @@ location = /admin {
 }
 location ^~ /admin/ {
     # Admin SPA shell only. Protected data must come from authenticated Backend APIs.
+    add_header X-Robots-Tag "noindex, nofollow" always;
     add_header Cache-Control "no-store" always;
     add_header X-Content-Type-Options "nosniff" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
