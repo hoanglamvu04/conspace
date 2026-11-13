@@ -11,7 +11,7 @@ const answerSchema=z.strictObject({
   body:z.string().trim().min(1).max(50000),
   relatedArticleId:uuid.nullable().optional(),
   sensitivityFlags:z.array(z.enum(['INDUSTRY_DARK_SIDE','PRICE_OR_RATE','WARRANTY_PERIOD','IDENTIFIABLE_ENTITY_RISK','LEGAL_CONTENT'])).max(5).optional(),
-  sensitivityAssessed:z.boolean().default(false),
+  sensitivityAssessed:z.boolean().optional(),
 });
 const questionPatch=z.strictObject({
   status:z.enum(['IN_REVIEW','REJECTED','ARCHIVED']).optional(),
@@ -45,7 +45,9 @@ export function createQuestionsRouter(db=pool,config){
       'SELECT q.*,q.request_private_reply AS "requestPrivateReply",n.slug AS "guessedNiche",' +
       'COALESCE((SELECT json_agg(json_build_object(\'id\',m.id,\'filename\',m.original_filename,\'mimeType\',m.mime_type) ORDER BY qm.position) '+
       'FROM conspace.reader_question_media qm JOIN conspace.media_assets m ON m.id=qm.media_id WHERE qm.question_id=q.id AND m.deleted_at IS NULL),\'[]\'::json) AS media,'+
-      'a.id AS "answerId",a.body AS "answerBody",a.status AS "answerStatus",a.published_at AS "answerPublishedAt" '+
+      'a.id AS "answerId",a.body AS "answerBody",a.status AS "answerStatus",a.published_at AS "answerPublishedAt",' +
+      'a.sensitivity_flags AS "answerSensitivityFlags",a.sensitivity_assessed AS "answerSensitivityAssessed",' +
+      'a.requires_chief_review AS "answerRequiresChiefReview",a.related_article_id AS "answerRelatedArticleId" '+
       'FROM conspace.reader_questions q LEFT JOIN conspace.niches n ON n.id=q.guessed_niche_id '+
       'LEFT JOIN conspace.question_answers a ON a.question_id=q.id WHERE q.id=$1',
       [id]
@@ -92,30 +94,32 @@ export function createQuestionsRouter(db=pool,config){
       const question=await client.query('SELECT id,status FROM conspace.reader_questions WHERE id=$1 FOR UPDATE',[id]);
       if(!question.rows[0]) throw new RequestError(404,'NOT_FOUND','Question not found');
       if(['REJECTED','ARCHIVED'].includes(question.rows[0].status)) throw new RequestError(409,'INVALID_STATE','Question is not available for an answer');
-      if(input.relatedArticleId){
-        const article=await client.query("SELECT id FROM conspace.articles WHERE id=$1 AND status='PUBLISHED'",[input.relatedArticleId]);
+      const current=await client.query('SELECT * FROM conspace.question_answers WHERE question_id=$1 FOR UPDATE',[id]);
+      if(current.rows[0]&&!['DRAFT','NEEDS_CHANGES'].includes(current.rows[0].status)) throw new RequestError(409,'INVALID_STATE','Only draft or returned answers can be edited');
+      const relatedArticleId=input.relatedArticleId===undefined?(current.rows[0]?.related_article_id??null):input.relatedArticleId;
+      if(relatedArticleId){
+        const article=await client.query("SELECT id FROM conspace.articles WHERE id=$1 AND status='PUBLISHED'",[relatedArticleId]);
         if(!article.rows[0]) throw new RequestError(400,'RELATED_ARTICLE_NOT_PUBLISHED','Related article must be published');
       }
-      const flags=input.sensitivityFlags??[];
+      const flags=input.sensitivityFlags??current.rows[0]?.sensitivity_flags??[];
+      const assessed=input.sensitivityAssessed??current.rows[0]?.sensitivity_assessed??false;
       const requiresChief=flags.length>0;
-      const current=await client.query('SELECT * FROM conspace.question_answers WHERE question_id=$1 FOR UPDATE',[id]);
       let answer;
       if(current.rows[0]){
-        if(!['DRAFT','NEEDS_CHANGES'].includes(current.rows[0].status)) throw new RequestError(409,'INVALID_STATE','Only draft or returned answers can be edited');
         const updated=await client.query(
           'UPDATE conspace.question_answers SET body=$2,related_article_id=$3,sensitivity_flags=$4,requires_chief_review=$5,sensitivity_assessed=$6,updated_by_user_id=$7,updated_at=now() WHERE id=$1 RETURNING *',
-          [current.rows[0].id,input.body,input.relatedArticleId??null,flags,requiresChief,input.sensitivityAssessed,req.auth.id]
+          [current.rows[0].id,input.body,relatedArticleId,flags,requiresChief,assessed,req.auth.id]
         );
         answer=updated.rows[0];
       }else{
         const inserted=await client.query(
           'INSERT INTO conspace.question_answers (question_id,body,related_article_id,sensitivity_flags,requires_chief_review,sensitivity_assessed,created_by_user_id,updated_by_user_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$7) RETURNING *',
-          [id,input.body,input.relatedArticleId??null,flags,requiresChief,input.sensitivityAssessed,req.auth.id]
+          [id,input.body,relatedArticleId,flags,requiresChief,assessed,req.auth.id]
         );
         answer=inserted.rows[0];
       }
       await client.query("UPDATE conspace.reader_questions SET status='IN_REVIEW',updated_at=now() WHERE id=$1",[id]);
-      await writeAudit(client,{actorUserId:req.auth.id,action:'QUESTION_ANSWER_SAVED',entityType:'QUESTION_ANSWER',entityId:answer.id,after:{status:answer.status,body:answer.body,requiresChiefReview:requiresChief},req});
+      await writeAudit(client,{actorUserId:req.auth.id,action:'QUESTION_ANSWER_SAVED',entityType:'QUESTION_ANSWER',entityId:answer.id,after:{status:answer.status,body:answer.body,requiresChiefReview:requiresChief,sensitivityFlags:flags,sensitivityAssessed:assessed},req});
       return answer;
     });
     res.status(201).json({ok:true,data:result});
