@@ -295,7 +295,7 @@ test('real PostgreSQL flow: login -> create -> technical review -> chief review 
   assert.equal(publicTerm.body.data.slug,termSlug);
   assert.equal(publicTerm.body.data.sourceRef,'CI fixture: verified term source');
   assert.ok(publicTerm.body.data.niches.some(niche=>niche.slug===termDesignNiche.slug));
-  const termSearch=await api(base)('GET','/api/v1/search?q=CI%20term&type=term&role=contractor&niche='+designNiche.slug);
+  const termSearch=await api(base)('GET','/api/v1/search?q=CI%20term&type=term&role=contractor&niche='+termDesignNiche.slug);
   assert.equal(termSearch.status,200,JSON.stringify(termSearch.body));
   assert.ok(termSearch.body.data.some(item=>item.slug===termSlug&&item.type==='term'));
   assert.ok(termSearch.body.meta.facets.term>=1);
