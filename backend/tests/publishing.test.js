@@ -104,7 +104,7 @@ test('PostgreSQL public search uses published-only checks for all private entiti
   const body=await response.json();
   assert.deepEqual(body.data,[]);
   assert.equal(body.meta.total,0);
-  assert.equal(queries.length,2);
+  assert.equal(queries.length,3);
   assert.ok(queries[0].sql.includes("a.status='PUBLISHED'"));
   assert.ok(queries[0].sql.includes("t.status='PUBLISHED'"));
   assert.ok(queries[0].sql.includes("f.unit_anonymized=true"));
@@ -113,6 +113,8 @@ test('PostgreSQL public search uses published-only checks for all private entiti
   assert.ok(!queries[0].sql.includes('AND ($3::text IS NULL OR a.audience_role=$3'));
   assert.equal(queries[0].params[4],7);
   assert.equal(queries[0].params[5],7);
+  assert.ok(queries[2].sql.includes('GROUP BY type'));
+  assert.equal(body.meta.facets.all,0);
 });
 
 test('publishing scheduler commits only due, reviewed articles and writes an audit event',async()=>{
