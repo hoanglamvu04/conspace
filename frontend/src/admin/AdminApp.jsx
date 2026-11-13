@@ -9,6 +9,7 @@ import Niches from './pages/Niches.jsx';
 import { Books, Chapters } from './pages/Library.jsx';
 import { FieldNotes, DictionaryAdmin, Questions } from './pages/Editorial.jsx';
 import { Media, Users, Settings } from './pages/System.jsx';
+import Audit from './pages/Audit.jsx';
 import './admin.css';
 
 function AdminMetadata() {
@@ -48,6 +49,7 @@ export default function AdminApp() {
       <Route path="dictionary" element={<Restricted permission="dictionary:read"><DictionaryAdmin/></Restricted>}/>
       <Route path="questions" element={<Restricted permission="questions:read"><Questions/></Restricted>}/>
       <Route path="media" element={<Restricted permission="media:read"><Media/></Restricted>}/>
+      <Route path="audit" element={<Restricted permission="audit:read"><Audit/></Restricted>}/>
       <Route path="users" element={<Restricted permission="users:read"><Users/></Restricted>}/>
       <Route path="settings" element={<Restricted permission="settings:read"><Settings/></Restricted>}/>
       <Route path="*" element={<div className="cms-not-found"><EmptyState title="Không tìm thấy trang quản trị" description="Địa chỉ bạn mở không tồn tại trong CMS." icon="alert"><Link className="cms-btn cms-btn--primary" to="/admin/dashboard">Về tổng quan</Link></EmptyState></div>}/>
