@@ -12,20 +12,23 @@ export function createAuthService(db = pool, config = env) {
   return {
     async login({ email, password, ip, userAgent }) {
       const ipHash = sha256(String(ip || 'unknown'));
-      const rate = await db.query(
-        'INSERT INTO conspace.auth_login_rate_limits (ip_hash, window_started_at, attempts, blocked_until) ' +
-        'VALUES ($1, now(), 0, NULL) ON CONFLICT (ip_hash) DO UPDATE SET ' +
-        "attempts = CASE WHEN conspace.auth_login_rate_limits.window_started_at < now() - interval '15 minutes' THEN 0 ELSE conspace.auth_login_rate_limits.attempts END, " +
-        "window_started_at = CASE WHEN conspace.auth_login_rate_limits.window_started_at < now() - interval '15 minutes' THEN now() ELSE conspace.auth_login_rate_limits.window_started_at END, " +
-        'blocked_until = CASE WHEN conspace.auth_login_rate_limits.blocked_until <= now() THEN NULL ELSE conspace.auth_login_rate_limits.blocked_until END ' +
-        'RETURNING attempts, blocked_until',
-        [ipHash]
-      );
-      if (rate.rows[0]?.blocked_until && new Date(rate.rows[0].blocked_until) > new Date()) {
-        const error = new Error('Too many login attempts. Try again later.');
-        error.status = 429;
-        error.code = 'RATE_LIMITED';
-        throw error;
+      const enforceLoginRateLimit = config.nodeEnv === 'production';
+      if (enforceLoginRateLimit) {
+        const rate = await db.query(
+          'INSERT INTO conspace.auth_login_rate_limits (ip_hash, window_started_at, attempts, blocked_until) ' +
+          'VALUES ($1, now(), 0, NULL) ON CONFLICT (ip_hash) DO UPDATE SET ' +
+          "attempts = CASE WHEN conspace.auth_login_rate_limits.window_started_at < now() - interval '15 minutes' THEN 0 ELSE conspace.auth_login_rate_limits.attempts END, " +
+          "window_started_at = CASE WHEN conspace.auth_login_rate_limits.window_started_at < now() - interval '15 minutes' THEN now() ELSE conspace.auth_login_rate_limits.window_started_at END, " +
+          'blocked_until = CASE WHEN conspace.auth_login_rate_limits.blocked_until <= now() THEN NULL ELSE conspace.auth_login_rate_limits.blocked_until END ' +
+          'RETURNING attempts, blocked_until',
+          [ipHash]
+        );
+        if (rate.rows[0]?.blocked_until && new Date(rate.rows[0].blocked_until) > new Date()) {
+          const error = new Error('Too many login attempts. Try again later.');
+          error.status = 429;
+          error.code = 'RATE_LIMITED';
+          throw error;
+        }
       }
 
       const result = await db.query(
@@ -38,12 +41,14 @@ export function createAuthService(db = pool, config = env) {
       const user = result.rows[0];
       const valid = await verifyPassword(password, user?.password_hash || DUMMY_HASH);
       if (!user || !user.is_active || !valid) {
-        await db.query(
-          "UPDATE conspace.auth_login_rate_limits SET attempts = attempts + 1, " +
-          "blocked_until = CASE WHEN attempts + 1 >= 5 THEN now() + interval '15 minutes' ELSE blocked_until END " +
-          'WHERE ip_hash = $1',
-          [ipHash]
-        );
+        if (enforceLoginRateLimit) {
+          await db.query(
+            "UPDATE conspace.auth_login_rate_limits SET attempts = attempts + 1, " +
+            "blocked_until = CASE WHEN attempts + 1 >= 5 THEN now() + interval '15 minutes' ELSE blocked_until END " +
+            'WHERE ip_hash = $1',
+            [ipHash]
+          );
+        }
         const error = new Error('Email or password is incorrect');
         error.status = 401;
         error.code = 'INVALID_CREDENTIALS';
