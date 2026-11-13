@@ -4,6 +4,7 @@ import { formatDate, READERS, safeMediaUrl } from '../config.js';
 import { useReader } from '../context/ReaderContext.jsx';
 import { useArticles, useResource } from '../hooks/useResources.js';
 import { apiUrl } from '../lib/api.js';
+import { useSeoMetadata } from '../lib/seo.js';
 import { Markdown } from '../components/Markdown.jsx';
 import { ArticleCard, Breadcrumbs, PageIntro, ReaderSwitch, SectionHeading, StatusPanel } from '../components/UI.jsx';
 import { Icon } from '../components/Icons.jsx';
@@ -54,13 +55,16 @@ export function ArticleDetail() {
   const entry = article.status === 'success' ? article.data : null;
   const related = useArticles(reader, entry?.niches?.[0] || null, 4);
   const image = safeMediaUrl(entry?.coverImage);
-  useEffect(() => {
-    if (!entry) return undefined;
-    document.title = `${entry.title} | CONSPACE · Sự thật ngành Xây`;
-    const description = document.querySelector('meta[name="description"]');
-    if (description) description.setAttribute('content', entry.excerpt || entry.title);
-    return undefined;
-  }, [entry]);
+  useSeoMetadata({
+    title:entry?.title||'Bài viết',
+    description:entry?.excerpt||entry?.title||'Bài viết từ CONSPACE.',
+    canonicalPath:validSlug?'/bai-viet/'+slug:'/bai-viet',
+    index:article.status==='success',
+    type:'article',
+    image:image||null,
+    publishedTime:entry?.publishedAt||null,
+    modifiedTime:entry?.updatedAt||entry?.publishedAt||null,
+  });
   if (!validSlug) return <main className="container content-page"><StatusPanel status="empty" title="Đường dẫn không hợp lệ" description="Bài viết bạn tìm không tồn tại."/></main>;
   if (article.status === 'loading') return <main className="container content-page"><StatusPanel status="loading" kind="articles"/></main>;
   if (article.status === 'error') return <main className="container content-page"><Breadcrumbs items={[{ label: 'Bài viết', to: '/bai-viet' }, { label: 'Không thể tải' }]}/><StatusPanel status="error" title={article.error?.status === 404 ? 'Bài viết không tồn tại' : 'Không thể mở bài viết'} description={article.error?.status === 404 ? 'Bài có thể chưa được xuất bản hoặc đã được chuyển đi.' : 'Dữ liệu đang gián đoạn, vui lòng thử lại.'} onRetry={article.error?.status === 404 ? undefined : article.retry}/><Link to="/bai-viet" className="text-link">Trở về danh sách bài viết <Icon name="arrow" size={17}/></Link></main>;
