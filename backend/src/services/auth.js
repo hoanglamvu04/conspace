@@ -12,7 +12,7 @@ export function createAuthService(db = pool, config = env) {
   return {
     async login({ email, password, ip, userAgent }) {
       const ipHash = sha256(String(ip || 'unknown'));
-      const enforceLoginRateLimit = config.nodeEnv === 'production' || config.nodeEnv === 'test';
+      const enforceLoginRateLimit = config.nodeEnv !== 'development';
       if (enforceLoginRateLimit) {
         const rate = await db.query(
           'INSERT INTO conspace.auth_login_rate_limits (ip_hash, window_started_at, attempts, blocked_until) ' +
