@@ -23,6 +23,7 @@ export default function Dashboard(){
   const users=useAdminList('/users',{},can('users:read'));
   const questions=useAdminList('/questions',{status:'SUBMITTED',page:1,limit:1},can('questions:read'));
   const mediaPending=useAdminList('/media',{rights:'unconfirmed',page:1,limit:1},can('media:read'));
+  const fieldBlocked=useAdminList('/field-notes',{compliance:'blocked',page:1,limit:1},can('field-notes:read'));
   const audit=useAdminList('/audit',{page:1,limit:10},can('audit:read'));
   const stage=can('reviews:chief:decide')&&!can('reviews:technical:decide')?'EDITOR_IN_CHIEF':'TECHNICAL';
   const queue=useAdminObject(adminPath('/reviews/queue',{stage}),can('reviews:read'));
@@ -30,7 +31,7 @@ export default function Dashboard(){
   const reviewTotal=(total(submitted)??0)+(total(technical)??0);
 
   function refresh(){
-    [drafts,submitted,technical,chief,approved,returned,scheduled,changed,users,questions,mediaPending,audit].forEach(x=>x.retry?.());
+    [drafts,submitted,technical,chief,approved,returned,scheduled,changed,users,questions,mediaPending,fieldBlocked,audit].forEach(x=>x.retry?.());
     queue.retry?.();
   }
 
@@ -43,6 +44,7 @@ export default function Dashboard(){
       {(can('articles:publish')||can('articles:write'))&&<Metric title="Đã duyệt, chờ xuất bản" value={show(total(approved))} icon="check" to="/admin/articles?status=APPROVED" note="APPROVED chưa public"/>}
       {can('questions:read')&&<Metric title="Q&A mới" value={show(total(questions))} icon="question" to="/admin/questions" note="Câu hỏi đang SUBMITTED"/>}
       {can('media:read')&&<Metric title="Media thiếu quyền" value={show(total(mediaPending))} icon="media" to="/admin/media?rights=unconfirmed" note="Chưa xác nhận quyền sử dụng"/>}
+      {can('field-notes:read')&&<Metric title="Hiện trường bị chặn" value={show(total(fieldBlocked))} icon="field" to="/admin/field-notes" note="Thiếu ẩn danh / quyền ảnh / compliance"/>}
       {can('users:read')&&<Metric title="Tài khoản CMS" value={show(users.status==='success'?users.data.length:null)} icon="users" to="/admin/users" note="Tài khoản thực tế trong hệ thống"/>}
       {can('audit:read')&&<Metric title="Nhật ký kiểm soát" value={show(total(audit))} icon="clock" to="/admin/audit" note="Audit + workflow events"/>}
     </div>
