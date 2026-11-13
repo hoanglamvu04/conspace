@@ -67,7 +67,7 @@ Returns full Markdown body, optional verified cover media path, niches, publicat
 
 ### GET /sitemap.xml
 
-Root-level XML sitemap generated from the current database, not a static build artifact. It includes static public sections plus active niches/design areas, published non-field articles, published compliant field notes, active books, published chapters and published Q&A. Scheduled/future, withdrawn, draft, review-only, unsourced or otherwise non-public records are excluded. Production Nginx must proxy the exact `/sitemap.xml` location to the backend before the SPA fallback. `robots.txt` points to `https://conspace.vn/sitemap.xml`.
+Root-level XML sitemap generated from the current database, not a static build artifact. It includes static public sections plus active niches/design areas, published non-field articles, published compliant field notes, active books, published chapters, published Q&A and published source-backed dictionary terms. Scheduled/future, withdrawn, draft, review-only, unsourced or otherwise non-public records are excluded. Production Nginx must proxy the exact `/sitemap.xml` location to the backend before the SPA fallback. `robots.txt` points to `https://conspace.vn/sitemap.xml`.
 
 ### GET /api/v1/terms?q=...&limit=20
 
@@ -76,6 +76,14 @@ Returns only published, source-backed and technically reviewed terms:
 ```json
 {"ok":true,"data":[{"id":"uuid","term":"string","slug":"string","definition":"string","niches":[]}],"meta":{"total":0}}
 ```
+
+### GET /api/v1/terms/:slug
+
+Returns one published dictionary term with its definition, source reference, technical-review timestamp, update timestamp and active related niches. Draft, returned, rejected, approved-but-unpublished or source-less terms return 404. Public canonical URL: `/tu-dien/:slug`.
+
+### GET /api/v1/search?q=&type=&role=&niche=&limit=&page=
+
+Searches only public records across articles, active niches/design areas, published dictionary terms, published chapters and compliant published field notes. `role` ranks the selected reader lens first but never hides other public perspectives. `type` can be `all|article|niche|term|chapter|field_note`; `niche` filters by active niche slug. Response metadata includes `facets` counts for every result type before the selected type filter, so the public UI can switch categories without inventing counts. Niche results also return `nicheGroup` so design results route to `/mang/:slug` while construction results route to `/ngach/:slug`.
 
 ### POST /api/v1/questions
 
