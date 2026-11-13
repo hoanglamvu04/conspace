@@ -17,6 +17,7 @@ const DEMO_ARTICLE_SLUGS=Object.freeze([
   'demo-chief-review-queue',
   'demo-approved-ready-publish',
   'demo-public-house-overview',
+  'demo-public-design-overview',
   'demo-field-ready',
   'demo-field-blocked',
 ]);
@@ -220,7 +221,7 @@ export async function seedDemo(db=pool,options={}){
     });
 
     const publicId=await createArticle(client,{
-      slug:'demo-public-house-overview',title:'[DEMO] Bài công khai để kiểm thử trang mảng',
+      slug:'demo-public-design-overview',title:'[DEMO] Bài công khai để kiểm thử trang mảng',
       body:'## [DEMO] Nội dung công khai local\n\nBài này giúp kiểm thử card bài viết và trang chi tiết public. Không phải nội dung biên tập thật.',
       status:'PUBLISHED',editor,approver:reviewer,nicheId:niche.id,publishedAt:new Date(Date.now()-60*60*1000),
     });
