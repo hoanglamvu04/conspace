@@ -93,6 +93,7 @@ test('ok:false payload rejects even with HTTP 200',async t=>{
 
 test('primary role permissions remain available when delegated grants are empty', () => {
   assert.equal(hasPermission({ role: 'ADMIN', permissions: [] }, 'dashboard:read'), true);
+  assert.equal(hasPermission({ role: 'ADMIN', permissions: [] }, 'audit:read'), true);
   assert.equal(hasPermission({ role: 'ADMIN', permissions: [] }, 'articles:read'), true);
   assert.equal(hasPermission({ role: 'ADMIN', permissions: [] }, 'users:read'), true);
   assert.equal(hasPermission({ role: 'ADMIN', permissions: [] }, 'users:write'), true);
