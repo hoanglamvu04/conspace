@@ -435,6 +435,13 @@ test('real PostgreSQL flow: login -> create -> technical review -> chief review 
 
   const audit=await pool.query("SELECT action FROM conspace.audit_logs WHERE entity_id=$1 ORDER BY created_at",[id]);
   assert.ok(audit.rows.some(x=>x.action==='ARTICLE_PUBLISHED'));
+  const auditApi=await editorApi('GET','/api/admin/audit?entityType=ARTICLE&entityId='+id+'&limit=100');
+  assert.equal(auditApi.status,200,JSON.stringify(auditApi.body));
+  assert.ok(auditApi.body.data.some(x=>x.eventType==='WORKFLOW'&&x.action==='PUBLISH'));
+  assert.ok(Number.isInteger(auditApi.body.meta.total));
+  const mediaRightsList=await editorApi('GET','/api/admin/media?rights=unconfirmed&page=1&limit=1');
+  assert.equal(mediaRightsList.status,200,JSON.stringify(mediaRightsList.body));
+  assert.ok(Number.isInteger(mediaRightsList.body.meta.total));
 
   const withdrawn=await chiefApi('POST','/api/admin/articles/'+id+'/withdraw',{
     reason:'Kết thúc kiểm tra end-to-end',
