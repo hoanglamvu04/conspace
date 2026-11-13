@@ -15,29 +15,34 @@ const permissionList=z.array(permissionSchema).max(2).refine(values=>new Set(val
 const createSchema=z.strictObject({
   email:z.string().trim().email().max(254),displayName:z.string().trim().min(2).max(120),
   role:roleSchema,roles:roleList.optional(),roleReason:z.string().trim().min(3).max(500).optional(),
-  personId:z.string().uuid().optional(),permissions:permissionList.optional(),
+  personId:z.string().uuid().optional(),identityReason:z.string().trim().min(3).max(500).optional(),permissions:permissionList.optional(),
   permissionReason:z.string().trim().min(3).max(500).optional(),password:z.string().min(14).max(256),
 }).superRefine((v,ctx)=>{
   if(new Set([v.role,...(v.roles??[])]).size>1&&!v.roleReason)ctx.addIssue({code:'custom',path:['roleReason'],message:'A reason is required for additional role assignments'});
+  if(v.personId&&!v.identityReason)ctx.addIssue({code:'custom',path:['identityReason'],message:'A reason is required when linking an existing staff identity'});
   if((v.permissions??[]).length&&!v.permissionReason)ctx.addIssue({code:'custom',path:['permissionReason'],message:'A reason is required for delegated permissions'});
 });
 const updateSchema=z.strictObject({
   displayName:z.string().trim().min(2).max(120).optional(),role:roleSchema.optional(),
   roles:roleList.optional(),roleReason:z.string().trim().min(3).max(500).optional(),
-  personId:z.string().uuid().optional(),permissions:permissionList.optional(),
+  personId:z.string().uuid().optional(),identityReason:z.string().trim().min(3).max(500).optional(),permissions:permissionList.optional(),
   permissionReason:z.string().trim().min(3).max(500).optional(),
   isActive:z.boolean().optional(),password:z.string().min(14).max(256).optional(),
 }).superRefine((v,ctx)=>{
   if((v.role!==undefined||v.roles!==undefined)&&!v.roleReason)ctx.addIssue({code:'custom',path:['roleReason'],message:'A reason is required when changing role assignments'});
+  if(v.personId!==undefined&&!v.identityReason)ctx.addIssue({code:'custom',path:['identityReason'],message:'A reason is required when changing staff identity linkage'});
   if(v.permissions!==undefined&&!v.permissionReason)ctx.addIssue({code:'custom',path:['permissionReason'],message:'A reason is required when changing delegated permissions'});
 });
 const roleSql="COALESCE((SELECT json_agg(r.role ORDER BY r.role) FROM conspace.cms_user_roles r WHERE r.user_id=u.id),'[]'::json) AS roles";
 const permissionSql="COALESCE((SELECT json_agg(p.permission ORDER BY p.permission) FROM conspace.cms_user_permissions p WHERE p.user_id=u.id),'[]'::json) AS permissions";
+const roleAssignmentSql="COALESCE((SELECT json_agg(json_build_object('role',r.role,'grantSource',r.grant_source,'grantReason',r.grant_reason,'legacyCompat',r.legacy_compat,'grantedAt',r.created_at,'grantedBy',g.display_name) ORDER BY r.role) FROM conspace.cms_user_roles r LEFT JOIN conspace.cms_users g ON g.id=r.granted_by_user_id WHERE r.user_id=u.id),'[]'::json) AS \"roleAssignments\"";
+const permissionAssignmentSql="COALESCE((SELECT json_agg(json_build_object('permission',p.permission,'grantReason',p.grant_reason,'grantedAt',p.created_at,'grantedBy',g.display_name) ORDER BY p.permission) FROM conspace.cms_user_permissions p LEFT JOIN conspace.cms_users g ON g.id=p.granted_by_user_id WHERE p.user_id=u.id),'[]'::json) AS \"permissionAssignments\"";
+const sessionSql="(SELECT count(*)::integer FROM conspace.cms_sessions s WHERE s.user_id=u.id AND s.expires_at>now()) AS \"activeSessionCount\"";
 
 export function createUsersRouter(db=pool){
   const router=Router();router.use(requireRoles('ADMIN'));
   router.get('/',asyncHandler(async(_req,res)=>{
-    const result=await db.query('SELECT u.id,u.email,u.display_name AS "displayName",u.role,u.person_id AS "personId",u.is_active AS "isActive",u.must_change_password AS "mustChangePassword",u.last_login_at AS "lastLoginAt",u.created_at AS "createdAt",'+roleSql+','+permissionSql+' FROM conspace.cms_users u ORDER BY u.created_at DESC');
+    const result=await db.query('SELECT u.id,u.email,u.display_name AS "displayName",u.role,u.person_id AS "personId",u.is_active AS "isActive",u.must_change_password AS "mustChangePassword",u.last_login_at AS "lastLoginAt",u.created_at AS "createdAt",'+roleSql+','+permissionSql+','+roleAssignmentSql+','+permissionAssignmentSql+','+sessionSql+' FROM conspace.cms_users u ORDER BY u.created_at DESC');
     res.json({ok:true,data:result.rows});
   }));
   router.post('/',asyncHandler(async(req,res)=>{
@@ -56,7 +61,7 @@ export function createUsersRouter(db=pool){
       for(const role of assigned)await client.query("INSERT INTO conspace.cms_user_roles(user_id,role,granted_by_user_id,grant_source,grant_reason) VALUES($1,$2,$3,'ADMIN_ASSIGNMENT',$4)",[row.id,role,req.auth.id,roleReason]);
       for(const permission of assignedPermissions)await client.query('INSERT INTO conspace.cms_user_permissions(user_id,permission,granted_by_user_id,grant_reason) VALUES($1,$2,$3,$4)',[row.id,permission,req.auth.id,input.permissionReason]);
       await client.query('INSERT INTO conspace.authors(slug,display_name,user_id) VALUES($1,$2,$3)',['staff-'+row.id.replaceAll('-',''),row.displayName,row.id]);
-      await writeAudit(client,{actorUserId:req.auth.id,action:'CMS_USER_CREATED',entityType:'CMS_USER',entityId:row.id,after:{email:row.email,role:row.role,roles:assigned,permissions:assignedPermissions,personId:row.personId,roleReason,permissionReason:input.permissionReason??null},req});
+      await writeAudit(client,{actorUserId:req.auth.id,action:'CMS_USER_CREATED',entityType:'CMS_USER',entityId:row.id,after:{email:row.email,role:row.role,roles:assigned,permissions:assignedPermissions,personId:row.personId,roleReason,identityReason:input.identityReason??null,permissionReason:input.permissionReason??null},req});
       return {...row,roles:assigned,permissions:assignedPermissions};
     });
     res.status(201).json({ok:true,data:user});
@@ -96,10 +101,22 @@ export function createUsersRouter(db=pool){
       const after=result.rows[0];
       await writeAudit(client,{actorUserId:req.auth.id,action:'CMS_USER_UPDATED',entityType:'CMS_USER',entityId:before.id,
         before:{role:before.role,roles:existingRoles,permissions:existingPermissions,isActive:before.is_active,personId:before.person_id},
-        after:{role:after.role,roles:nextRoles,permissions:nextPermissions,isActive:after.isActive,personId:after.personId,passwordReset:Boolean(passwordHash),roleReason:input.roleReason??null,permissionReason:input.permissionReason??null},req});
+        after:{role:after.role,roles:nextRoles,permissions:nextPermissions,isActive:after.isActive,personId:after.personId,passwordReset:Boolean(passwordHash),roleReason:input.roleReason??null,identityReason:input.identityReason??null,permissionReason:input.permissionReason??null},req});
       return {...after,roles:nextRoles,permissions:nextPermissions};
     });
     res.json({ok:true,data:user});
   }));
+  router.post('/:id/revoke-sessions',asyncHandler(async(req,res)=>{
+    const id=validate(z.strictObject({id:z.string().uuid()}),req.params).id;
+    const result=await inTransaction(db,async(client)=>{
+      const current=await client.query('SELECT id,email,display_name AS "displayName" FROM conspace.cms_users WHERE id=$1 FOR UPDATE',[id]);
+      if(!current.rows[0]) throw new RequestError(404,'NOT_FOUND','User not found');
+      const sessions=await client.query('DELETE FROM conspace.cms_sessions WHERE user_id=$1',[id]);
+      await writeAudit(client,{actorUserId:req.auth.id,action:'CMS_USER_SESSIONS_REVOKED',entityType:'CMS_USER',entityId:id,after:{revokedSessions:sessions.rowCount},req});
+      return {id,revokedSessions:sessions.rowCount};
+    });
+    res.json({ok:true,data:result});
+  }));
+
   return router;
 }
