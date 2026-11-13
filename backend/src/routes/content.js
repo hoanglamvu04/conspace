@@ -44,7 +44,7 @@ export function createContentRouter(repository = createContentRepository()) {
       ok: true,
       data: {
         id: row.id, slug: row.slug, title: row.title,
-        excerpt: row.excerpt, body: row.body, niches: row.niches ?? [],
+        excerpt: row.excerpt, body: row.body, coverImage: row.coverImage ?? null, niches: row.niches ?? [],
         publishedAt: new Date(row.publishedAt).toISOString(),
         updatedAt: new Date(row.updatedAt).toISOString(),
         author: { displayName: row.authorName, verified: row.authorVerified },
