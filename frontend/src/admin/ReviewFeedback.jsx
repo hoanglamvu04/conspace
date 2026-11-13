@@ -6,9 +6,10 @@ function isDecision(event){
   return event?.eventType==='WORKFLOW' && ['REQUEST_CHANGES','REJECTED','APPROVED'].includes(event.action);
 }
 
-export function ReviewFeedback({entityType,entityId,status,limit=30,showHistory=true}){
+export function ReviewFeedback({entityType,entityId,status,limit=30,showHistory=true,history:providedHistory=null}){
   const {can}=useSession();
-  const history=useAdminList('/audit',{entityType,entityId,page:1,limit},Boolean(entityId)&&can('audit:read'));
+  const loadedHistory=useAdminList('/audit',{entityType,entityId,page:1,limit},!providedHistory&&Boolean(entityId)&&can('audit:read'));
+  const history=providedHistory||loadedHistory;
   if(!entityId||!can('audit:read'))return null;
 
   const decisions=history.status==='success'?history.data.filter(isDecision):[];
