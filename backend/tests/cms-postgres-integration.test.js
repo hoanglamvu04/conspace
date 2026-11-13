@@ -6,6 +6,7 @@ import { app } from '../src/app.js';
 import { pool } from '../src/database/pool.js';
 import { runMigrations } from '../src/database/migrate.js';
 import { seedTaxonomy } from '../src/database/seed.js';
+import { seedDemo } from '../src/database/seed-demo.js';
 import { createAuthService } from '../src/services/auth.js';
 import { createEditorialService } from '../src/services/editorial.js';
 
@@ -551,4 +552,51 @@ test('real PostgreSQL flow: login -> create -> technical review -> chief review 
   await pool.query("UPDATE conspace.articles SET scheduled_at=now()-interval '1 second' WHERE id=$1",[scheduledId]);
   assert.ok((await createEditorialService(pool).publishDueArticles())>=1);
   assert.equal((await api(base)('GET','/api/v1/articles/'+scheduledSlug)).status,200);
+});
+
+
+test('local demo seed builds visible workflow fixtures without touching non-demo Template B data', {
+  skip: onIsolatedCiDb ? false : 'Runs only against isolated PostgreSQL service in GitHub Actions CI',
+}, async() => {
+  assert.ok(pool);
+  await runMigrations(pool);
+  await seedTaxonomy(pool);
+  const password='Demo-CI-'+randomBytes(16).toString('base64url');
+  const result=await seedDemo(pool,{
+    nodeEnv:'development',
+    databaseUrl:process.env.DATABASE_URL,
+    confirm:'LOCAL_DEMO_ONLY',
+    password,
+    nicheSlug:'luxury',
+  });
+  assert.equal(result.niche.slug,'luxury');
+  assert.deepEqual(result.users.map(user=>user.role),['EDITOR','TECHNICAL_REVIEWER','EDITOR_IN_CHIEF']);
+
+  const users=await pool.query("SELECT email,role FROM conspace.cms_users WHERE email LIKE '%.demo@conspace.local' ORDER BY email");
+  assert.equal(users.rowCount,3);
+
+  const returned=await pool.query("SELECT status FROM conspace.articles WHERE slug='demo-review-needs-changes'");
+  assert.equal(returned.rows[0]?.status,'NEEDS_CHANGES');
+  const feedback=await pool.query("SELECT reason FROM conspace.workflow_events WHERE entity_type='ARTICLE' AND entity_id=$1 AND action='REQUEST_CHANGES' ORDER BY created_at DESC LIMIT 1",[result.articles.returnedId]);
+  assert.match(feedback.rows[0]?.reason||'',/^\[DEMO\]/);
+
+  const field=await pool.query("SELECT f.unit_anonymized,f.address_anonymized,f.photo_rights_confirmed FROM conspace.field_notes f JOIN conspace.articles a ON a.id=f.article_id WHERE a.slug='demo-field-blocked'");
+  assert.deepEqual(field.rows[0],{unit_anonymized:true,address_anonymized:false,photo_rights_confirmed:false});
+
+  const sections=await pool.query('SELECT section_no,status,source_ref FROM conspace.architectural_sections WHERE niche_id=(SELECT id FROM conspace.niches WHERE slug=$1) ORDER BY section_no',['luxury']);
+  assert.deepEqual(sections.rows.map(row=>[row.section_no,row.status]),[[1,'PUBLISHED'],[2,'NEEDS_CHANGES'],[4,'EDITOR_IN_CHIEF_REVIEW']]);
+  assert.ok(sections.rows.every(row=>row.source_ref.startsWith('DEMO ONLY:')));
+
+  const rerun=await seedDemo(pool,{
+    nodeEnv:'development',
+    databaseUrl:process.env.DATABASE_URL,
+    confirm:'LOCAL_DEMO_ONLY',
+    password,
+    nicheSlug:'luxury',
+  });
+  assert.equal(rerun.niche.slug,'luxury');
+  const noDuplicateArticles=await pool.query("SELECT count(*)::integer AS total FROM conspace.articles WHERE slug=ANY($1::text[])",[[
+    'demo-review-needs-changes','demo-submitted-review-queue','demo-chief-review-queue','demo-approved-ready-publish','demo-public-house-overview','demo-field-ready','demo-field-blocked'
+  ]]);
+  assert.equal(noDuplicateArticles.rows[0].total,7);
 });
