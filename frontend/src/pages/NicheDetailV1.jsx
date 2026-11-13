@@ -9,6 +9,21 @@ import { Markdown } from '../components/Markdown.jsx';
 import { ArticleCard, Breadcrumbs, PageIntro, ReaderSwitch, SectionHeading, StatusPanel } from '../components/UI.jsx';
 import { Icon } from '../components/Icons.jsx';
 
+function DesignBlocks({ sections, expected=7 }) {
+  const blocks=Array.isArray(sections)?[...sections].sort((a,b)=>a.sectionNo-b.sectionNo):[];
+  const publishedCount=blocks.filter(section=>typeof section.content==='string'&&section.content.trim()&&section.sourceRef).length;
+  return <section className="public-design-section">
+    <SectionHeading eyebrow="TEMPLATE B / 07 KHỐI" title="Hồ sơ mảng kiến trúc" description={publishedCount+'/'+expected+' khối đã được kiểm duyệt và xuất bản. Khối chưa đủ nguồn được giữ trống thay vì điền nội dung suy đoán.'}/>
+    <div className="public-design-grid">{blocks.map(section=>{
+      const published=Boolean(typeof section.content==='string'&&section.content.trim()&&section.sourceRef);
+      return <article className={'public-design-block '+(published?'is-published':'is-empty')} key={section.sectionNo}>
+        <div className="public-design-block-head"><span className="public-design-index">{String(section.sectionNo).padStart(2,'0')}</span><div><span className="eyebrow">KHỐI KIẾN TRÚC</span><h3>{section.title||'Nội dung chuyên môn'}</h3></div></div>
+        {published?<><div className="public-design-content"><Markdown body={section.content}/></div><p className="public-layer-source"><Icon name="info" size={14}/> Nguồn: {section.sourceRef}</p></>:<p className="public-layer-unpublished">Chưa có nội dung đã kiểm duyệt và đủ nguồn để công khai.</p>}
+      </article>;
+    })}</div>
+  </section>;
+}
+
 function LayerAccordion({ role, sections, open, onToggle }) {
   const content = nicheLayersForRole(sections, role.id);
   const publishedCount = content.filter((item) => item.published).length;
@@ -83,11 +98,7 @@ export default function NicheDetailV1() {
       {isConstruction ? <section className="public-layers-section">
         <SectionHeading eyebrow="TEMPLATE A / 12 KHỐI" title="Ba lớp nội dung cùng một trang" description="Chỉ các khối đã có nội dung, nguồn và trạng thái xuất bản mới được hiển thị. Mở thêm góc nhìn khác mà không đổi URL."/>
         <div className="public-layer-stack">{READERS.map((role) => <LayerAccordion key={role.id} role={role} sections={niche.sections || []} open={openRoles.includes(role.id)} onToggle={(id, open) => setOpenRoles((current) => toggleOpenLayerRole(current, id, open))}/>)}</div>
-      </section> : <section className="public-design-note">
-        <span className="eyebrow">TEMPLATE B / MẢNG KIẾN TRÚC</span>
-        <h2>Hồ sơ mảng kiến trúc có cấu trúc riêng</h2>
-        <p>Không áp dụng 12 khối của ngách thi công cho mảng kiến trúc. Nội dung chuyên sâu chỉ được mở khi có hồ sơ theo cấu trúc riêng và đã xuất bản. Các bài viết, chương sách và ca hiện trường liên quan đang có sẽ hiển thị bên dưới.</p>
-      </section>}
+      </section> : <DesignBlocks sections={niche.sections||[]} expected={niche.expectedSectionCount||7}/>} 
 
       <section className="public-related-content">
         <SectionHeading eyebrow="BÀI VIẾT ĐÃ XUẤT BẢN" title="Đọc sâu trong lĩnh vực"/>
