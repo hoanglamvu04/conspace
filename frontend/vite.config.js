@@ -9,6 +9,7 @@ export default defineConfig({
     strictPort: true,
     proxy: {
       '/api': { target: 'http://127.0.0.1:5088', changeOrigin: false },
+      '/sitemap.xml': { target: 'http://127.0.0.1:5088', changeOrigin: false },
     },
   },
   preview: { host: '127.0.0.1', port: 4178, strictPort: true },
