@@ -78,5 +78,13 @@ export function createContentRepository(db=pool){
    const count=await query('SELECT COUNT(*)::integer AS total FROM conspace.terms t WHERE '+predicate,[text]);
    return {rows:result.rows,total:count.rows[0]?.total??0};
   },
+  async termBySlug(slug){
+   const sql=[
+    'SELECT t.id,t.term,t.slug,t.definition,t.source_ref AS "sourceRef",t.reviewed_at AS "reviewedAt",t.updated_at AS "updatedAt",',
+    "COALESCE((SELECT json_agg(json_build_object('id',n.id,'slug',n.slug,'name',n.name,'group',n.group_type) ORDER BY n.sort_order,n.name) FROM conspace.term_niches tn JOIN conspace.niches n ON n.id=tn.niche_id AND n.is_active=true WHERE tn.term_id=t.id),'[]'::json) AS niches",
+    "FROM conspace.terms t WHERE t.slug=$1 AND t.status='PUBLISHED' AND t.reviewed_by IS NOT NULL AND t.reviewed_at IS NOT NULL AND t.source_ref IS NOT NULL LIMIT 1",
+   ].join(' ');
+   return (await query(sql,[slug])).rows[0]??null;
+  },
  };
 }
