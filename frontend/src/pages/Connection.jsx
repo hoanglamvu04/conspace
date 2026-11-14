@@ -105,7 +105,7 @@ export function ConnectionForm(){
         <h2>Đã tiếp nhận riêng tư</h2>
         <p>{success.message}</p>
         <small>Mã tiếp nhận: {success.id}</small>
-        <div className="cms-btn-row"><Link className="button button--primary" to="/">Về trang chủ</Link><button type="button" className="button button--outline" onClick={()=>setSuccess(null)}>Gửi yêu cầu khác</button></div>
+        <div className="connection-success-actions"><Link className="button button--primary" to="/">Về trang chủ</Link><button type="button" className="button button--outline" onClick={()=>setSuccess(null)}>Gửi yêu cầu khác</button></div>
       </div>:<div className="connection-form-layout">
         <form className="connection-form" onSubmit={submit}>
           <label htmlFor="connection-description">Bạn cần trao đổi điều gì? <span aria-hidden="true">*</span></label>
