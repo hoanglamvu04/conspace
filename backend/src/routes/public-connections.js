@@ -5,6 +5,7 @@ import { RequestError, validate } from '../http/validation.js';
 import { asyncHandler } from '../middleware/admin-auth.js';
 import { encryptPrivateContact } from '../security/private-contact.js';
 import { inTransaction, writeAudit } from '../services/audit.js';
+import { env } from '../config/env.js';
 
 const submissionSchema=z.strictObject({
   type:z.enum(['project','architect','contractor','join']),
@@ -20,7 +21,7 @@ const TYPE_MAP=Object.freeze({
   join:'JOIN',
 });
 
-export function createPublicConnectionsRouter(db=pool){
+export function createPublicConnectionsRouter(db=pool,contactEncryptionKey=env.contactEncryptionKey){
   const router=Router();
   if(!db){
     router.use((_req,_res,next)=>next(new RequestError(503,'DATABASE_UNAVAILABLE','Connection intake is temporarily unavailable')));
@@ -30,7 +31,7 @@ export function createPublicConnectionsRouter(db=pool){
   router.post('/',asyncHandler(async(req,res)=>{
     const input=validate(submissionSchema,req.body);
     let encrypted;
-    try { encrypted=encryptPrivateContact(input.contact); }
+    try { encrypted=encryptPrivateContact(input.contact,contactEncryptionKey); }
     catch { throw new RequestError(503,'PRIVATE_CONTACT_UNAVAILABLE','Private contact intake is temporarily unavailable'); }
 
     if(input.nicheId){
