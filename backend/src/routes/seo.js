@@ -7,7 +7,7 @@ const publishedArticle="a.status='PUBLISHED' AND a.approved_by IS NOT NULL AND a
 const checkedField='f.unit_anonymized=true AND f.address_anonymized=true AND f.photo_rights_confirmed=true';
 const STATIC_PATHS=[
   '/', '/ngach', '/tu-sach', '/hien-truong', '/hoi-dap', '/tra-nhanh',
-  '/bai-viet', '/ban-nghe', '/ve-conspace', '/quy-tac-noi-dung', '/lien-he',
+  '/bai-viet', '/ban-nghe', '/ve-conspace', '/quy-tac-noi-dung', '/lien-he', '/ket-noi',
 ];
 
 function chapterPath(bookSlug,chapterNo){
