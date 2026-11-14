@@ -45,9 +45,9 @@ Returns active, source-backed niches only. Niche detail is available at `GET /ap
 
 The confirmed design categories are HOUSE, LUXURY, F&B, STAY, OFFICE, PROJECT, FACTORY and SACRED. The model supports up to 30 construction niches and five construction groups, but their names must be entered from approved source material. Do not seed guessed names. `articleCount` counts published, approved articles from the database. Niche detail always returns the approved template shape: Template A exposes 12 section slots with reader layers; Template B exposes seven architecture section slots with shared `content` and `sourceRef`. Template B content is non-null only when that exact section is approved, published, due, sourced and non-empty; draft/review content is never exposed.
 
-### GET /api/v1/articles?role=homeowner|architect|contractor&niche=slug&limit=12&cursor=...
+### GET /api/v1/articles?role=homeowner|architect|contractor&niche=slug&tag=slug&limit=12&cursor=...
 
-Published and approved articles only. Limit defaults to 12 and is capped at 50. Cursor is opaque, versioned keyset pagination.
+Published and approved articles only. Limit defaults to 12 and is capped at 50. Cursor is opaque, versioned keyset pagination. Optional `tag` filters by an editorial tag without creating a new niche/taxonomy. The public `/ban-nghe` route uses `tag=ban-nghe`; untagged public articles remain visible on `/bai-viet` but do not appear in Bàn nghề.
 
 ```json
 {
