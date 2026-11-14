@@ -225,6 +225,10 @@ export async function seedDemo(db=pool,options={}){
       body:'## [DEMO] Nội dung công khai local\n\nBài này giúp kiểm thử card bài viết và trang chi tiết public. Không phải nội dung biên tập thật.',
       status:'PUBLISHED',editor,approver:reviewer,nicheId:niche.id,publishedAt:new Date(Date.now()-60*60*1000),
     });
+    const workbenchTag=await client.query(
+      "INSERT INTO conspace.tags(slug,name) VALUES('ban-nghe','Bàn nghề') ON CONFLICT(slug) DO UPDATE SET name=EXCLUDED.name RETURNING id"
+    );
+    await client.query('INSERT INTO conspace.article_tags(article_id,tag_id) VALUES($1,$2) ON CONFLICT DO NOTHING',[publicId,workbenchTag.rows[0].id]);
     await addWorkflow(client,{entityType:'ARTICLE',entityId:publicId,fromStatus:'APPROVED',toStatus:'PUBLISHED',action:'PUBLISH',actorUserId:chief.id});
 
     const fieldReadyArticleId=await createArticle(client,{
