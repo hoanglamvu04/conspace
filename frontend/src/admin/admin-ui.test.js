@@ -67,3 +67,10 @@ test('NEEDS_CHANGES feedback is actionable across CMS authoring surfaces', () =>
   assert.ok(editorial.includes('<ReviewFeedback entityType="ARTICLE" entityId={form.articleId}'));
   assert.ok(niches.includes("entityType={isTemplateB?'ARCHITECTURAL_SECTION':'NICHE_SECTION'}"));
 });
+
+
+test('Bàn nghề is an explicit article tag toggle, not a separate content copy', () => {
+  assert.ok(articles.includes('Hiển thị trong Bàn nghề'));
+  assert.ok(articles.includes("tag.slug==='ban-nghe'"));
+  assert.ok(articles.includes("{slug:'ban-nghe',name:'Bàn nghề'}"));
+});
