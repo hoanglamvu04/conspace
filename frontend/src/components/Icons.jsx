@@ -23,6 +23,7 @@ const paths = {
   alert: <><path d="M12 3 2 21h20L12 3Z" /><path d="M12 9v5M12 18h.01" /></>,
   info: <><circle cx="12" cy="12" r="9" /><path d="M12 11v6M12 7h.01" /></>,
   check: <><circle cx="12" cy="12" r="9" /><path d="m8 12 3 3 5-6" /></>,
+  shield: <><path d="m12 2 8 4v6c0 5-3.4 8.2-8 10-4.6-1.8-8-5-8-10V6l8-4Z"/><path d="m9 12 2 2 4-4"/></>,
   clock: <><circle cx="12" cy="12" r="9" /><path d="M12 6v6l4 2" /></>,
   folder: <><path d="M3 7V5h7l2 3h9v12H3V7Z" /></>,
   link: <><path d="M10 13a5 5 0 0 0 7 .3l2-2a5 5 0 0 0-7-7l-1.5 1.5" /><path d="M14 11a5 5 0 0 0-7-.3l-2 2a5 5 0 0 0 7 7l1.5-1.5" /></>,
