@@ -8,6 +8,7 @@ const niche = readFileSync(new URL('../pages/NicheDetailV1.jsx', import.meta.url
 const publicPages = readFileSync(new URL('../pages/PublicPages.jsx', import.meta.url), 'utf8');
 const config = readFileSync(new URL('../config.js', import.meta.url), 'utf8');
 const connection = readFileSync(new URL('../pages/Connection.jsx', import.meta.url), 'utf8');
+const articlesPage = readFileSync(new URL('../pages/Articles.jsx', import.meta.url), 'utf8');
 
 test('IA public routes include the new sections and keep legacy aliases working', () => {
   for (const route of ['/tu-sach', '/ngach', '/hien-truong', '/hoi-dap', '/tra-nhanh', '/tra-cuu', '/tu-dien', '/ban-nghe', '/lien-he', '/ket-noi']) {
@@ -73,4 +74,11 @@ test('phase-1 private Connection intake has four routes and no public marketplac
   assert.ok(connection.includes('Thông tin liên hệ chỉ dùng để xử lý yêu cầu này'));
   assert.ok(connection.includes('Không phải marketplace'));
   assert.ok(!connection.includes('đấu giá công khai'));
+});
+
+
+test('Bàn nghề uses an editorial tag instead of duplicating the full article stream', () => {
+  assert.ok(articlesPage.includes("isWorkbench ? 'ban-nghe' : null"));
+  assert.ok(articlesPage.includes('Chưa có bài Bàn nghề đã xuất bản'));
+  assert.ok(articlesPage.includes('Không lấy toàn bộ dòng bài để lấp chỗ trống'));
 });
