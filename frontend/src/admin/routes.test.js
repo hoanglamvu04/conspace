@@ -8,10 +8,10 @@ const app = readFileSync(new URL('../App.jsx', import.meta.url), 'utf8');
 const admin = [
   '/admin/login', '/admin', 'dashboard', 'articles', 'articles/new',
   'articles/:id/edit', 'reviews', 'niches', 'books', 'chapters', 'field-notes',
-  'dictionary', 'questions', 'media', 'users', 'settings',
+  'dictionary', 'questions', 'connections', 'media', 'audit', 'users', 'settings',
 ];
 
-test('all 15 documented CMS routes, including deep article editing, exist', () => {
+test('all documented CMS routes, including Connection triage and deep article editing, exist', () => {
   admin.forEach((path) => assert.ok(routes.includes(`path="${path}"`), `Missing ${path}`));
 });
 
