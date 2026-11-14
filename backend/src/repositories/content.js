@@ -28,7 +28,7 @@ export function createContentRepository(db=pool){
    ].join(' ');
    return (await query(sql,[group??null])).rows;
   },
-  async articles({role,niche,limit,cursor}){
+  async articles({role,niche,tag,limit,cursor}){
    const rank="CASE WHEN $1::text IS NOT NULL AND a.audience_role=$1 THEN 0 ELSE 1 END";
    const cover="COALESCE(a.cover_image_url,(SELECT '/api/v1/media/' || am.media_id::text FROM conspace.article_media am JOIN conspace.media_assets m ON m.id=am.media_id WHERE am.article_id=a.id AND am.role='COVER' AND m.rights_confirmed=true AND m.deleted_at IS NULL ORDER BY am.position LIMIT 1))";
    if(role&&cursor?.v!==1){
@@ -39,10 +39,11 @@ export function createContentRepository(db=pool){
      'FROM conspace.articles a JOIN conspace.authors au ON au.id=a.author_id',
      'WHERE '+published,
      'AND ($2::text IS NULL OR EXISTS(SELECT 1 FROM conspace.article_niches an2 JOIN conspace.niches n2 ON n2.id=an2.niche_id AND n2.is_active=true WHERE an2.article_id=a.id AND n2.slug=$2))',
+     'AND ($7::text IS NULL OR EXISTS(SELECT 1 FROM conspace.article_tags atg2 JOIN conspace.tags t2 ON t2.id=atg2.tag_id WHERE atg2.article_id=a.id AND t2.slug=$7))',
      'AND ($3::integer IS NULL OR '+rank+' > $3 OR ('+rank+'=$3 AND (a.published_at,a.id)<($4::timestamptz,$5::uuid)))',
      'ORDER BY "preferenceRank",a.published_at DESC,a.id DESC LIMIT $6',
     ].join(' ');
-    return (await query(sql,[role,niche??null,cursor?.preferenceRank??null,cursor?.publishedAt??null,cursor?.id??null,limit+1])).rows;
+    return (await query(sql,[role,niche??null,cursor?.preferenceRank??null,cursor?.publishedAt??null,cursor?.id??null,limit+1,tag??null])).rows;
    }
    const sql=[
     'SELECT a.id,a.slug,a.title,a.excerpt,'+cover+' AS "coverImage",',
@@ -51,10 +52,11 @@ export function createContentRepository(db=pool){
     'FROM conspace.articles a JOIN conspace.authors au ON au.id=a.author_id',
     'WHERE '+published,
     'AND ($2::text IS NULL OR EXISTS(SELECT 1 FROM conspace.article_niches an2 JOIN conspace.niches n2 ON n2.id=an2.niche_id AND n2.is_active=true WHERE an2.article_id=a.id AND n2.slug=$2))',
+    'AND ($6::text IS NULL OR EXISTS(SELECT 1 FROM conspace.article_tags atg2 JOIN conspace.tags t2 ON t2.id=atg2.tag_id WHERE atg2.article_id=a.id AND t2.slug=$6))',
     'AND ($3::timestamptz IS NULL OR (a.published_at,a.id)<($3::timestamptz,$4::uuid))',
     'ORDER BY a.published_at DESC,a.id DESC LIMIT $5',
    ].join(' ');
-   return (await query(sql,[role??null,niche??null,cursor?.publishedAt??null,cursor?.id??null,limit+1])).rows;
+   return (await query(sql,[role??null,niche??null,cursor?.publishedAt??null,cursor?.id??null,limit+1,tag??null])).rows;
   },
   async articleBySlug(slug){
    const sql=[
