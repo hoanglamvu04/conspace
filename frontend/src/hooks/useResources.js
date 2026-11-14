@@ -58,7 +58,7 @@ export function useTerms(query, enabled = true) {
   return useResource(apiUrl('/terms', { q: query, limit: 20 }), { enabled });
 }
 
-export function useArticles(role, niche, limit = 9) {
+export function useArticles(role, niche, limit = 9, tag = null) {
   const [revision, setRevision] = useState(0);
   const [state, setState] = useState({ status: 'loading', data: [], error: null, nextCursor: null, loadingMore: false });
   const controllerRef = useRef(null);
@@ -75,8 +75,8 @@ export function useArticles(role, niche, limit = 9) {
     priorityIdsRef.current = new Set();
     busyRef.current = false;
     setState({ status: 'loading', data: [], error: null, nextCursor: null, loadingMore: false });
-    const allUrl = apiUrl('/articles', { niche, limit });
-    const priorityUrl = role ? apiUrl('/articles', { role, niche, limit }) : null;
+    const allUrl = apiUrl('/articles', { niche, tag, limit });
+    const priorityUrl = role ? apiUrl('/articles', { role, niche, tag, limit }) : null;
     Promise.all([
       getJson(allUrl, { signal: controller.signal }),
       priorityUrl ? getJson(priorityUrl, { signal: controller.signal }).catch(() => null) : Promise.resolve(null),
@@ -93,7 +93,7 @@ export function useArticles(role, niche, limit = 9) {
       if (!controller.signal.aborted) setState({ status: 'error', data: [], error, nextCursor: null, loadingMore: false });
     });
     return () => { controller.abort(); controllerRef.current = null; };
-  }, [role, niche, limit, revision]);
+  }, [role, niche, tag, limit, revision]);
 
   const loadMore = useCallback(async () => {
     const controller = controllerRef.current;
@@ -101,9 +101,9 @@ export function useArticles(role, niche, limit = 9) {
     busyRef.current = true;
     setState((current) => ({ ...current, loadingMore: true, error: null }));
     try {
-      const allUrl = apiUrl('/articles', { niche, limit, cursor: nextAllRef.current });
+      const allUrl = apiUrl('/articles', { niche, tag, limit, cursor: nextAllRef.current });
       const priorityUrl = role && nextPriorityRef.current
-        ? apiUrl('/articles', { role, niche, limit, cursor: nextPriorityRef.current })
+        ? apiUrl('/articles', { role, niche, tag, limit, cursor: nextPriorityRef.current })
         : null;
       const [allPayload, priorityPayload] = await Promise.all([
         getJson(allUrl, { signal: controller.signal }),
@@ -129,7 +129,7 @@ export function useArticles(role, niche, limit = 9) {
     } finally {
       busyRef.current = false;
     }
-  }, [role, niche, limit]);
+  }, [role, niche, tag, limit]);
 
   const retry = useCallback(() => setRevision((current) => current + 1), []);
   return { ...state, retry, loadMore };
