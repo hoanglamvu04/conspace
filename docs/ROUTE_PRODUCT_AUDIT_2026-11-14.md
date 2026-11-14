@@ -40,7 +40,7 @@ Basis: current React routes, CMS routes, public/admin API wiring, and `docs/INFO
 | `/ve-conspace` | 1 | COMPLETE | Public editorial identity and governance explanation are present. | P1 |
 | `/quy-tac-noi-dung` | 1 | COMPLETE | Six editorial commitments are presented as a dedicated public page. | P1 |
 | `/lien-he` | 1 | PARTIAL / SOURCE-BLOCKED | Legal operator is shown, but verified address/email/phone are unavailable in approved project sources, so the page correctly refuses to invent them. | P1 |
-| `/ket-noi` and `/ket-noi/{du-an|kien-truc-su|nha-thau|tham-gia}` | 1 | **MISSING** | IA requires private manual intake; no public route, database, API or CMS triage exists at audit baseline. | **P0** |
+| `/ket-noi` and `/ket-noi/{du-an|kien-truc-su|nha-thau|tham-gia}` | 1 | **COMPLETE** | Private landing + four intake forms, encrypted contact persistence, no public listing/marketplace, and manual internal triage are implemented. Typed form routes are noindex; the landing can be indexed. | **P0 resolved** |
 | `/cong-nghe`, `/cong-nghe/:slug` | 2 | LATER | IA explicitly schedules this as a source-backed editorial vertical, not a chatbot. | P2 |
 | `/ho-so/:don-vi` | 3 | LATER | IA phase 3; must not be implemented as ranking/review marketplace. | P3 |
 | unmatched route | 1 | COMPLETE | Dedicated 404 page exists. | P0 |
@@ -65,27 +65,22 @@ Basis: current React routes, CMS routes, public/admin API wiring, and `docs/INFO
 | `/admin/users` | COMPLETE | Multi-role/person identity/delegated permission/session revocation. | P0 |
 | `/admin/settings` | COMPLETE for current Backend scope | Account/session/password security is real; business-policy toggles are intentionally absent because no settings API exists. | P2 |
 | dedicated author-management page | PARTIAL / MISSING UI | Backend author CRUD exists and Article Editor consumes authors, but there is no dedicated CMS route to manage author profiles. | P1 |
-| `/admin/connections` | **MISSING** | Required to manually triage phase-1 private Connection intake. | **P0** |
+| `/admin/connections` | **COMPLETE** | ADMIN/EDITOR can inspect the private queue; contact decrypts only on detail with audit. EDITOR performs reasoned triage; reviewer/chief roles do not inherit access. | **P0 resolved** |
 
 ## Cross-route findings
 
-1. **Primary missing v1 product flow: Connection intake.** The IA marks it phase 1, but baseline has no public form, private persistence or internal triage.
+1. **Resolved P0: Connection intake.** The phase-1 flow now has private public forms, encrypted persistence, no public listing, audited contact access and internal manual triage.
 2. **Bàn nghề is visually distinct only by heading/copy, not data semantics.** It currently renders the same published article stream as `/bai-viet`.
 3. **Field Note public URLs are functional but not aligned with the IA slug target.**
 4. **Quick lookup is already a strong search surface, but the source-backed symptom map (“Tôi thấy…”) remains a separate content-model gap.**
 5. **Static organization pages are acceptable as code-owned content for v1; Contact cannot be completed with phone/email/address until verified source material is supplied.**
-6. **CMS is substantially more complete than the public route map.** The highest CMS gaps are Connection triage, author-profile UI and chapter-linking ergonomics.
+6. **CMS is substantially more complete than the public route map.** After resolving Connection triage, the highest CMS gaps are author-profile UI and chapter-linking ergonomics.
 
 ## Execution order after audit
 
-### P0 — finish phase-1 product
-1. Build private Connection intake end-to-end:
-   - public `/ket-noi` landing + four forms;
-   - encrypted contact storage;
-   - no public listing;
-   - ADMIN/EDITOR triage in `/admin/connections`;
-   - audit trail and tests.
-2. Re-run full route/API/CI gate.
+### P0 — phase-1 product
+- **Resolved:** private Connection intake end-to-end with encrypted contact storage, no public listing, ADMIN/EDITOR oversight/triage, audit trail and regression tests.
+- Full route/API/CI gate remains mandatory after every follow-up batch.
 
 ### P1 — close visible “half-built” routes
 1. Give `/ban-nghe` a real editorial selection instead of duplicating `/bai-viet`.
