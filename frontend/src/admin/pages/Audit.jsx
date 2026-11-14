@@ -15,7 +15,7 @@ export default function Audit(){
       <div className="cms-table-tools">
         <select value={entityType} onChange={e=>{setEntityType(e.target.value);setPage(1);}} aria-label="Lọc loại thực thể">
           <option value="">Tất cả thực thể</option>
-          {['ARTICLE','NICHE_SECTION','ARCHITECTURAL_SECTION','TERM','QUESTION','QUESTION_ANSWER','FIELD_NOTE','MEDIA','CMS_USER'].map(x=><option key={x} value={x}>{x}</option>)}
+          {['ARTICLE','NICHE_SECTION','ARCHITECTURAL_SECTION','TERM','QUESTION','QUESTION_ANSWER','FIELD_NOTE','CONNECTION_INTAKE','MEDIA','CMS_USER'].map(x=><option key={x} value={x}>{x}</option>)}
         </select>
         <input value={action} onChange={e=>{setAction(e.target.value);setPage(1);}} placeholder="Lọc theo action…" aria-label="Lọc action"/>
       </div>
