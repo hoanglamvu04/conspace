@@ -32,7 +32,7 @@ export function createContentRouter(repository = createContentRepository()) {
     const last = rows[params.limit - 1];
     res.json({
       ok: true, data,
-      meta: { nextCursor: hasMore && last ? encodeCursor(last,params.role&&cursor?.v!==1?params.role:null) : null, preferredAudienceRole:params.role??'homeowner' },
+      meta: { nextCursor: hasMore && last ? encodeCursor(last,params.role&&cursor?.v!==1?params.role:null) : null, preferredAudienceRole:params.role??'homeowner', tag:params.tag??null },
     });
   }));
 
