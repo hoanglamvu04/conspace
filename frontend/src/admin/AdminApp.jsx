@@ -10,6 +10,7 @@ import { Books, Chapters } from './pages/Library.jsx';
 import { FieldNotes, DictionaryAdmin, Questions } from './pages/Editorial.jsx';
 import { Media, Users, Settings } from './pages/System.jsx';
 import Audit from './pages/Audit.jsx';
+import Connections from './pages/Connections.jsx';
 import './admin.css';
 
 function AdminMetadata() {
@@ -48,6 +49,7 @@ export default function AdminApp() {
       <Route path="field-notes" element={<Restricted permission="field-notes:read"><FieldNotes/></Restricted>}/>
       <Route path="dictionary" element={<Restricted permission="dictionary:read"><DictionaryAdmin/></Restricted>}/>
       <Route path="questions" element={<Restricted permission="questions:read"><Questions/></Restricted>}/>
+      <Route path="connections" element={<Restricted permission="connections:read"><Connections/></Restricted>}/>
       <Route path="media" element={<Restricted permission="media:read"><Media/></Restricted>}/>
       <Route path="audit" element={<Restricted permission="audit:read"><Audit/></Restricted>}/>
       <Route path="users" element={<Restricted permission="users:read"><Users/></Restricted>}/>
