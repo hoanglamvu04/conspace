@@ -11,6 +11,7 @@ export const nichesQuerySchema = strict({
 export const articlesQuerySchema = strict({
   role: z.enum(['homeowner', 'architect', 'contractor']).default('homeowner'),
   niche: slug.optional(),
+  tag: slug.optional(),
   limit: limit(12),
   cursor: z.string().max(512).optional(),
 });
