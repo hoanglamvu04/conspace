@@ -44,7 +44,7 @@ function DocumentMeta() {
                 : pathname.startsWith('/cam-nang/') || pathname.startsWith('/phan-nha-thau/') || pathname.startsWith('/quan-quanh-kts/') ? ['Chương sách', 'Chương sách đã được duyệt và xuất bản.']
                   : null;
   const info = exact || dynamic || ['CONSPACE', 'Sự thật ngành Xây.'];
-  const detailRoute = Boolean(dynamic) && pathname !== '/hoi-dap/gui-cau-hoi';
+  const detailRoute = Boolean(dynamic) && pathname !== '/hoi-dap/gui-cau-hoi' && !pathname.startsWith('/ket-noi/');
   const known = Boolean(exact || pathname === '/' || pathname === '/hoi-dap/gui-cau-hoi');
   const index = known && pathname !== '/hoi-dap/gui-cau-hoi';
   useSeoMetadata({title:info[0],description:info[1],canonicalPath,index,enabled:!detailRoute});
