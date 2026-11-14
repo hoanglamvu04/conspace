@@ -7,9 +7,10 @@ const home = readFileSync(new URL('../pages/HomeV1.jsx', import.meta.url), 'utf8
 const niche = readFileSync(new URL('../pages/NicheDetailV1.jsx', import.meta.url), 'utf8');
 const publicPages = readFileSync(new URL('../pages/PublicPages.jsx', import.meta.url), 'utf8');
 const config = readFileSync(new URL('../config.js', import.meta.url), 'utf8');
+const connection = readFileSync(new URL('../pages/Connection.jsx', import.meta.url), 'utf8');
 
 test('IA public routes include the new sections and keep legacy aliases working', () => {
-  for (const route of ['/tu-sach', '/ngach', '/hien-truong', '/hoi-dap', '/tra-nhanh', '/tra-cuu', '/tu-dien', '/ban-nghe', '/lien-he']) {
+  for (const route of ['/tu-sach', '/ngach', '/hien-truong', '/hoi-dap', '/tra-nhanh', '/tra-cuu', '/tu-dien', '/ban-nghe', '/lien-he', '/ket-noi']) {
     assert.ok(app.includes('path="' + route + '"'), 'Missing public route ' + route);
   }
   assert.ok(app.includes('path="/mang/:slug"'));
@@ -19,6 +20,7 @@ test('IA public routes include the new sections and keep legacy aliases working'
   assert.ok(app.includes('path="/quan-quanh-kts/:chapter"'));
   assert.ok(app.includes('path="/hoi-dap/gui-cau-hoi"'));
   assert.ok(app.includes('path="/tu-dien/:slug"'));
+  assert.ok(app.includes('path="/ket-noi/:type"'));
 });
 
 test('homepage keeps the architectural drawing and presents three reader choices without a carousel', () => {
@@ -62,4 +64,13 @@ test('robots and dynamic sitemap expose only canonical public surfaces', () => {
   assert.ok(!sitemapRoute.includes("'/tu-dien'"));
   assert.ok(robots.includes('Disallow: /admin'));
   assert.ok(robots.includes('Sitemap: https://conspace.vn/sitemap.xml'));
+});
+
+
+test('phase-1 private Connection intake has four routes and no public marketplace behavior', () => {
+  for (const slug of ['du-an','kien-truc-su','nha-thau','tham-gia']) assert.ok(connection.includes(slug));
+  assert.ok(connection.includes("postJson('/connections'"));
+  assert.ok(connection.includes('Thông tin liên hệ chỉ dùng để xử lý yêu cầu này'));
+  assert.ok(connection.includes('Không phải marketplace'));
+  assert.ok(!connection.includes('đấu giá công khai'));
 });
