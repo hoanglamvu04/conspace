@@ -11,8 +11,8 @@ const editorial = readFileSync(new URL('./pages/Editorial.jsx', import.meta.url)
 const niches = readFileSync(new URL('./pages/Niches.jsx', import.meta.url), 'utf8');
 const reviewFeedback = readFileSync(new URL('./ReviewFeedback.jsx', import.meta.url), 'utf8');
 
-test('ADMIN CMS navigation is limited to system administration and read-only article access', () => {
-  assert.match(api, /ADMIN: \[\.\.\.EVERYONE, 'users:read', 'users:write', 'settings:write'\]/);
+test('ADMIN CMS navigation is limited to system administration, private intake oversight and read-only article access', () => {
+  assert.match(api, /ADMIN: \[\.\.\.EVERYONE, 'users:read', 'users:write', 'connections:read', 'settings:write'\]/);
   assert.doesNotMatch(api, /ADMIN: \[\.\.\.new Set/);
   assert.match(api, /EDITOR_IN_CHIEF: \[\.\.\.EVERYONE,\.\.\.CHIEF, 'dictionary:publish'\]/);
 });
