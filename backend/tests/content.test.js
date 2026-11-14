@@ -144,7 +144,7 @@ test('repository uses parameter placeholders for all public inputs', async () =>
   const repository = createContentRepository(db);
   await repository.niches('construction');
   await repository.articles({
-    role: 'contractor', niche: "x' OR TRUE --", limit: 12,
+    role: 'contractor', niche: "x' OR TRUE --", tag: "ban-nghe' OR TRUE --", limit: 12,
     cursor: { publishedAt, id },
   });
   await repository.articleBySlug("foo' OR TRUE --");
@@ -152,6 +152,7 @@ test('repository uses parameter placeholders for all public inputs', async () =>
   assert.equal(calls.length, 5);
   assert.ok(calls.every(({ sql, params }) => Array.isArray(params) && !sql.includes("x' OR TRUE")));
   assert.ok(calls.some(({ params }) => params.includes("x' OR TRUE --")));
+  assert.ok(calls.some(({ params }) => params.includes("ban-nghe' OR TRUE --")));
   assert.ok(calls.some(({ params }) => params.includes("foo' OR TRUE --")));
   assert.ok(calls.some(({ params }) => params.includes("a'b")));
   assert.match(calls[1].sql, /approved_at IS NOT NULL/);
