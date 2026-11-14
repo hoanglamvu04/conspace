@@ -9,6 +9,7 @@ import { ArticleDetail, ArticleIndex } from './pages/Articles.jsx';
 import { About, NotFound, Principles } from './pages/Sections.jsx';
 import { Contact } from './pages/Contact.jsx';
 import { BookIndex, BookDetail, ChapterDetail, FieldNotes, FieldNoteDetail, Questions, QuestionDetail, QuestionForm, Lookup, TermDetail } from './pages/PublicPages.jsx';
+import { ConnectionLanding, ConnectionForm } from './pages/Connection.jsx';
 import { useSeoMetadata } from './lib/seo.js';
 
 // Separate route bundle: readers never download the private CMS application.
@@ -26,6 +27,7 @@ const META = {
   '/ve-conspace': ['Về CONSPACE', 'Định vị và tư cách biên tập độc lập của CONSPACE.'],
   '/quy-tac-noi-dung': ['Quy tắc nội dung', 'Các nguyên tắc biên tập công khai của CONSPACE.'],
   '/lien-he': ['Liên hệ', 'Thông tin tổ chức và kênh tiếp nhận câu hỏi biên tập của CONSPACE.'],
+  '/ket-noi': ['Kết nối', 'Kênh tiếp nhận riêng tư và xử lý thủ công, không phải marketplace.'],
 };
 function DocumentMeta() {
   const { pathname } = useLocation();
@@ -36,6 +38,7 @@ function DocumentMeta() {
       : pathname.startsWith('/bai-viet/') ? ['Đọc bài viết', 'Bài viết đã xuất bản từ CONSPACE.']
         : pathname.startsWith('/hien-truong/') ? ['Ca hiện trường', 'Hồ sơ hiện trường đã được ẩn danh và xuất bản.']
           : pathname.startsWith('/hoi-dap/') ? ['Hỏi đáp', 'Câu hỏi và câu trả lời đã xuất bản.']
+            : pathname.startsWith('/ket-noi/') ? ['Kết nối', 'Biểu mẫu tiếp nhận riêng tư và xử lý thủ công.']
             : pathname.startsWith('/tu-sach/') ? ['Đầu sách', 'Danh sách chương đã được duyệt và xuất bản.']
               : pathname.startsWith('/tu-dien/') ? ['Thuật ngữ', 'Định nghĩa đã có nguồn và qua kiểm duyệt kỹ thuật.']
                 : pathname.startsWith('/cam-nang/') || pathname.startsWith('/phan-nha-thau/') || pathname.startsWith('/quan-quanh-kts/') ? ['Chương sách', 'Chương sách đã được duyệt và xuất bản.']
@@ -86,6 +89,8 @@ function Site() {
     <Route path="/ve-conspace" element={<About/>}/>
     <Route path="/quy-tac-noi-dung" element={<Principles/>}/>
     <Route path="/lien-he" element={<Contact/>}/>
+    <Route path="/ket-noi" element={<ConnectionLanding/>}/>
+    <Route path="/ket-noi/:type" element={<ConnectionForm/>}/>
     <Route path="*" element={<NotFound/>}/>
   </Routes></div><Footer/></>;
 }
