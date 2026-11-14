@@ -36,7 +36,7 @@ Basis: current React routes, CMS routes, public/admin API wiring, and `docs/INFO
 | `/tu-dien/:slug` | 1 | COMPLETE | Published, reviewed, source-backed term detail with related niches. | P1 |
 | `/bai-viet` | supporting | COMPLETE | Published article index with reader preference ranking and pagination. | P0 |
 | `/bai-viet/:slug` | supporting | COMPLETE | Published-only body, author, sources, related content and cover. | P0 |
-| `/ban-nghe` | legacy / v1 | PARTIAL | Route is preserved, but currently calls the same article list as `/bai-viet`; no distinct “góc nhìn/đời nghề” content selection exists. | P1 |
+| `/ban-nghe` | legacy / v1 | COMPLETE | Uses the same Article workflow and URLs, but only published articles explicitly tagged `ban-nghe` are selected. CMS exposes a dedicated Bàn nghề toggle; no duplicate content or taxonomy-39 entry is created. | P1 resolved |
 | `/ve-conspace` | 1 | COMPLETE | Public editorial identity and governance explanation are present. | P1 |
 | `/quy-tac-noi-dung` | 1 | COMPLETE | Six editorial commitments are presented as a dedicated public page. | P1 |
 | `/lien-he` | 1 | PARTIAL / SOURCE-BLOCKED | Legal operator is shown, but verified address/email/phone are unavailable in approved project sources, so the page correctly refuses to invent them. | P1 |
@@ -70,7 +70,7 @@ Basis: current React routes, CMS routes, public/admin API wiring, and `docs/INFO
 ## Cross-route findings
 
 1. **Resolved P0: Connection intake.** The phase-1 flow now has private public forms, encrypted persistence, no public listing, audited contact access and internal manual triage.
-2. **Bàn nghề is visually distinct only by heading/copy, not data semantics.** It currently renders the same published article stream as `/bai-viet`.
+2. **Resolved P1: Bàn nghề now has real editorial selection.** It uses the `ban-nghe` tag on the existing Article model, preserving one canonical article and one review workflow.
 3. **Field Note public URLs are functional but not aligned with the IA slug target.**
 4. **Quick lookup is already a strong search surface, but the source-backed symptom map (“Tôi thấy…”) remains a separate content-model gap.**
 5. **Static organization pages are acceptable as code-owned content for v1; Contact cannot be completed with phone/email/address until verified source material is supplied.**
@@ -83,7 +83,7 @@ Basis: current React routes, CMS routes, public/admin API wiring, and `docs/INFO
 - Full route/API/CI gate remains mandatory after every follow-up batch.
 
 ### P1 — close visible “half-built” routes
-1. Give `/ban-nghe` a real editorial selection instead of duplicating `/bai-viet`.
+1. **Resolved:** `/ban-nghe` now uses explicit editorial tag selection instead of duplicating `/bai-viet`.
 2. Move Field Note detail to a stable slug URL while keeping UUID compatibility.
 3. Improve chapter article linking UI and expose safe detach/delete behavior.
 4. Add dedicated Author Profile management UI.
