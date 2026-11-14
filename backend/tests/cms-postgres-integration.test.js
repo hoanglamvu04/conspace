@@ -216,6 +216,7 @@ test('real PostgreSQL flow: login -> create -> technical review -> chief review 
     slug:secondSlug,title:'Góc nhìn nhà thầu về công trình',excerpt:'Bài kiểm tra lens',
     body:'Bài kiểm tra xếp hạng cho một công trình; người đọc ở mọi góc nhìn vẫn đọc được.',
     audienceRole:'contractor',contentType:'EDITORIAL',sensitivityAssessed:true,sensitivityFlags:[],
+    tags:[{slug:'ban-nghe',name:'Bàn nghề'}],
     sources:[{title:'Nguồn thử nghiệm',citation:'CI test only'}],
   });
   assert.equal(secondDraft.status,201,JSON.stringify(secondDraft.body));
@@ -306,6 +307,11 @@ test('real PostgreSQL flow: login -> create -> technical review -> chief review 
   assert.ok(lensArticles.body.data.some(a=>a.slug===slug));
   assert.ok(lensArticles.body.data.some(a=>a.slug===secondSlug),'published contractor article remains visible to homeowner lens');
   assert.equal(lensArticles.body.data[0].slug,slug);
+  const workbenchArticles=await api(base)('GET','/api/v1/articles?tag=ban-nghe&role=homeowner&limit=50');
+  assert.equal(workbenchArticles.status,200,JSON.stringify(workbenchArticles.body));
+  assert.ok(workbenchArticles.body.data.some(a=>a.slug===secondSlug),'tagged published article must appear in Bàn nghề');
+  assert.equal(workbenchArticles.body.data.some(a=>a.slug===slug),false,'untagged public article must not leak into Bàn nghề');
+  assert.equal(workbenchArticles.body.meta.tag,'ban-nghe');
   const lensSearch=await api(base)('GET','/api/v1/search?q=c%C3%B4ng%20tr%C3%ACnh&type=article&role=homeowner');
   assert.equal(lensSearch.status,200,JSON.stringify(lensSearch.body));
   assert.ok(lensSearch.body.data.some(a=>a.slug===secondSlug));
