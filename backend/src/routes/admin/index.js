@@ -13,6 +13,7 @@ import { createBooksRouter, createChaptersRouter } from './books.js';
 import { createFieldNotesRouter } from './field-notes.js';
 import { createTermsRouter } from './terms.js';
 import { createQuestionsRouter } from './questions.js';
+import { createConnectionsRouter } from './connections.js';
 import { createMediaRouter } from './media.js';
 import { createReviewsRouter } from './reviews.js';
 import { createAuditRouter } from './audit.js';
@@ -33,7 +34,7 @@ export function createAdminRouter(db=pool,config=env){
 
   router.get('/',(req,res)=>{
     res.json({ok:true,data:{user:req.auth,modules:[
-      'users','authors','articles','niches','books','chapters','field-notes','terms','questions','media','reviews','audit',
+      'users','authors','articles','niches','books','chapters','field-notes','terms','questions','connections','media','reviews','audit',
     ]}});
   });
 
@@ -46,6 +47,7 @@ export function createAdminRouter(db=pool,config=env){
   router.use('/field-notes',createFieldNotesRouter(db,editorial));
   router.use('/terms',createTermsRouter(db));
   router.use('/questions',createQuestionsRouter(db,config));
+  router.use('/connections',createConnectionsRouter(db,config));
   router.use('/media',createMediaRouter(db));
   router.use('/reviews',createReviewsRouter(db,editorial));
   router.use('/audit',createAuditRouter(db));
