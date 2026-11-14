@@ -27,6 +27,7 @@ export const PRIMARY_NAV = [
   { to: '/hien-truong', label: 'Hiện trường' },
   { to: '/hoi-dap', label: 'Hỏi đáp' },
   { to: '/tra-nhanh', label: 'Tra nhanh' },
+  { to: '/ket-noi', label: 'Kết nối' },
 ];
 
 export const BOOKS = [
