@@ -245,14 +245,17 @@ export function FieldNoteDetail() {
       {images.length > 0 && <div className="container public-field-images">{images.map((image, index) => { const src = safeMediaUrl(image.url); return src ? <figure key={image.id || src}><img src={src} alt={image.caption || 'Ảnh hiện trường đã xác nhận quyền sử dụng ' + (index + 1)} loading="lazy"/>{image.caption && <figcaption>{image.caption}</figcaption>}</figure> : null; })}</div>}
       <div className="container article-layout">
         <article className="article-content">
-          <section><h2>Hiện tượng</h2><p>{data.phenomenon}</p></section>
-          <section><h2>Nguyên nhân gốc</h2><p>{data.rootCause}</p></section>
-          <section><h2>Điểm dừng / nghiệm thu</h2><p>{data.interventionPoint}</p></section>
-          {data.body && <Markdown body={data.body}/>}
+          <div className="field-case-summary">
+            <section><span className="eyebrow">01 / HIỆN TƯỢNG</span><h2>Điều đã quan sát</h2><p>{data.phenomenon}</p></section>
+            <section><span className="eyebrow">02 / NGUYÊN NHÂN GỐC</span><h2>Điều cần hiểu</h2><p>{data.rootCause}</p></section>
+            <section><span className="eyebrow">03 / ĐIỂM CHẶN</span><h2>Mốc dừng / nghiệm thu</h2><p>{data.interventionPoint}</p></section>
+          </div>
+          {data.body && <div className="field-case-detail"><span className="eyebrow">PHÂN TÍCH CHI TIẾT</span><Markdown body={data.body}/></div>}
+          <div className="article-bottom"><span>Hồ sơ đã ẩn danh · tư liệu công khai theo quyền sử dụng đã xác nhận</span><Link to="/hien-truong" className="text-link">Về kho Hiện trường <Icon name="arrow" size={16}/></Link></div>
         </article>
         <aside className="article-aside"><div className="side-panel"><span className="eyebrow">CHI PHÍ SỬA CHỮA</span>
           {data.repairCostAmount !== null && data.repairCostAmount !== undefined && data.repairCostSource ? <><h3>{Number(data.repairCostAmount).toLocaleString('vi-VN')} {data.repairCostCurrency || ''}</h3><p className="side-caption">Nguồn: {data.repairCostSource}</p></> : <p className="side-caption">Hồ sơ công khai không có số chi phí sửa chữa đủ nguồn để công bố.</p>}
-        </div></aside>
+        </div><div className="side-panel side-panel--soft"><Icon name="shield" size={25}/><h3>Vì sao hồ sơ được công khai?</h3><p>Ca chỉ xuất hiện sau khi ẩn danh đơn vị/địa chỉ và xác nhận quyền tư liệu.</p><Link className="text-link" to="/quy-tac-noi-dung">Xem nguyên tắc <Icon name="arrow" size={16}/></Link></div></aside>
       </div>
     </main>
   </>;
