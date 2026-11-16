@@ -94,13 +94,19 @@ export function BookIndex() {
       {books.status === 'loading' && <StatusPanel status="loading" kind="articles"/>}
       {books.status === 'error' && <StatusPanel status="error" onRetry={books.retry}/>}
       {books.status === 'success' && !books.data.length && <StatusPanel status="empty" title="Chưa có đầu sách từ API" description="Tủ sách sẽ hiển thị khi Backend trả về hồ sơ sách đã được xác nhận."/>}
-      {books.status === 'success' && books.data.length > 0 && <div className="public-book-grid">{orderedBooks.map((book, index) => <article className="public-book-card" key={book.id}>
+      {books.status === 'success' && books.data.length > 0 && <>
+        <div className="library-overview">
+          <div><span className="eyebrow">GÓC NHÌN ĐỌC</span><h2>Ưu tiên đầu sách phù hợp với bạn</h2><p>Đổi góc nhìn chỉ thay thứ tự hiển thị; cả ba đầu sách công khai vẫn được giữ nguyên.</p></div>
+          <ReaderSwitch/>
+        </div>
+        <div className="public-book-grid">{orderedBooks.map((book, index) => <article className="public-book-card" key={book.id}>
         <div className="public-book-cover"><span>CONSPACE / TỦ SÁCH</span><strong>{String(index + 1).padStart(2, '0')}</strong></div>
         <div className="public-book-info"><BookLabel value={book.contentLabelVi}/><h2>{book.title}</h2><p className="public-book-audience">{book.audienceRole === 'homeowner' ? 'Chủ nhà' : book.audienceRole === 'architect' ? 'Kiến trúc sư' : 'Nhà thầu'}</p>
           <p className="public-book-progress">{Number(book.publishedChapterCount || 0).toLocaleString('vi-VN')} / {Number(book.expectedChapterCount || 0).toLocaleString('vi-VN')} chương đã xuất bản</p>
           <Link className="button button--outline" to={'/tu-sach/' + encodeURIComponent(book.slug)}>Xem chương đã xuất bản <Icon name="arrow" size={17}/></Link>
         </div>
-      </article>)}</div>}
+      </article>)}</div>
+      </>}
       <div className="section-inline-note"><Icon name="info" size={19}/><p>Chương chưa xuất bản hoặc chưa đến lịch không được trả body từ API công khai. CONSPACE không tạo nội dung mẫu để lấp chỗ trống.</p></div>
     </main>
   </>;
@@ -121,6 +127,11 @@ export function BookDetail() {
     <main className="container content-page">
       <Breadcrumbs items={[{ label: 'Tủ sách', to: '/tu-sach' }, { label: data.title }]}/>
       <div className="public-book-detail-head"><BookLabel value={data.contentLabelVi}/><p>Đối tượng đọc chính: {data.audienceRole === 'homeowner' ? 'Chủ nhà' : data.audienceRole === 'architect' ? 'Kiến trúc sư' : 'Nhà thầu'}</p></div>
+      <div className="book-progress-summary">
+        <div><strong>{chapters.length.toLocaleString('vi-VN')}</strong><span>chương đang công khai</span></div>
+        {Number(data.expectedChapterCount || 0) > 0 && <div className="book-progress-track" aria-label={chapters.length + ' trên ' + Number(data.expectedChapterCount) + ' chương đã xuất bản'}><span style={{width: Math.min(100, chapters.length / Number(data.expectedChapterCount) * 100) + '%'}}/></div>}
+        <p>Danh sách dưới đây chỉ gồm chương mà API công khai cho phép đọc; vị trí chưa xuất bản không được tạo nội dung thay thế.</p>
+      </div>
       {chapters.length ? <div className="public-chapter-list">{chapters.map((item) => <Link className="public-chapter-row" key={item.chapterNo} to={chapterPath(data.slug, item.chapterNo)}>
         <span className="public-chapter-number">{String(item.chapterNo).padStart(2, '0')}</span>
         <span><strong>{chapterDisplayLabel(data.slug, item.chapterNo, item.title || item.displayLabel)}</strong>{item.excerpt && <small>{item.excerpt}</small>}<small>{formatDate(item.publishedAt)}</small></span>
@@ -162,9 +173,14 @@ export function ChapterDetail({ bookSlug }) {
         <h1>{data.title}</h1>
         {data.excerpt && <p className="article-deck">{data.excerpt}</p>}
         <div className="article-byline"><div className="author-avatar" aria-hidden="true"><Icon name="book" size={20}/></div><div><strong>{data.bookTitle}</strong><span>{formatDate(data.publishedAt)}</span></div></div>
+        <nav className="article-reading-tools" aria-label="Đi nhanh trong chương">
+          <a href="#noi-dung-chuong">Nội dung chương</a>
+          {Array.isArray(data.sources) && data.sources.length > 0 && <a href="#nguon-chuong">Nguồn tham khảo</a>}
+          <Link to={'/tu-sach/' + data.bookSlug}>Danh sách chương</Link>
+        </nav>
       </div>
       <div className="container article-layout">
-        <article className="article-content"><Markdown body={data.body}/>{Array.isArray(data.sources) && data.sources.length > 0 && <section className="article-sources"><h2>Nguồn tham khảo</h2><ol>{data.sources.map((source, index) => <li key={index}>{safeSourceUrl(source.url) ? <a href={safeSourceUrl(source.url)} target="_blank" rel="noopener noreferrer">{source.title} <Icon name="upRight" size={14}/></a> : source.title}{source.citation ? ' — ' + source.citation : ''}</li>)}</ol></section>}</article>
+        <article className="article-content" id="noi-dung-chuong"><Markdown body={data.body}/>{Array.isArray(data.sources) && data.sources.length > 0 && <section className="article-sources" id="nguon-chuong"><h2>Nguồn tham khảo</h2><ol>{data.sources.map((source, index) => <li key={index}>{safeSourceUrl(source.url) ? <a href={safeSourceUrl(source.url)} target="_blank" rel="noopener noreferrer">{source.title} <Icon name="upRight" size={14}/></a> : source.title}{source.citation ? ' — ' + source.citation : ''}</li>)}</ol></section>}</article>
         <aside className="article-aside"><div className="side-panel"><span className="eyebrow">TỦ SÁCH</span><h3>{data.bookTitle}</h3><BookLabel value={data.contentLabelVi}/><p className="side-caption">Chỉ chương đã được duyệt và xuất bản mới hiển thị tại đây.</p><Link className="text-link" to={'/tu-sach/' + data.bookSlug}>Danh sách chương <Icon name="arrow" size={16}/></Link></div></aside>
       </div>
       <div className="container public-chapter-navigation">
@@ -278,6 +294,11 @@ export function Questions() {
     <main className="container content-page">
       <Breadcrumbs items={[{ label: 'Hỏi đáp' }]}/>
       <div className="public-qa-actions"><div><span className="eyebrow">BẠN ĐANG GẶP VƯỚNG MẮC?</span><h2>Gửi câu hỏi cho tòa soạn</h2><p>Không cần tạo tài khoản. Bạn có thể chọn ngách phỏng đoán và gửi tối đa năm ảnh.</p></div><Link to="/hoi-dap/gui-cau-hoi" className="button button--primary">Gửi câu hỏi <Icon name="arrow" size={17}/></Link></div>
+      <div className="qa-process" aria-label="Quy trình Hỏi đáp">
+        <div><strong>01</strong><span><b>Bạn gửi câu hỏi</b><small>Không cần tài khoản; thông tin liên hệ là tùy chọn.</small></span></div>
+        <div><strong>02</strong><span><b>Tòa soạn phân loại</b><small>Ngách có thể được hiệu chỉnh trước khi trả lời.</small></span></div>
+        <div><strong>03</strong><span><b>Chỉ bản đã duyệt mới công khai</b><small>Câu hỏi chưa trả lời hoặc chưa duyệt không xuất hiện ở đây.</small></span></div>
+      </div>
       {questions.status === 'loading' && page === 1 && <StatusPanel status="loading" kind="articles"/>}
       {questions.status === 'error' && page === 1 && <StatusPanel status="error" onRetry={questions.retry}/>}
       {items.length > 0 && <>
@@ -312,6 +333,7 @@ export function QuestionDetail() {
       {data.niche && <p className="public-question-niche">Ngách liên quan: <Link to={'/ngach/' + encodeURIComponent(data.niche)}>{data.niche}</Link></p>}
       {images.length > 0 && <div className="public-field-images">{images.map((src, index) => { const url = safeMediaUrl(src); return url ? <figure key={src}><img src={url} alt={'Ảnh câu hỏi đã xác nhận quyền sử dụng ' + (index + 1)} loading="lazy"/></figure> : null; })}</div>}
       <section className="public-answer"><span className="eyebrow">CÂU TRẢ LỜI ĐÃ DUYỆT</span><Markdown body={data.answer}/><p className="public-answer-date">Xuất bản {formatDate(data.publishedAt)}</p></section>
+      <div className="question-detail-actions"><Link className="button button--outline" to="/hoi-dap">Xem câu hỏi khác</Link><Link className="button button--primary" to="/hoi-dap/gui-cau-hoi">Gửi câu hỏi của bạn <Icon name="arrow" size={16}/></Link></div>
     </article>
   </main>;
 }
@@ -382,6 +404,7 @@ export function QuestionForm() {
     <PageIntro eyebrow="HỎI ĐÁP / GỬI CÂU HỎI" title="Gửi câu hỏi cho CONSPACE" description="Câu hỏi được tiếp nhận ẩn danh. Số điện thoại chỉ được gửi khi bạn chủ động yêu cầu trả lời riêng."/>
     <main className="container content-page">
       <Breadcrumbs items={[{ label: 'Hỏi đáp', to: '/hoi-dap' }, { label: 'Gửi câu hỏi' }]}/>
+      {!success && <div className="form-trust-note"><Icon name="shield" size={22}/><div><strong>Bạn kiểm soát việc để lại thông tin liên hệ.</strong><p>Nếu không chọn “liên hệ riêng”, form không gửi số điện thoại. Nội dung/ảnh chỉ có thể xuất hiện công khai sau khi qua biên tập.</p></div></div>}
       {success ? <div className="public-submit-success" role="status"><Icon name="check" size={32}/><h2>Đã tiếp nhận câu hỏi</h2><p>{success}</p><div><Link className="button button--primary" to="/hoi-dap">Về trang Hỏi đáp</Link><button className="button button--outline" type="button" onClick={() => setSuccess('')}>Gửi câu hỏi khác</button></div></div> : <form className="public-question-form" onSubmit={submit}>
         <label htmlFor="question-description">Bạn đang gặp vấn đề gì? <span aria-hidden="true">*</span></label>
         <textarea id="question-description" required minLength={10} maxLength={10000} rows={7} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Mô tả tình huống, điều bạn đã quan sát và câu hỏi cần được làm rõ..."/>
@@ -580,7 +603,7 @@ export function Lookup() {
 
       {activeQuery.length >= 2 && <div className="lookup-facets" aria-label="Lọc loại kết quả">{SEARCH_TYPES.map(([value,label]) => <button type="button" key={value} className={activeType === value ? 'is-active' : ''} onClick={() => { setPage(1); commitParams({ type:value, q:activeQuery, niche:activeNiche }); }}>
         <span>{label}</span><strong>{Number(facets[value] || 0).toLocaleString('vi-VN')}</strong>
-      </button>)}</div>}
+      </button>)}{(activeType !== 'all' || activeNiche) && <button type="button" className="lookup-clear" onClick={() => { setPage(1); commitParams({ type:'all', niche:'', q:activeQuery }); }}><Icon name="close" size={15}/> Xóa bộ lọc</button>}</div>}
 
       {!activeQuery && <div className="lookup-intro"><div><Icon name="compass" size={37}/><h2>Bắt đầu từ điều bạn đang thấy.</h2><p>Tra nhanh tìm trong kho nội dung công khai. Kết quả không bao gồm bản nháp, câu hỏi chưa trả lời hoặc hồ sơ chưa duyệt.</p></div><div className="lookup-shortcuts"><Link to="/ngach"><Icon name="grid" size={22}/> Duyệt kho ngách <Icon name="arrow" size={17}/></Link><Link to="/tu-sach"><Icon name="book" size={22}/> Mở tủ sách <Icon name="arrow" size={17}/></Link><Link to="/hoi-dap/gui-cau-hoi"><Icon name="users" size={22}/> Gửi câu hỏi ẩn danh <Icon name="arrow" size={17}/></Link></div></div>}
       {activeQuery.length === 1 && <StatusPanel status="empty" title="Nhập thêm ít nhất một ký tự" description="Tìm kiếm yêu cầu tối thiểu hai ký tự."/>}
@@ -592,7 +615,7 @@ export function Lookup() {
           <span className="public-search-type">{RESULT_LABELS[item.type] || 'Nội dung'}</span>
           <span><strong>{item.title}</strong>{item.snippet && <small>{item.snippet}</small>}</span>
           <Icon name="arrow" size={17}/>
-        </Link>)}</div> : <StatusPanel status="empty" title="Không tìm thấy kết quả" description="Thử một từ khóa khác, bỏ bộ lọc hoặc mở kho ngách để duyệt danh mục đã có."/>}
+        </Link>)}</div> : <div className="lookup-empty-actions"><StatusPanel status="empty" title="Không tìm thấy kết quả" description="Thử một từ khóa khác, bỏ bộ lọc hoặc mở kho ngách để duyệt danh mục đã có."/><div><Link className="button button--outline" to="/ngach">Duyệt kho ngách</Link><Link className="button button--primary" to="/hoi-dap/gui-cau-hoi">Gửi câu hỏi <Icon name="arrow" size={16}/></Link></div></div>}
         {results.meta?.hasMore && <div className="pagination-actions"><button type="button" className="button button--outline" disabled={results.loadingMore} onClick={() => setPage((value) => value + 1)}>{results.loadingMore ? 'Đang tải...' : 'Tải thêm kết quả'} <Icon name="arrow" size={17}/></button></div>}
       </>}
     </main>
