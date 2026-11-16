@@ -7,7 +7,7 @@ const app = readFileSync(new URL('../App.jsx', import.meta.url), 'utf8');
 
 const admin = [
   '/admin/login', '/admin', 'dashboard', 'articles', 'articles/new',
-  'articles/:id/edit', 'reviews', 'niches', 'books', 'chapters', 'field-notes',
+  'articles/:id/edit', 'authors', 'reviews', 'niches', 'books', 'chapters', 'field-notes',
   'dictionary', 'questions', 'connections', 'media', 'audit', 'users', 'settings',
 ];
 
