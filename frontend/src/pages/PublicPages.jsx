@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { formatDate, safeMediaUrl } from '../config.js';
 import { useReader } from '../context/ReaderContext.jsx';
 import { useFieldNotes, useNiches, useQuestions, useResource } from '../hooks/useResources.js';
@@ -200,7 +200,7 @@ export function FieldNotes() {
       {records.status === 'error' && offset === 0 && <StatusPanel status="error" onRetry={records.retry}/>}
       {items.length > 0 && <>
         <p className="results-count" role="status">{items.length} / {records.meta?.total ?? items.length} ca đã xuất bản</p>
-        <div className="public-content-grid">{items.map((item) => <Link className="public-field-card" to={'/hien-truong/' + item.id} key={item.id}>
+        <div className="public-content-grid">{items.map((item) => <Link className="public-field-card" to={'/hien-truong/' + encodeURIComponent(item.slug)} key={item.id}>
           <span className="eyebrow">CA ĐÃ ẨN DANH · {formatDate(item.publishedAt)}</span>
           <h2>{item.title}</h2>
           <p>{item.excerpt || item.phenomenon}</p>
@@ -217,10 +217,17 @@ export function FieldNotes() {
 
 export function FieldNoteDetail() {
   const { id } = useParams();
-  const validId = /^[0-9a-f-]{36}$/i.test(id || '');
-  const record = useResource(validId ? apiUrl('/field-notes/' + id) : null, { list: false, enabled: validId });
-  usePageMeta(record.status === 'success' ? record.data.title : null, record.status === 'success' ? record.data.excerpt || record.data.phenomenon : null,{canonicalPath:validId?'/hien-truong/'+id:'/hien-truong',index:record.status==='success',type:'article',publishedTime:record.status==='success'?record.data.publishedAt:null});
-  if (!validId) return <main className="container content-page"><StatusPanel status="empty" title="Mã ca hiện trường không hợp lệ"/></main>;
+  const navigate = useNavigate();
+  const validKey = /^[a-z0-9]+(?:-[a-z0-9]+)*$/i.test(id || '');
+  const record = useResource(validKey ? apiUrl('/field-notes/' + id) : null, { list: false, enabled: validKey });
+  const canonicalSlug = record.status === 'success' ? record.data.slug : null;
+  useEffect(() => {
+    if (record.status === 'success' && canonicalSlug && id !== canonicalSlug) {
+      navigate('/hien-truong/' + encodeURIComponent(canonicalSlug), { replace: true });
+    }
+  }, [record.status, canonicalSlug, id, navigate]);
+  usePageMeta(record.status === 'success' ? record.data.title : null, record.status === 'success' ? record.data.excerpt || record.data.phenomenon : null,{canonicalPath:canonicalSlug?'/hien-truong/'+canonicalSlug:'/hien-truong',index:record.status==='success',type:'article',publishedTime:record.status==='success'?record.data.publishedAt:null});
+  if (!validKey) return <main className="container content-page"><StatusPanel status="empty" title="Đường dẫn ca hiện trường không hợp lệ"/></main>;
   if (record.status === 'loading') return <main className="container content-page"><StatusPanel status="loading" kind="articles"/></main>;
   if (record.status === 'error') return <main className="container content-page"><Breadcrumbs items={[{ label: 'Hiện trường', to: '/hien-truong' }]}/><StatusPanel status="error" title={record.error?.status === 404 ? 'Ca hiện trường không tồn tại' : 'Chưa thể tải ca hiện trường'} description={record.error?.message} onRetry={record.error?.status === 404 ? undefined : record.retry}/></main>;
   const data = record.data;
