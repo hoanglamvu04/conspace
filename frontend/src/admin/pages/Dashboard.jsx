@@ -28,7 +28,7 @@ export default function Dashboard(){
   const stage=can('reviews:chief:decide')&&!can('reviews:technical:decide')?'EDITOR_IN_CHIEF':'TECHNICAL';
   const queue=useAdminObject(adminPath('/reviews/queue',{stage}),can('reviews:read'));
   const queueItems=queue.status==='success'?[...(queue.data.articles||[]),...(queue.data.terms||[]),...(queue.data.answers||[]),...(queue.data.nicheSections||[])]:[];
-  const reviewTotal=(total(submitted)??0)+(total(technical)??0);
+  const articleReviewTotal=(total(submitted)??0)+(total(technical)??0);
 
   function refresh(){
     [drafts,submitted,technical,chief,approved,returned,scheduled,changed,users,questions,mediaPending,fieldBlocked,audit].forEach(x=>x.retry?.());
@@ -39,7 +39,7 @@ export default function Dashboard(){
 
     <div className="cms-metric-grid">
       {can('articles:write')&&<Metric title="Bài nháp" value={show(total(drafts))} icon="article" to="/admin/articles?status=DRAFT" note="Bản thảo chưa gửi duyệt"/>}
-      {can('reviews:read')&&<Metric title="Duyệt kỹ thuật" value={show(reviewTotal)} icon="review" to="/admin/reviews?stage=TECHNICAL" note="SUBMITTED + TECHNICAL_REVIEW"/>}
+      {can('reviews:read')&&<Metric title="Bài chờ duyệt kỹ thuật" value={show(articleReviewTotal)} icon="review" to="/admin/reviews?stage=TECHNICAL" note="Chỉ Article · SUBMITTED + TECHNICAL_REVIEW"/>}
       {can('reviews:read')&&<Metric title="Chờ Chủ bút" value={show(total(chief))} icon="shield" to="/admin/reviews?stage=EDITOR_IN_CHIEF" note="Nội dung nhạy cảm"/>}
       {(can('articles:publish')||can('articles:write'))&&<Metric title="Đã duyệt, chờ xuất bản" value={show(total(approved))} icon="check" to="/admin/articles?status=APPROVED" note="APPROVED chưa public"/>}
       {can('questions:read')&&<Metric title="Q&A mới" value={show(total(questions))} icon="question" to="/admin/questions" note="Câu hỏi đang SUBMITTED"/>}
