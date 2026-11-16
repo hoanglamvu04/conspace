@@ -167,7 +167,11 @@ All endpoints below are prefixed with `/api/admin`, require a valid session and 
 
 - `POST /auth/login`, `GET /auth/session`, `POST /auth/logout`, `POST /auth/password`.
 - `GET /users`, `POST /users`, `PATCH /users/:id`, `POST /users/:id/revoke-sessions`. ADMIN only. Staff rows include `personId`, explicit `roleAssignments`, `permissionAssignments`, `activeSessionCount`, last login and password-change status. Create accepts `role`, optional `roles`, `roleReason`, `permissions`, `permissionReason` and `personId`; linking/changing an existing person identity requires `identityReason`. Additional roles and nonempty delegated grants require a reason; role/permission/identity changes revoke active sessions. Session revocation is explicit and audited. User create/reset requires a 14+ character password. Password hashes are never returned.
-- `GET /authors`, `POST /authors`, `PATCH /authors/:id`, `DELETE /authors/:id`. ADMIN/EDITOR can manage author profiles; only ADMIN can change verification. Deactivation is soft.
+- `GET /authors` — ADMIN, EDITOR or EDITOR_IN_CHIEF. Rows include linked CMS account (when any), article count and published-article count.
+- `POST /authors` — EDITOR or EDITOR_IN_CHIEF create editorial author profiles.
+- `PATCH /authors/:id` — EDITOR/EDITOR_IN_CHIEF manage slug, display name, bio and active state; ADMIN manages `verified`. Multi-role staff can exercise the capabilities of their explicit roles. `bio:null` explicitly clears the bio.
+- `DELETE /authors/:id` — EDITOR or EDITOR_IN_CHIEF soft-deactivate the profile and clear verification. Existing article history is retained.
+- Author verification never grants CMS permissions and author-profile editing never changes CMS role membership.
 
 ### Articles
 
