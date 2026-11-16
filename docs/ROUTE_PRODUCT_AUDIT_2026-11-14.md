@@ -56,7 +56,7 @@ Basis: current React routes, CMS routes, public/admin API wiring, and `docs/INFO
 | `/admin/reviews` | COMPLETE | Technical/Chief queues, decisions and retained feedback. | P0 |
 | `/admin/niches` | COMPLETE | Taxonomy + Template A/B authoring/review/publish controls. | P0 |
 | `/admin/books` | COMPLETE | Three-book metadata management from DB. | P1 |
-| `/admin/chapters` | PARTIAL | Can create/edit/link chapter slots, but linking requires pasting an article UUID and UI does not expose the existing delete/detach workflow cleanly. | P1 |
+| `/admin/chapters` | COMPLETE | Searchable article picker is filtered by the selected book content type; linked article status/preview are visible; detach, schedule clearing and guarded empty-slot deletion are explicit. | P1 resolved |
 | `/admin/field-notes` | COMPLETE | Compliance dashboard, authoring, sources/media, submit readiness and feedback. | P0 |
 | `/admin/dictionary` | COMPLETE | Create/edit/source/niche link/submit/publish plus review feedback. | P1 |
 | `/admin/questions` | COMPLETE with one known limitation | Intake triage, private contact access audit, answer workflow and publishing exist. Guessed niche cannot currently be corrected because Backend has no such PATCH field. | P1 |
@@ -74,7 +74,7 @@ Basis: current React routes, CMS routes, public/admin API wiring, and `docs/INFO
 3. **Resolved P1: Field Note public URLs now use stable Article slugs.** Legacy UUID URLs remain compatible without being emitted as canonical links.
 4. **Quick lookup is already a strong search surface, but the source-backed symptom map (“Tôi thấy…”) remains a separate content-model gap.**
 5. **Static organization pages are acceptable as code-owned content for v1; Contact cannot be completed with phone/email/address until verified source material is supplied.**
-6. **CMS is substantially more complete than the public route map.** After resolving Connection triage, the highest CMS gaps are author-profile UI and chapter-linking ergonomics.
+6. **CMS is substantially more complete than the public route map.** After resolving Connection triage, the highest remaining CMS gap is the dedicated author-profile UI.
 
 ## Execution order after audit
 
@@ -85,7 +85,7 @@ Basis: current React routes, CMS routes, public/admin API wiring, and `docs/INFO
 ### P1 — close visible “half-built” routes
 1. **Resolved:** `/ban-nghe` now uses explicit editorial tag selection instead of duplicating `/bai-viet`.
 2. **Resolved:** Field Note detail now uses stable slug URLs while keeping UUID compatibility.
-3. Improve chapter article linking UI and expose safe detach/delete behavior.
+3. **Resolved:** chapter article linking now uses a filtered picker with explicit detach, schedule clearing and guarded empty-slot deletion.
 4. Add dedicated Author Profile management UI.
 5. Add source-backed “Tôi thấy…” mapping only when Cẩm nang part 9 data is actually available.
 6. Complete Contact only from verified legal/contact source data.
