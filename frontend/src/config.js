@@ -27,7 +27,7 @@ export const PRIMARY_NAV = [
   { to: '/hien-truong', label: 'Hiện trường' },
   { to: '/hoi-dap', label: 'Hỏi đáp' },
   { to: '/tra-nhanh', label: 'Tra nhanh' },
-  { to: '/ket-noi', label: 'Kết nối' },
+  { to: '/ket-noi', label: 'Kết nối', emphasis: true },
 ];
 
 export const BOOKS = [
@@ -54,6 +54,7 @@ export const SECTION_LINKS = [
   { to: '/hien-truong', title: 'Hiện trường', eyebrow: 'QUAN SÁT', icon: 'hardhat', description: 'Hiện tượng, nguyên nhân và điểm nghiệm thu.' },
   { to: '/hoi-dap', title: 'Hỏi đáp', eyebrow: 'ĐỐI THOẠI', icon: 'users', description: 'Câu hỏi ẩn danh và câu trả lời đã duyệt.' },
   { to: '/tra-nhanh', title: 'Tra nhanh', eyebrow: 'TÌM ĐÚNG CHỖ', icon: 'search', description: 'Tìm trong bài viết, ngách, chương và thuật ngữ.' },
+  { to: '/ket-noi', title: 'Kết nối', eyebrow: 'TIẾP NHẬN RIÊNG TƯ', icon: 'shield', description: 'Gửi nhu cầu riêng tư để đội ngũ phân loại thủ công.' },
 ];
 
 export function formatDate(value) {
