@@ -969,3 +969,127 @@ svg { flex-shrink: 0; }
   .connection-choice-grid,.connection-form-layout,.connection-form-two{grid-template-columns:1fr}
   .connection-side-note{position:static}
 }
+
+
+/* Public UX polish: navigation + homepage */
+.nav-link--emphasis {
+  height: 42px;
+  padding: 0 14px;
+  border: 1px solid #c8e0eb;
+  border-radius: 10px;
+  background: #f0f8fc;
+  color: #155b7c;
+}
+.nav-link--emphasis:hover { background: #e4f3fa; border-color: #9bcbe0; }
+.nav-link--emphasis.is-active { color: #fff; background: #126b9c; border-color: #126b9c; }
+.role-dropdown { z-index: 6; }
+
+.home-trust-rail {
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  margin-top: 12px;
+  overflow: hidden;
+  border: 1px solid #e0ebf1;
+  border-radius: 12px;
+  background: #f8fbfd;
+}
+.home-trust-rail > div {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 15px 17px;
+  border-right: 1px solid #e3edf2;
+}
+.home-trust-rail > div:last-child { border-right: 0; }
+.home-trust-rail svg { margin-top: 2px; color: #247ca2; }
+.home-trust-rail span { display: grid; gap: 3px; min-width: 0; }
+.home-trust-rail strong { color: #284d64; font-size: 12px; }
+.home-trust-rail small { color: #7c929f; font-size: 10.5px; line-height: 1.55; }
+
+.explore-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
+.explore-card { min-height: 240px; }
+.explore-card--5 .explore-icon { color: #277c70; background: #e8f6f2; }
+
+.mobile-nav-backdrop { display: none; }
+
+@media (max-width: 1030px) {
+  body.public-menu-open { overflow: hidden; }
+  .mobile-nav-backdrop {
+    display: block;
+    position: absolute;
+    z-index: 1;
+    top: 83px;
+    left: 50%;
+    width: 100vw;
+    height: calc(100vh - 83px);
+    transform: translateX(-50%);
+    border: 0;
+    border-radius: 0;
+    background: rgba(10,35,51,.38);
+    cursor: default;
+  }
+  .mobile-nav {
+    z-index: 2;
+    padding: 0;
+  }
+  .mobile-nav-inner { padding-top: 10px; padding-bottom: 20px; }
+  .mobile-nav-primary { display: grid; }
+  .mobile-nav-link--emphasis {
+    margin-top: 10px;
+    padding: 13px 16px;
+    border: 0;
+    border-radius: 10px;
+    background: #126b9c;
+    color: #fff;
+    justify-content: center;
+  }
+  .mobile-nav-link--emphasis.is-active { color: #fff; background: #0e557f; }
+  .mobile-nav-secondary {
+    display: grid;
+    grid-template-columns: repeat(2,minmax(0,1fr));
+    gap: 8px 14px;
+    padding: 18px 0;
+    border-bottom: 1px solid #e8f0f4;
+  }
+  .mobile-nav-secondary a {
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    color: #678291;
+    font-size: 12px;
+    font-weight: 680;
+  }
+  .mobile-nav-secondary a:hover { color: #126b9c; }
+  .mobile-nav-reader { padding-top: 19px; }
+  .mobile-nav-reader .reader-switch { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); width: 100%; }
+  .mobile-nav-reader .reader-option { text-align: center; padding-inline: 8px; }
+}
+
+@media (max-width: 800px) {
+  .home-trust-rail { grid-template-columns: 1fr; }
+  .home-trust-rail > div { border-right: 0; border-bottom: 1px solid #e3edf2; }
+  .home-trust-rail > div:last-child { border-bottom: 0; }
+  .explore-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+
+@media (max-width: 590px) {
+  .mobile-nav-backdrop { top: 68px; height: calc(100vh - 68px); }
+  .mobile-nav { max-height: calc(100vh - 68px); }
+  .mobile-nav-inner { padding-top: 7px; padding-bottom: 15px; }
+  .mobile-nav-link { padding: 13px 0; font-size: 14px; }
+  .mobile-nav-link--emphasis { padding: 12px 14px; }
+  .mobile-nav-secondary { padding: 14px 0; }
+  .mobile-nav-reader .reader-option { font-size: 10.5px; padding: 9px 5px; }
+  .hero-actions { gap: 9px; align-items: stretch; }
+  .hero-actions .button { flex: 1 1 auto; min-height: 44px; padding-inline: 13px; font-size: 12px; }
+  .home-trust-rail { margin-top: 10px; }
+  .home-trust-rail > div { padding: 13px 14px; }
+  .explore-card { min-height: 220px; }
+}
+
+@media (max-width: 380px) {
+  .hero-actions { flex-direction: column; }
+  .explore-grid { grid-template-columns: 1fr; }
+  .explore-card { min-height: 185px; }
+}
