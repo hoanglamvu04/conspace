@@ -511,6 +511,26 @@ test('real PostgreSQL flow: login -> create -> technical review -> chief review 
   });
   assert.equal(question.status,201,JSON.stringify(question.body));
   const questionId=question.body.data.id;
+  const classified=await editorApi('PATCH','/api/admin/questions/'+questionId,{
+    guessedNicheId:designNiche.id,
+  });
+  assert.equal(classified.status,200,JSON.stringify(classified.body));
+  assert.equal(classified.body.data.guessedNicheId,designNiche.id);
+  const classifiedDetail=await editorApi('GET','/api/admin/questions/'+questionId);
+  assert.equal(classifiedDetail.status,200,JSON.stringify(classifiedDetail.body));
+  assert.equal(classifiedDetail.body.data.guessedNicheId,designNiche.id);
+  assert.equal(classifiedDetail.body.data.guessedNiche,designNiche.slug);
+  const triageEvents=await pool.query("SELECT count(*)::integer AS total FROM conspace.workflow_events WHERE entity_type='QUESTION' AND entity_id=$1",[questionId]);
+  assert.equal(triageEvents.rows[0].total,0,'Niche-only correction must not invent a workflow transition');
+  const triageAudit=await pool.query("SELECT after_data FROM conspace.audit_logs WHERE entity_type='QUESTION' AND entity_id=$1 AND action='QUESTION_MODERATED' ORDER BY created_at DESC LIMIT 1",[questionId]);
+  assert.equal(triageAudit.rows[0]?.after_data?.guessedNicheId,designNiche.id);
+
+  const clearedClassification=await editorApi('PATCH','/api/admin/questions/'+questionId,{
+    guessedNicheId:null,
+  });
+  assert.equal(clearedClassification.status,200,JSON.stringify(clearedClassification.body));
+  assert.equal(clearedClassification.body.data.guessedNicheId,null);
+
   const answerSaved=await editorApi('POST','/api/admin/questions/'+questionId+'/answer',{
     body:'Câu trả lời kiểm thử có nội dung pháp lý.',sensitivityFlags:['LEGAL_CONTENT'],sensitivityAssessed:true,
   });
