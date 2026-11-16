@@ -135,3 +135,30 @@ test('article and field-note detail pages expose readable in-page structure', ()
   assert.ok(publicPages.includes('03 / ĐIỂM CHẶN'));
   assert.ok(publicPages.includes('Về kho Hiện trường'));
 });
+
+
+test('public library journey exposes reader prioritization, book progress and chapter navigation', () => {
+  assert.ok(publicPages.includes('library-overview'));
+  assert.ok(publicPages.includes('book-progress-summary'));
+  assert.ok(publicPages.includes('id="noi-dung-chuong"'));
+  assert.ok(publicPages.includes('id="nguon-chuong"'));
+  assert.ok(publicPages.includes('Danh sách chương'));
+});
+
+test('public Q&A and lookup expose clear next actions without publishing drafts', () => {
+  assert.ok(publicPages.includes('qa-process'));
+  assert.ok(publicPages.includes('form-trust-note'));
+  assert.ok(publicPages.includes('Gửi câu hỏi của bạn'));
+  assert.ok(publicPages.includes('lookup-clear'));
+  assert.ok(publicPages.includes('lookup-empty-actions'));
+  assert.ok(publicPages.includes('Chỉ bản đã duyệt mới công khai'));
+});
+
+test('Connection journey explains private manual handling and supports changing request type', () => {
+  assert.ok(connection.includes('connection-process'));
+  assert.ok(connection.includes('Nhân sự phân loại thủ công'));
+  assert.ok(connection.includes('connection-form-context'));
+  assert.ok(connection.includes('Đổi loại yêu cầu'));
+  assert.ok(connection.includes('connection-privacy-note'));
+  assert.ok(connection.includes('Về trang Kết nối'));
+});
