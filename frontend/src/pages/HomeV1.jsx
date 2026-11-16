@@ -105,7 +105,7 @@ export default function HomeV1() {
           <div className="home-feed-grid">
             <section>
               <SectionHeading eyebrow="GHI CHÉP ĐÃ ẨN DANH" title="Hiện trường"/>
-              {fieldNotes.length ? <div className="home-feed-cards">{fieldNotes.slice(0, 3).map((item) => <Link className="home-feed-card" to={'/hien-truong/' + item.id} key={item.id}>
+              {fieldNotes.length ? <div className="home-feed-cards">{fieldNotes.slice(0, 3).map((item) => <Link className="home-feed-card" to={'/hien-truong/' + encodeURIComponent(item.slug)} key={item.id}>
                 <span className="eyebrow">CA ĐÃ XUẤT BẢN</span><h3>{item.title}</h3><p>{item.excerpt || item.phenomenon}</p><span className="text-link">Đọc ca hiện trường <Icon name="arrow" size={16}/></span>
               </Link>)}</div> : <StatusPanel status="empty" compact title="Chưa có ca hiện trường công khai" description="Ca chỉ hiển thị sau khi được duyệt, ẩn danh và xác nhận quyền ảnh."/>}
             </section>
