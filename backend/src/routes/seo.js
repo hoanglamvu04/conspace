@@ -44,7 +44,7 @@ export function createSeoRouter(db=pool){
     const [niches,articles,fields,books,chapters,questions,terms]=await Promise.all([
       db.query('SELECT slug,group_type AS "group",updated_at AS "lastmod" FROM conspace.niches WHERE is_active=true ORDER BY group_type,sort_order,name'),
       db.query('SELECT a.slug,a.updated_at AS "lastmod" FROM conspace.articles a WHERE '+publishedArticle+" AND a.content_type<>'FIELD_CASE' ORDER BY a.published_at DESC"),
-      db.query('SELECT f.id,a.updated_at AS "lastmod" FROM conspace.field_notes f JOIN conspace.articles a ON a.id=f.article_id WHERE '+publishedArticle+' AND '+checkedField+' ORDER BY a.published_at DESC'),
+      db.query('SELECT a.slug,a.updated_at AS "lastmod" FROM conspace.field_notes f JOIN conspace.articles a ON a.id=f.article_id WHERE '+publishedArticle+' AND '+checkedField+' ORDER BY a.published_at DESC'),
       db.query('SELECT b.slug,MAX(a.updated_at) AS "lastmod" FROM conspace.books b LEFT JOIN conspace.book_chapters bc ON bc.book_id=b.id LEFT JOIN conspace.articles a ON a.id=bc.article_id AND '+publishedArticle+' WHERE b.is_active=true GROUP BY b.id ORDER BY b.title'),
       db.query('SELECT b.slug AS "bookSlug",bc.chapter_no AS "chapterNo",a.updated_at AS "lastmod" FROM conspace.book_chapters bc JOIN conspace.books b ON b.id=bc.book_id AND b.is_active=true JOIN conspace.articles a ON a.id=bc.article_id WHERE '+publishedArticle+' ORDER BY b.slug,bc.chapter_no'),
       db.query(`SELECT q.id,qa.published_at AS "lastmod" FROM conspace.reader_questions q JOIN conspace.question_answers qa ON qa.question_id=q.id WHERE q.status='PUBLISHED' AND qa.status='PUBLISHED' AND qa.approved_by_user_id IS NOT NULL AND qa.approved_at IS NOT NULL AND qa.published_at<=now() ORDER BY qa.published_at DESC`),
@@ -55,7 +55,7 @@ export function createSeoRouter(db=pool){
       ...STATIC_PATHS.map(path=>({path,changefreq:path==='/'?'daily':'weekly',priority:path==='/'?'1.0':'0.7'})),
       ...niches.rows.map(row=>({path:(row.group==='design'?'/mang/':'/ngach/')+row.slug,lastmod:row.lastmod,priority:'0.8'})),
       ...articles.rows.map(row=>({path:'/bai-viet/'+row.slug,lastmod:row.lastmod,priority:'0.8'})),
-      ...fields.rows.map(row=>({path:'/hien-truong/'+row.id,lastmod:row.lastmod,priority:'0.7'})),
+      ...fields.rows.map(row=>({path:'/hien-truong/'+row.slug,lastmod:row.lastmod,priority:'0.7'})),
       ...books.rows.map(row=>({path:'/tu-sach/'+row.slug,lastmod:row.lastmod,priority:'0.7'})),
       ...chapters.rows.map(row=>({path:chapterPath(row.bookSlug,row.chapterNo),lastmod:row.lastmod,priority:'0.7'})).filter(row=>row.path),
       ...questions.rows.map(row=>({path:'/hoi-dap/'+row.id,lastmod:row.lastmod,priority:'0.5'})),
