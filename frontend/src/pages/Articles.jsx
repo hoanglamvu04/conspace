@@ -68,7 +68,50 @@ export function ArticleDetail() {
   if (!validSlug) return <main className="container content-page"><StatusPanel status="empty" title="Đường dẫn không hợp lệ" description="Bài viết bạn tìm không tồn tại."/></main>;
   if (article.status === 'loading') return <main className="container content-page"><StatusPanel status="loading" kind="articles"/></main>;
   if (article.status === 'error') return <main className="container content-page"><Breadcrumbs items={[{ label: 'Bài viết', to: '/bai-viet' }, { label: 'Không thể tải' }]}/><StatusPanel status="error" title={article.error?.status === 404 ? 'Bài viết không tồn tại' : 'Không thể mở bài viết'} description={article.error?.status === 404 ? 'Bài có thể chưa được xuất bản hoặc đã được chuyển đi.' : 'Dữ liệu đang gián đoạn, vui lòng thử lại.'} onRetry={article.error?.status === 404 ? undefined : article.retry}/><Link to="/bai-viet" className="text-link">Trở về danh sách bài viết <Icon name="arrow" size={17}/></Link></main>;
-  return <><ArticleStructuredData article={entry}/><main className="article-page"><div className="container article-page-head"><Breadcrumbs items={[{ label: 'Bài viết', to: '/bai-viet' }, { label: entry.title }]}/><span className="eyebrow">CONSPACE / BÀI ĐÃ XUẤT BẢN</span><h1>{entry.title}</h1>{entry.excerpt && <p className="article-deck">{entry.excerpt}</p>}<div className="article-byline"><div className="author-avatar" aria-hidden="true"><Icon name="note" size={20}/></div><div><strong>{entry.author?.displayName || 'Ban biên tập CONSPACE'}</strong><span>{formatDate(entry.publishedAt) || 'Bài viết'}</span></div></div><nav className="article-reading-tools" aria-label="Đi nhanh trong bài viết"><a href="#noi-dung-bai-viet">Nội dung</a>{Array.isArray(entry.sources) && entry.sources.length > 0 && <a href="#nguon-tham-khao">Nguồn tham khảo</a>}<Link to="/quy-tac-noi-dung">Quy tắc biên tập</Link></nav></div></div>{image && <div className="container article-hero-image"><img src={image} alt="" /></div>}<div className="container article-layout"><article className="article-content" id="noi-dung-bai-viet"><Markdown body={entry.body}/><SourceList sources={entry.sources}/><div className="article-bottom"><span>CONSPACE · Sự thật ngành Xây</span><Link to="/bai-viet" className="text-link">Đọc thêm bài viết <Icon name="arrow" size={17}/></Link></div></article><aside className="article-aside"><div className="side-panel"><span className="eyebrow">TRONG BÀI VIẾT</span><h3>Chủ đề liên quan</h3>{Array.isArray(entry.niches) && entry.niches.length ? <div className="tag-list">{entry.niches.map((tag) => <Link key={tag} to={`/ngach/${encodeURIComponent(tag)}`}>{tag}<Icon name="upRight" size={14}/></Link>)}</div> : <p className="side-caption">Bài viết chưa được gắn với một ngách cụ thể.</p>}</div><div className="side-panel side-panel--soft"><Icon name="book" size={25}/><h3>Cách chúng tôi làm nội dung</h3><p>Không bịa số liệu, không quảng cáo trá hình, không quy kết đơn vị.</p><Link className="text-link" to="/quy-tac-noi-dung">Xem quy tắc <Icon name="arrow" size={16}/></Link></div></aside></div></main>
+  return <>
+    <ArticleStructuredData article={entry}/>
+    <main className="article-page">
+      <div className="container article-page-head">
+        <Breadcrumbs items={[{ label: 'Bài viết', to: '/bai-viet' }, { label: entry.title }]}/>
+        <span className="eyebrow">CONSPACE / BÀI ĐÃ XUẤT BẢN</span>
+        <h1>{entry.title}</h1>
+        {entry.excerpt && <p className="article-deck">{entry.excerpt}</p>}
+        <div className="article-byline">
+          <div className="author-avatar" aria-hidden="true"><Icon name="note" size={20}/></div>
+          <div><strong>{entry.author?.displayName || 'Ban biên tập CONSPACE'}</strong><span>{formatDate(entry.publishedAt) || 'Bài viết'}</span></div>
+        </div>
+        <nav className="article-reading-tools" aria-label="Đi nhanh trong bài viết">
+          <a href="#noi-dung-bai-viet">Nội dung</a>
+          {Array.isArray(entry.sources) && entry.sources.length > 0 && <a href="#nguon-tham-khao">Nguồn tham khảo</a>}
+          <Link to="/quy-tac-noi-dung">Quy tắc biên tập</Link>
+        </nav>
+      </div>
+      {image && <div className="container article-hero-image"><img src={image} alt="" /></div>}
+      <div className="container article-layout">
+        <article className="article-content" id="noi-dung-bai-viet">
+          <Markdown body={entry.body}/>
+          <SourceList sources={entry.sources}/>
+          <div className="article-bottom">
+            <span>CONSPACE · Sự thật ngành Xây</span>
+            <Link to="/bai-viet" className="text-link">Đọc thêm bài viết <Icon name="arrow" size={17}/></Link>
+          </div>
+        </article>
+        <aside className="article-aside">
+          <div className="side-panel">
+            <span className="eyebrow">TRONG BÀI VIẾT</span>
+            <h3>Chủ đề liên quan</h3>
+            {Array.isArray(entry.niches) && entry.niches.length
+              ? <div className="tag-list">{entry.niches.map((tag) => <Link key={tag} to={`/ngach/${encodeURIComponent(tag)}`}>{tag}<Icon name="upRight" size={14}/></Link>)}</div>
+              : <p className="side-caption">Bài viết chưa được gắn với một ngách cụ thể.</p>}
+          </div>
+          <div className="side-panel side-panel--soft">
+            <Icon name="book" size={25}/>
+            <h3>Cách chúng tôi làm nội dung</h3>
+            <p>Không bịa số liệu, không quảng cáo trá hình, không quy kết đơn vị.</p>
+            <Link className="text-link" to="/quy-tac-noi-dung">Xem quy tắc <Icon name="arrow" size={16}/></Link>
+          </div>
+        </aside>
+      </div>
+    </main>
     {Array.isArray(entry.niches) && entry.niches.length > 0 && related.status === 'success' && related.data.some((a) => a.slug !== entry.slug) && <section className="section section--blue"><div className="container"><SectionHeading eyebrow="ĐỌC TIẾP" title="Bài viết cùng chủ đề"/><div className="articles-grid">{related.data.filter((a) => a.slug !== entry.slug).slice(0, 3).map((a) => <ArticleCard article={a} key={a.id}/>)}</div></div></section>}
-  </>;
-}
+  </>;}
