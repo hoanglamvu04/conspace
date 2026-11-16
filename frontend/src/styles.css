@@ -1093,3 +1093,97 @@ svg { flex-shrink: 0; }
   .explore-grid { grid-template-columns: 1fr; }
   .explore-card { min-height: 185px; }
 }
+
+
+/* Public UX polish: niche directory + detail */
+.directory-overview {
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: 10px;
+  margin: 0 0 22px;
+}
+.directory-overview > div,
+.directory-overview > button {
+  min-width: 0;
+  min-height: 76px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 15px 17px;
+  border: 1px solid #dce9f0;
+  border-radius: 11px;
+  background: #f8fbfd;
+  color: #31586e;
+  text-align: left;
+}
+.directory-overview > button:hover,
+.directory-overview > button.is-active { border-color: #91c6dc; background: #edf7fb; }
+.directory-overview strong { color: #1e739b; font-size: 25px; line-height: 1; letter-spacing: -.04em; }
+.directory-overview span { color: #6e8796; font-size: 12px; line-height: 1.45; }
+
+.directory-results-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.directory-results-head .results-count { margin-right: auto; }
+.directory-clear { flex-shrink: 0; font-size: 12px; }
+
+.detail-jump-nav {
+  position: sticky;
+  z-index: 12;
+  top: 92px;
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  margin: 22px 0 34px;
+  padding: 8px;
+  border: 1px solid #dce8ee;
+  border-radius: 12px;
+  background: rgba(255,255,255,.94);
+  box-shadow: 0 8px 24px rgba(19,62,87,.05);
+  backdrop-filter: blur(10px);
+  scrollbar-width: thin;
+}
+.detail-jump-nav a {
+  flex: 0 0 auto;
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 13px;
+  border-radius: 8px;
+  color: #557486;
+  font-size: 12px;
+  font-weight: 740;
+  white-space: nowrap;
+}
+.detail-jump-nav a:hover,
+.detail-jump-nav a:focus-visible { background: #edf7fb; color: #176c98; }
+#ho-so-chuyen-mon,
+#bai-viet-lien-quan,
+#hien-truong-lien-quan,
+#chuong-sach-lien-quan,
+#linh-vuc-lien-quan { scroll-margin-top: 150px; }
+
+@media (max-width: 800px) {
+  .directory-overview { grid-template-columns: 1fr; }
+  .directory-overview > div,
+  .directory-overview > button { min-height: 62px; }
+  .directory-overview strong { min-width: 38px; font-size: 22px; }
+  .detail-jump-nav { top: 76px; margin-inline: -4px; }
+}
+
+@media (max-width: 590px) {
+  .directory-results-head { align-items: flex-start; }
+  .directory-results-head .results-count { margin-bottom: 14px; }
+  .directory-clear { margin-top: 20px; }
+  .detail-jump-nav {
+    top: 72px;
+    margin-top: 18px;
+    margin-bottom: 28px;
+    padding: 6px;
+    border-radius: 10px;
+  }
+  .detail-jump-nav a { min-height: 35px; padding: 7px 11px; font-size: 11px; }
+}
