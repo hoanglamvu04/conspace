@@ -10,6 +10,7 @@ const reviews = readFileSync(new URL('./pages/Reviews.jsx', import.meta.url), 'u
 const editorial = readFileSync(new URL('./pages/Editorial.jsx', import.meta.url), 'utf8');
 const niches = readFileSync(new URL('./pages/Niches.jsx', import.meta.url), 'utf8');
 const library = readFileSync(new URL('./pages/Library.jsx', import.meta.url), 'utf8');
+const authorsPage = readFileSync(new URL('./pages/Authors.jsx', import.meta.url), 'utf8');
 const reviewFeedback = readFileSync(new URL('./ReviewFeedback.jsx', import.meta.url), 'utf8');
 
 test('ADMIN CMS navigation is limited to system administration, private intake oversight and read-only article access', () => {
@@ -85,4 +86,15 @@ test('chapter CMS uses a filtered article picker with explicit detach and safe d
   assert.ok(library.includes('Gỡ bài khỏi chương'));
   assert.ok(library.includes('Xóa ô chương trống'));
   assert.ok(library.includes("method:'DELETE'"));
+});
+
+
+test('author profile CMS separates editorial editing from ADMIN verification', () => {
+  assert.ok(authorsPage.includes('Hồ sơ tác giả'));
+  assert.ok(authorsPage.includes("can('authors:write')"));
+  assert.ok(authorsPage.includes("can('authors:verify')"));
+  assert.ok(authorsPage.includes('Chỉ ADMIN có thể thay đổi trạng thái này'));
+  assert.ok(authorsPage.includes("method:'DELETE'"));
+  assert.ok(api.includes("'authors:read','authors:create','authors:write'"));
+  assert.ok(api.includes("'authors:read', 'authors:verify'"));
 });
