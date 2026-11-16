@@ -456,7 +456,7 @@ function resultPath(item) {
   if (item.type === 'niche') return (item.nicheGroup === 'design' ? '/mang/' : '/ngach/') + encodeURIComponent(item.slug);
   if (item.type === 'term') return '/tu-dien/' + encodeURIComponent(item.slug);
   if (item.type === 'chapter') return chapterPath(item.bookSlug, item.chapterNo);
-  if (item.type === 'field_note') return '/hien-truong/' + item.id;
+  if (item.type === 'field_note') return '/hien-truong/' + encodeURIComponent(item.slug);
   return '/tra-nhanh';
 }
 
