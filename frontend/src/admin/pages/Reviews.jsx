@@ -94,7 +94,7 @@ export default function Reviews(){
   const allowedStages=['TECHNICAL','EDITOR_IN_CHIEF'].filter(value=>value==='TECHNICAL'?can('reviews:technical:decide'):can('reviews:chief:decide'));
   const requested=params.get('stage');
   const stage=allowedStages.includes(requested)?requested:(allowedStages[0]||'TECHNICAL');
-  const [selected,setSelected]=useState(null),[reason,setReason]=useState(''),[confirm,setConfirm]=useState(null),[busy,setBusy]=useState(false);
+  const [selected,setSelected]=useState(null),[reason,setReason]=useState(''),[confirm,setConfirm]=useState(null),[busy,setBusy]=useState(false),[entityFilter,setEntityFilter]=useState('ALL');
 
   const queue=useAdminObject(adminPath('/reviews/queue',{stage}));
   const detailResource=selected?.entityType==='NICHE_SECTION'
@@ -109,6 +109,14 @@ export default function Reviews(){
   const answers=queue.status==='success'?queue.data.answers||[]:[];
   const nicheSections=queue.status==='success'?queue.data.nicheSections||[]:[];
   const items=[...articles,...terms,...answers,...nicheSections];
+  const queueCounts={
+    ALL:items.length,
+    ARTICLE:articles.length,
+    TERM:terms.length,
+    QUESTION_ANSWER:answers.length,
+    NICHE_SECTION:nicheSections.length,
+  };
+  const filteredItems=entityFilter==='ALL'?items:items.filter(item=>item.entityType===entityFilter);
   const canDecide=stage==='TECHNICAL'?can('reviews:technical:decide'):can('reviews:chief:decide');
 
   async function action(path,body){
@@ -151,8 +159,11 @@ export default function Reviews(){
   return <><PageHeading kicker="QUY TRÌNH BIÊN TẬP" title="Bàn kiểm duyệt" description="Reviewer kiểm nội dung, nguồn, sensitivity và quyết định đúng từng lớp workflow. Xuất bản là bước riêng sau APPROVED." icon="review" actions={<button type="button" className="cms-btn cms-btn--secondary" onClick={queue.retry}><CmsIcon name="refresh"/> Tải lại</button>}/>
     <div className="cms-two-pane">
       <Surface className="cms-list-pane" title="Đang chờ" description="Bài viết, thuật ngữ, Q&A và khối ngách theo đúng stage Backend.">
-        <div className="cms-review-filter"><label htmlFor="cms-stage">Lớp duyệt</label><select id="cms-stage" value={stage} disabled={!allowedStages.length} onChange={e=>{setParams({stage:e.target.value});setSelected(null);setReason('');}}>{allowedStages.map(value=><option key={value} value={value}>{value==='TECHNICAL'?'Kỹ thuật':'Chủ bút'}</option>)}</select></div>
-        {queue.status==='loading'?<div className="cms-inline-state">Đang tải danh sách…</div>:queue.status==='error'?<EmptyState title="Chưa tải được hàng đợi" description={queue.error?.message} icon="alert"/>:items.length?<div className="cms-review-queue">{items.map(item=><button type="button" key={item.entityType+item.id} className={`cms-review-row ${selected?.id===item.id?'is-selected':''}`} onClick={()=>{setSelected(item);setReason('');}}><div className="cms-review-row-top"><span className="cms-review-stage-label">{entityLabel(item.entityType)}</span><Timestamp value={item.submittedAt}/></div><strong>{item.title||'Trả lời câu hỏi độc giả'}</strong>{item.entityType==='NICHE_SECTION'&&<small>{item.templateType} · Khối {item.sectionNo} · {item.audienceRole||'Dùng chung'}</small>}<div className="cms-review-row-bottom"><Pill value={item.status}/>{item.requiresChiefReview&&<span className="cms-review-stage-label">CHIEF</span>}<CmsIcon name="right" size={17}/></div></button>)}</div>:<EmptyState title="Không có nội dung chờ duyệt" description="API đang trả hàng đợi rỗng cho giai đoạn này." icon="review"/>}
+        <div className="cms-review-filter"><label htmlFor="cms-stage">Lớp duyệt</label><select id="cms-stage" value={stage} disabled={!allowedStages.length} onChange={e=>{setParams({stage:e.target.value});setSelected(null);setReason('');setEntityFilter('ALL');}}>{allowedStages.map(value=><option key={value} value={value}>{value==='TECHNICAL'?'Kỹ thuật':'Chủ bút'}</option>)}</select></div>
+        {queue.status==='success'&&<div className="cms-review-entity-filter" aria-label="Lọc loại hồ sơ">{[
+          ['ALL','Tất cả'],['ARTICLE','Bài viết'],['TERM','Thuật ngữ'],['QUESTION_ANSWER','Q&A'],['NICHE_SECTION','Khối ngách']
+        ].map(([value,label])=><button type="button" key={value} className={entityFilter===value?'is-active':''} onClick={()=>{setEntityFilter(value);setSelected(null);setReason('');}}><span>{label}</span><strong>{queueCounts[value]}</strong></button>)}</div>}
+        {queue.status==='loading'?<div className="cms-inline-state">Đang tải danh sách…</div>:queue.status==='error'?<EmptyState title="Chưa tải được hàng đợi" description={queue.error?.message} icon="alert"/>:filteredItems.length?<div className="cms-review-queue">{filteredItems.map(item=><button type="button" key={item.entityType+item.id} className={`cms-review-row ${selected?.id===item.id?'is-selected':''}`} onClick={()=>{setSelected(item);setReason('');}}><div className="cms-review-row-top"><span className="cms-review-stage-label">{entityLabel(item.entityType)}</span><Timestamp value={item.submittedAt}/></div><strong>{item.title||'Trả lời câu hỏi độc giả'}</strong>{item.entityType==='NICHE_SECTION'&&<small>{item.templateType} · Khối {item.sectionNo} · {item.audienceRole||'Dùng chung'}</small>}<div className="cms-review-row-bottom"><Pill value={item.status}/>{item.requiresChiefReview&&<span className="cms-review-stage-label">CHIEF</span>}<CmsIcon name="right" size={17}/></div></button>)}</div>:<EmptyState title={items.length?'Không có hồ sơ thuộc loại đã chọn':'Không có nội dung chờ duyệt'} description={items.length?'Chọn loại hồ sơ khác hoặc hiển thị Tất cả.':'API đang trả hàng đợi rỗng cho giai đoạn này.'} icon="review"/>}
       </Surface>
       <Surface className="cms-review-detail" title="Hồ sơ và quyết định" description="Bắt đầu duyệt, quyết định và lý do là các thao tác tách biệt, được Backend ghi audit.">
         {!selected?<EmptyState title="Chọn một hồ sơ" description="Hồ sơ sẽ mở nội dung, nguồn, sensitivity và trạng thái workflow." icon="review"/>:detail.status==='loading'?<div className="cms-inline-state">Đang tải hồ sơ…</div>:detail.status==='error'?<EmptyState title="Không đọc được hồ sơ" description={detail.error?.message} icon="alert"/>:<ReviewDetail stage={stage} selected={selected} detail={detail} canDecide={canDecide} canStart={canStart} busy={busy} reason={reason} setReason={setReason} start={start} setConfirm={setConfirm}/>}
