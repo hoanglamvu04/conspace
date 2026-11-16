@@ -112,3 +112,15 @@ test('homepage first screen exposes direct paths and trust cues without fake met
   assert.ok(home.includes('Ba góc nhìn cùng tồn tại'));
   assert.ok(config.includes("{ to: '/ket-noi', title: 'Kết nối'"));
 });
+
+
+test('niche directory and detail expose mobile recovery and in-page navigation', () => {
+  const directory = readFileSync(new URL('../pages/Niches.jsx', import.meta.url), 'utf8');
+  assert.ok(directory.includes('directory-overview'));
+  assert.ok(directory.includes('Xóa bộ lọc'));
+  assert.ok(niche.includes('detail-jump-nav'));
+  for (const anchor of ['ho-so-chuyen-mon','bai-viet-lien-quan','hien-truong-lien-quan','chuong-sach-lien-quan']) {
+    assert.ok(niche.includes(anchor));
+  }
+  assert.ok(niche.includes('id="ho-so-chuyen-mon"'));
+});
