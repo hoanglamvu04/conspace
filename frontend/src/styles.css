@@ -1408,3 +1408,36 @@ svg { flex-shrink: 0; }
   .connection-form-context { align-items: flex-start; flex-direction: column; }
   .connection-form-context .text-link { align-self: flex-start; }
 }
+
+
+/* Final public responsive cleanup */
+.public-contact-buttons {
+  display: flex;
+  gap: 9px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.not-found-links { flex-wrap: wrap; }
+
+@media (max-width: 800px) {
+  .about-manifesto { padding: 35px; }
+  .rule-item { gap: 20px; }
+  .public-contact-action { align-items: flex-start; }
+  .public-contact-buttons { justify-content: flex-start; }
+}
+
+@media (max-width: 590px) {
+  .about-manifesto { padding: 26px 20px; }
+  .about-manifesto h2 { font-size: 28px; }
+  .about-manifesto p { font-size: 13px; line-height: 1.8; }
+  .about-columns { gap: 10px; }
+  .about-columns > div { padding: 20px; }
+  .rule-item { align-items: flex-start; gap: 14px; padding: 20px 2px; }
+  .rule-item > span { min-width: 30px; font-size: 18px; }
+  .rule-item > svg { width: 18px; margin-top: 2px; }
+  .rules-end { padding: 20px 17px; }
+  .not-found { padding-top: 48px; }
+  .not-found-links { gap: 10px 16px; }
+  .public-contact-buttons { width: 100%; }
+  .public-contact-buttons .button { width: 100%; }
+}
