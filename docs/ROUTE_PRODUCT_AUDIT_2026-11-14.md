@@ -115,3 +115,7 @@ The route-completeness status above is unchanged; this pass hardened day-to-day 
 - **Mobile CMS shell:** opening the sidebar locks background-page scrolling and still supports Escape/backdrop close.
 
 All of these are UX/RBAC hardening on existing APIs. No migration or production deployment is introduced by this pass.
+
+## Public detail route hardening — 2026-11-16
+
+The public Field Note detail page used Article slug URLs but the frontend API allowlist accepted only UUIDs. The Dictionary detail page used `/terms/:slug` but the allowlist accepted only `/terms`. Both were runtime failures before calling the Backend. The client URL builder now matches the slug-based published-only API contracts; oversized/invalid detail paths recover with contextual links. The local Public acceptance runner additionally checks a source-backed published Dictionary term and a draft term that must remain 404. The HTTP 200 SPA entrypoint checks do not constitute rendered browser testing. No migration, demo content injection or production deploy.

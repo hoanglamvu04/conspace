@@ -114,7 +114,7 @@ export function BookIndex() {
 
 export function BookDetail() {
   const { slug } = useParams();
-  const validSlug = typeof slug === 'string' && /^[a-z0-9][a-z0-9-]*$/.test(slug);
+  const validSlug = typeof slug === 'string' && slug.length <= 120 && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug);
   const book = useResource(validSlug ? apiUrl('/books/' + slug) : null, { list: false, enabled: validSlug });
   usePageMeta(book.status === 'success' ? book.data.title : null, book.status === 'success' ? 'Các chương đã xuất bản trong ' + book.data.title + '.' : null,{canonicalPath:validSlug?'/tu-sach/'+slug:'/tu-sach',index:book.status==='success'});
   if (!validSlug) return <main className="container content-page"><StatusPanel status="empty" title="Đường dẫn sách không hợp lệ"/></main>;
@@ -234,7 +234,7 @@ export function FieldNotes() {
 export function FieldNoteDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const validKey = /^[a-z0-9]+(?:-[a-z0-9]+)*$/i.test(id || '');
+  const validKey = typeof id === 'string' && id.length <= 120 && /^[a-z0-9]+(?:-[a-z0-9]+)*$/i.test(id);
   const record = useResource(validKey ? apiUrl('/field-notes/' + id) : null, { list: false, enabled: validKey });
   const canonicalSlug = record.status === 'success' ? record.data.slug : null;
   useEffect(() => {
@@ -243,9 +243,9 @@ export function FieldNoteDetail() {
     }
   }, [record.status, canonicalSlug, id, navigate]);
   usePageMeta(record.status === 'success' ? record.data.title : null, record.status === 'success' ? record.data.excerpt || record.data.phenomenon : null,{canonicalPath:canonicalSlug?'/hien-truong/'+canonicalSlug:'/hien-truong',index:record.status==='success',type:'article',publishedTime:record.status==='success'?record.data.publishedAt:null});
-  if (!validKey) return <main className="container content-page"><StatusPanel status="empty" title="Đường dẫn ca hiện trường không hợp lệ"/></main>;
+  if (!validKey) return <main className="container content-page"><StatusPanel status="empty" title="Đường dẫn ca hiện trường không hợp lệ"/><Link className="text-link" to="/hien-truong">Trở lại kho Hiện trường <Icon name="arrow" size={16}/></Link></main>;
   if (record.status === 'loading') return <main className="container content-page"><StatusPanel status="loading" kind="articles"/></main>;
-  if (record.status === 'error') return <main className="container content-page"><Breadcrumbs items={[{ label: 'Hiện trường', to: '/hien-truong' }]}/><StatusPanel status="error" title={record.error?.status === 404 ? 'Ca hiện trường không tồn tại' : 'Chưa thể tải ca hiện trường'} description={record.error?.message} onRetry={record.error?.status === 404 ? undefined : record.retry}/></main>;
+  if (record.status === 'error') return <main className="container content-page"><Breadcrumbs items={[{ label: 'Hiện trường', to: '/hien-truong' }]}/><StatusPanel status="error" title={record.error?.status === 404 ? 'Ca hiện trường không tồn tại' : 'Chưa thể tải ca hiện trường'} description={record.error?.message} onRetry={record.error?.status === 404 ? undefined : record.retry}/><Link className="text-link" to="/hien-truong">Trở lại kho Hiện trường <Icon name="arrow" size={16}/></Link></main>;
   const data = record.data;
   const images = Array.isArray(data.images) ? data.images : [];
   return <>
@@ -513,7 +513,7 @@ function DefinedTermSchema({ data }) {
 
 export function TermDetail() {
   const { slug } = useParams();
-  const validSlug = typeof slug === 'string' && /^[a-z0-9][a-z0-9-]*$/.test(slug);
+  const validSlug = typeof slug === 'string' && slug.length <= 120 && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug);
   const term = useResource(validSlug ? apiUrl('/terms/' + slug) : null, { list: false, enabled: validSlug });
   const data = term.status === 'success' ? term.data : null;
   usePageMeta(
@@ -521,9 +521,9 @@ export function TermDetail() {
     data ? data.definition : null,
     { canonicalPath: validSlug ? '/tu-dien/' + slug : '/tra-nhanh', index: term.status === 'success' }
   );
-  if (!validSlug) return <main className="container content-page"><StatusPanel status="empty" title="Đường dẫn thuật ngữ không hợp lệ"/></main>;
+  if (!validSlug) return <main className="container content-page"><StatusPanel status="empty" title="Đường dẫn thuật ngữ không hợp lệ"/><Link className="text-link" to="/tra-nhanh">Trở lại Tra nhanh <Icon name="arrow" size={16}/></Link></main>;
   if (term.status === 'loading') return <main className="container content-page"><StatusPanel status="loading" kind="articles"/></main>;
-  if (term.status === 'error') return <main className="container content-page"><Breadcrumbs items={[{ label: 'Tra nhanh', to: '/tra-nhanh' }]}/><StatusPanel status="error" title={term.error?.status === 404 ? 'Thuật ngữ chưa được xuất bản' : 'Chưa thể tải thuật ngữ'} description={term.error?.status === 404 ? 'Thuật ngữ không tồn tại hoặc chưa qua kiểm duyệt kỹ thuật.' : term.error?.message} onRetry={term.error?.status === 404 ? undefined : term.retry}/></main>;
+  if (term.status === 'error') return <main className="container content-page"><Breadcrumbs items={[{ label: 'Tra nhanh', to: '/tra-nhanh' }]}/><StatusPanel status="error" title={term.error?.status === 404 ? 'Thuật ngữ chưa được xuất bản' : 'Chưa thể tải thuật ngữ'} description={term.error?.status === 404 ? 'Thuật ngữ không tồn tại hoặc chưa qua kiểm duyệt kỹ thuật.' : term.error?.message} onRetry={term.error?.status === 404 ? undefined : term.retry}/><Link className="text-link" to="/tra-nhanh">Trở lại Tra nhanh <Icon name="arrow" size={16}/></Link></main>;
 
   const sourceUrl = safeSourceUrl(data.sourceRef);
   const niches = Array.isArray(data.niches) ? data.niches : [];

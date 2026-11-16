@@ -8,7 +8,7 @@ export class ApiError extends Error {
 }
 
 export function apiUrl(resource, params = {}) {
-  if (!/^\/(?:niches(?:\/[a-z0-9][a-z0-9-]*)?|articles(?:\/[a-z0-9][a-z0-9-]*)?|terms|feed|books(?:\/[a-z0-9][a-z0-9-]*(?:\/chapters\/[1-9][0-9]*)?)?|field-notes(?:\/[0-9a-f-]{36})?|questions(?:\/[0-9a-f-]{36})?|search)$/.test(resource)) {
+  if (!/^\/(?:niches(?:\/[a-z0-9][a-z0-9-]*)?|articles(?:\/[a-z0-9][a-z0-9-]*)?|terms(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)?|feed|books(?:\/[a-z0-9][a-z0-9-]*(?:\/chapters\/[1-9][0-9]*)?)?|field-notes(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)?|questions(?:\/[0-9a-f-]{36})?|search)$/.test(resource) || resource.split('/').some((segment) => segment.length > 120)) {
     throw new Error('Unsupported API resource');
   }
   const query = new URLSearchParams();

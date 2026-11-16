@@ -16,7 +16,7 @@ export const PUBLIC_ROUTES = Object.freeze([
   '/', '/tu-sach', '/tu-sach/cam-nang-kien-truc-hoa-lac',
   '/ngach', '/mang/house', '/bai-viet', '/bai-viet/demo-public-design-overview',
   '/ban-nghe', '/hien-truong', '/hoi-dap', '/hoi-dap/gui-cau-hoi',
-  '/tra-nhanh', '/tu-dien', '/ket-noi', '/ket-noi/du-an',
+  '/tra-nhanh', '/tu-dien', '/tu-dien/demo-thuat-ngu-cong-khai', '/ket-noi', '/ket-noi/du-an',
   '/ve-conspace', '/quy-tac-noi-dung', '/lien-he',
 ]);
 
@@ -44,14 +44,10 @@ export async function runPublicAcceptance({fetcher=fetch,env=process.env,log=con
     const res=await get(api,path,status);
     const data=await res.json().catch(()=>null);
     if(!data || (status===200 && data.ok!==true))throw new Error(path+': invalid public API response');
-    return {data:data.data,status:res.status,meta:data.meta};
+    return {data:data.data,status:res.status,meta:data.meta,checks:data.checks,error:data.error};
   };
   const ready=await json('/api/ready');
-  if(ready.data?.checks?.database!=='up' && ready.meta?.checks?.database!=='up'){
-    // /api/ready uses top-level checks: check separately without changing read-only semantics.
-    const raw=await (await get(api,'/api/ready')).json();
-    if(raw.checks?.database!=='up')throw new Error('PostgreSQL not ready');
-  }
+  if(ready.checks?.database!=='up')throw new Error('PostgreSQL not ready');
   for(const route of PUBLIC_ROUTES)await get(frontend,route);
   log('PASS: '+PUBLIC_ROUTES.length+' public route entry points return HTTP 200');
   for(const role of ['homeowner','architect','contractor']){
@@ -80,6 +76,12 @@ export async function runPublicAcceptance({fetcher=fetch,env=process.env,log=con
   const questions=await json('/api/v1/questions');
   assertPublishedOnly({published:pub.data,draft,fieldDraft:field,listedQuestions:questions.data});
   log('PASS: published article accessible; draft article, field note and Q&A hidden');
+  const term=await json('/api/v1/terms/demo-thuat-ngu-cong-khai');
+  const draftTerm=await json('/api/v1/terms/demo-thuat-ngu-can-sua',404);
+  if(term.data?.slug!=='demo-thuat-ngu-cong-khai' || !term.data?.sourceRef || draftTerm.error?.code!=='NOT_FOUND') {
+    throw new Error('Dictionary acceptance: published term inaccessible or unpublished term exposed');
+  }
+  log('PASS: Dictionary published term source and unpublished term isolation');
   const search=await json('/api/v1/search?q=conspace&role=architect&limit=5');
   if(!Array.isArray(search.data))throw new Error('Public search shape invalid');
   log('PASS: public search');

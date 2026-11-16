@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { apiUrl } from './api.js';
 
 const app = readFileSync(new URL('../App.jsx', import.meta.url), 'utf8');
 const home = readFileSync(new URL('../pages/HomeV1.jsx', import.meta.url), 'utf8');
@@ -175,4 +176,13 @@ test('contact page routes readers only to existing intake paths without inventin
 test('article and Q&A cross-links resolve design slugs to the canonical /mang route', () => {
   assert.ok(articlesPage.includes('nichePathForSlug(tag, activeNiches)'));
   assert.ok(publicPages.includes('nichePathForSlug(data.niche'));
+});
+
+test('Field Note and Dictionary details request allowed slug APIs and recover on errors',()=>{
+  assert.ok(publicPages.includes("apiUrl('/field-notes/' + id)"));
+  assert.ok(publicPages.includes("apiUrl('/terms/' + slug)"));
+  assert.equal(apiUrl('/field-notes/demo-field-ready'),'/api/v1/field-notes/demo-field-ready');
+  assert.equal(apiUrl('/terms/demo-thuat-ngu-cong-khai'),'/api/v1/terms/demo-thuat-ngu-cong-khai');
+  assert.ok(publicPages.includes('Trở lại kho Hiện trường'));
+  assert.ok(publicPages.includes('Trở lại Tra nhanh'));
 });

@@ -9,6 +9,8 @@ test('builds same-origin versioned URLs and encodes filters', () => {
   assert.equal(apiUrl('/feed', { limit: 6 }), '/api/v1/feed?limit=6');
   assert.equal(apiUrl('/books/phan-nha-thau-xay-dung/chapters/2'), '/api/v1/books/phan-nha-thau-xay-dung/chapters/2');
   assert.equal(apiUrl('/field-notes/123e4567-e89b-12d3-a456-426614174000'), '/api/v1/field-notes/123e4567-e89b-12d3-a456-426614174000');
+  assert.equal(apiUrl('/field-notes/demo-field-ready'), '/api/v1/field-notes/demo-field-ready');
+  assert.equal(apiUrl('/terms/demo-thuat-ngu-cong-khai'), '/api/v1/terms/demo-thuat-ngu-cong-khai');
   assert.equal(apiUrl('/questions'), '/api/v1/questions');
   assert.equal(apiUrl('/search', { q: 'chống thấm', type: 'all' }), '/api/v1/search?q=ch%E1%BB%91ng+th%E1%BA%A5m&type=all');
 });
@@ -16,6 +18,11 @@ test('builds same-origin versioned URLs and encodes filters', () => {
 test('rejects unsupported endpoints and unsafe slug paths', () => {
   assert.throws(() => apiUrl('/auth/login'));
   assert.throws(() => apiUrl('/articles/../../secrets'));
+  assert.throws(() => apiUrl('/terms/../auth'));
+  assert.throws(() => apiUrl('/field-notes/slug%2fadmin'));
+  assert.throws(() => apiUrl('/field-notes/-invalid'));
+  assert.throws(() => apiUrl('/terms/' + 'a'.repeat(121)));
+  assert.throws(() => apiUrl('/field-notes/' + 'a'.repeat(121)));
 });
 
 test('requires real array payload and does not insert placeholder records', () => {

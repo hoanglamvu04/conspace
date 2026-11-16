@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { onlyLocal, PUBLIC_ROUTES, assertPublishedOnly } from '../scripts/public-acceptance.mjs';
+import { apiUrl } from '../../frontend/src/lib/api.js';
 
 test('public acceptance refuses remote URLs and credentials',()=>{
   assert.equal(onlyLocal('http://127.0.0.1:5088/','API').hostname,'127.0.0.1');
@@ -17,4 +18,10 @@ test('public acceptance rejects unpublished fixture leakage',()=>{
   assert.doesNotThrow(()=>assertPublishedOnly(baseline));
   assert.throws(()=>assertPublishedOnly({...baseline,draft:{status:200}}),/Unpublished article/);
   assert.throws(()=>assertPublishedOnly({...baseline,listedQuestions:[{description:'[DEMO] Câu hỏi mô phỏng'}]}),/Unpublished demo question/);
+});
+
+test('public acceptance covers the Dictionary detail API and slug-based Field Notes',()=>{
+  assert.ok(PUBLIC_ROUTES.includes('/tu-dien/demo-thuat-ngu-cong-khai'));
+  assert.equal(apiUrl('/terms/demo-thuat-ngu-cong-khai'),'/api/v1/terms/demo-thuat-ngu-cong-khai');
+  assert.equal(apiUrl('/field-notes/demo-field-ready'),'/api/v1/field-notes/demo-field-ready');
 });
