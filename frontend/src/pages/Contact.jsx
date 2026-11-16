@@ -14,7 +14,10 @@ export function Contact() {
         <div className="public-contact-note"><Icon name="info" size={21}/><p>Địa chỉ, email và số điện thoại liên hệ trực tiếp chưa có trong nguồn thông tin được xác nhận để công bố trên website. CONSPACE không tự điền thông tin chưa kiểm chứng.</p></div>
         <div className="public-contact-action">
           <div><strong>Câu hỏi về nội dung hoặc một tình huống xây dựng?</strong><span>Bạn có thể gửi câu hỏi ẩn danh. Câu hỏi chỉ được công khai sau khi qua kiểm duyệt.</span></div>
-          <Link className="button button--primary" to="/hoi-dap/gui-cau-hoi">Gửi câu hỏi <Icon name="arrow" size={17}/></Link>
+          <div className="public-contact-buttons">
+            <Link className="button button--primary" to="/hoi-dap/gui-cau-hoi">Gửi câu hỏi <Icon name="arrow" size={17}/></Link>
+            <Link className="button button--outline" to="/ket-noi">Kết nối riêng tư</Link>
+          </div>
         </div>
       </section>
     </main>
