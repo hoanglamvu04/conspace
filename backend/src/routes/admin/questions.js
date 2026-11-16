@@ -16,10 +16,12 @@ const answerSchema=z.strictObject({
 const questionPatch=z.strictObject({
   status:z.enum(['IN_REVIEW','REJECTED','ARCHIVED']).optional(),
   moderationNote:z.string().max(2000).nullable().optional(),
+  guessedNicheId:uuid.nullable().optional(),
 });
 
 export function createQuestionsRouter(db=pool,config){
   const router=Router();
+  const rolesOf=(req)=>Array.isArray(req.auth?.roles)&&req.auth.roles.length?req.auth.roles:[req.auth?.role].filter(Boolean);
   router.use(requireRolesOrPermissions(['ADMIN','EDITOR','TECHNICAL_REVIEWER','EDITOR_IN_CHIEF'],['CONTENT_PUBLISH']));
 
   router.get('/',asyncHandler(async(req,res)=>{
@@ -42,7 +44,7 @@ export function createQuestionsRouter(db=pool,config){
   router.get('/:id',asyncHandler(async(req,res)=>{
     const id=validate(z.strictObject({id:uuid}),req.params).id;
     const result=await db.query(
-      'SELECT q.*,q.request_private_reply AS "requestPrivateReply",n.slug AS "guessedNiche",' +
+      'SELECT q.*,q.guessed_niche_id AS "guessedNicheId",q.request_private_reply AS "requestPrivateReply",n.slug AS "guessedNiche",' +
       'COALESCE((SELECT json_agg(json_build_object(\'id\',m.id,\'filename\',m.original_filename,\'mimeType\',m.mime_type) ORDER BY qm.position) '+
       'FROM conspace.reader_question_media qm JOIN conspace.media_assets m ON m.id=qm.media_id WHERE qm.question_id=q.id AND m.deleted_at IS NULL),\'[]\'::json) AS media,'+
       'a.id AS "answerId",a.body AS "answerBody",a.status AS "answerStatus",a.published_at AS "answerPublishedAt",' +
@@ -72,17 +74,38 @@ export function createQuestionsRouter(db=pool,config){
   router.patch('/:id',requireRoles('EDITOR'),asyncHandler(async(req,res)=>{
     const id=validate(z.strictObject({id:uuid}),req.params).id;
     const input=validate(questionPatch,req.body);
+    if(!Object.keys(input).length) throw new RequestError(400,'EMPTY_UPDATE','At least one triage field is required');
     const result=await inTransaction(db,async(client)=>{
       const current=await client.query('SELECT * FROM conspace.reader_questions WHERE id=$1 FOR UPDATE',[id]);
       if(!current.rows[0]) throw new RequestError(404,'NOT_FOUND','Question not found');
       const before=current.rows[0];
+      if(input.guessedNicheId){
+        const niche=await client.query('SELECT id FROM conspace.niches WHERE id=$1 AND is_active=true',[input.guessedNicheId]);
+        if(!niche.rows[0]) throw new RequestError(400,'INVALID_NICHE','Selected niche is unavailable');
+      }
       const updated=await client.query(
-        'UPDATE conspace.reader_questions SET status=COALESCE($2,status),moderation_note=COALESCE($3,moderation_note),updated_at=now() WHERE id=$1 RETURNING id,status,moderation_note AS "moderationNote"',
-        [id,input.status??null,input.moderationNote??null]
+        'UPDATE conspace.reader_questions SET '+
+        'status=COALESCE($2,status),'+
+        'moderation_note=CASE WHEN $3::boolean THEN $4 ELSE moderation_note END,'+
+        'guessed_niche_id=CASE WHEN $5::boolean THEN $6::uuid ELSE guessed_niche_id END,'+
+        'updated_at=now() WHERE id=$1 '+
+        'RETURNING id,status,moderation_note AS "moderationNote",guessed_niche_id AS "guessedNicheId"',
+        [
+          id,input.status??null,
+          input.moderationNote!==undefined,input.moderationNote??null,
+          input.guessedNicheId!==undefined,input.guessedNicheId??null,
+        ]
       );
-      await writeWorkflowEvent(client,{entityType:'QUESTION',entityId:id,fromStatus:before.status,toStatus:updated.rows[0].status,action:'MODERATE',reason:input.moderationNote??null,actorUserId:req.auth.id});
-      await writeAudit(client,{actorUserId:req.auth.id,action:'QUESTION_MODERATED',entityType:'QUESTION',entityId:id,before:{status:before.status},after:updated.rows[0],req});
-      return updated.rows[0];
+      const after=updated.rows[0];
+      if(after.status!==before.status){
+        await writeWorkflowEvent(client,{entityType:'QUESTION',entityId:id,fromStatus:before.status,toStatus:after.status,action:'MODERATE',reason:input.moderationNote??null,actorUserId:req.auth.id});
+      }
+      await writeAudit(client,{
+        actorUserId:req.auth.id,action:'QUESTION_MODERATED',entityType:'QUESTION',entityId:id,
+        before:{status:before.status,moderationNote:before.moderation_note,guessedNicheId:before.guessed_niche_id},
+        after,req,
+      });
+      return after;
     });
     res.json({ok:true,data:result});
   }));
