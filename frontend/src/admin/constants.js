@@ -3,6 +3,7 @@ export const ADMIN_BASE = '/admin';
 export const ADMIN_NAV = [
   { label: 'Tổng quan', href: '/admin/dashboard', icon: 'dashboard', section: 'TỔNG QUAN', permission: 'dashboard:read' },
   { label: 'Bài viết', href: '/admin/articles', icon: 'article', section: 'BIÊN TẬP', permission: 'articles:read' },
+  { label: 'Tác giả', href: '/admin/authors', icon: 'users', permission: 'authors:read' },
   { label: 'Hàng đợi duyệt', href: '/admin/reviews', icon: 'review', permission: 'reviews:read' },
   { label: 'Kho 38 ngách', href: '/admin/niches', icon: 'niches', section: 'THƯ VIỆN NỘI DUNG', permission: 'niches:read' },
   { label: 'Tủ sách', href: '/admin/books', icon: 'book', permission: 'books:read' },
