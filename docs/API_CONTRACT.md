@@ -219,6 +219,9 @@ The CMS stores the 12-block core niche template and its three audience-layer map
 
 - `GET /books`, `POST /books`, `GET /books/:id`, `PATCH /books/:id`.
 - `GET /chapters?bookId=`, `POST /chapters`, `PATCH /chapters/:id`, `DELETE /chapters/:id`.
+- Article list filtering supports `contentType` so the CMS chapter picker can show only articles compatible with the selected book.
+- `PATCH /chapters/:id` distinguishes omitted fields from explicit `null`: `articleId:null` detaches the linked article, `scheduledAt:null` clears the chapter schedule, and `title:null` clears an optional chapter title.
+- `DELETE /chapters/:id` removes only an empty slot. A linked article must be detached first; Backend returns `CHAPTER_HAS_ARTICLE` otherwise.
 
 The database seeds only the three confirmed book records and 58 numbered empty chapter slots:
 - Cẩm nang Kiến trúc Hòa Lạc — 9 parts — `REFERENCE` / “Tài liệu tra cứu”.
