@@ -11,6 +11,7 @@ import { FieldNotes, DictionaryAdmin, Questions } from './pages/Editorial.jsx';
 import { Media, Users, Settings } from './pages/System.jsx';
 import Audit from './pages/Audit.jsx';
 import Connections from './pages/Connections.jsx';
+import Authors from './pages/Authors.jsx';
 import './admin.css';
 
 function AdminMetadata() {
@@ -42,6 +43,7 @@ export default function AdminApp() {
       <Route path="articles" element={<Restricted permission="articles:read"><ArticleIndex/></Restricted>}/>
       <Route path="articles/new" element={<Restricted permission="articles:create"><ArticleEditor/></Restricted>}/>
       <Route path="articles/:id/edit" element={<Restricted permission="articles:read"><ArticleEditor/></Restricted>}/>
+      <Route path="authors" element={<Restricted permission="authors:read"><Authors/></Restricted>}/>
       <Route path="reviews" element={<Restricted permission="reviews:read"><Reviews/></Restricted>}/>
       <Route path="niches" element={<Restricted permission="niches:read"><Niches/></Restricted>}/>
       <Route path="books" element={<Restricted permission="books:read"><Books/></Restricted>}/>
