@@ -41,6 +41,10 @@ export function Header() {
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [menuOpen, roleOpen]);
+  useEffect(() => {
+    document.body.classList.toggle('public-menu-open', menuOpen);
+    return () => document.body.classList.remove('public-menu-open');
+  }, [menuOpen]);
   const selected = READERS.find((role) => role.id === reader);
   return (
     <>
@@ -54,7 +58,7 @@ export function Header() {
               const searchAlias = ['/tra-cuu', '/tu-dien'].includes(location.pathname);
               const nichePath = location.pathname.startsWith('/mang/');
               const active = isActive || (item.to === '/tu-sach' && bookPath) || (item.to === '/ngach' && nichePath) || (item.to === '/tra-nhanh' && searchAlias);
-              return `nav-link ${active ? 'is-active' : ''}`;
+              return `nav-link ${item.emphasis ? 'nav-link--emphasis ' : ''}${active ? 'is-active' : ''}`;
             }}>{item.label}</NavLink>)}
           </nav>
           <div className="header-actions">
@@ -68,13 +72,29 @@ export function Header() {
             <button type="button" className="mobile-menu-button" aria-label={menuOpen ? 'Đóng menu' : 'Mở menu'} aria-controls="mobile-menu" aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)}><Icon name={menuOpen ? 'close' : 'menu'} size={23} /></button>
           </div>
         </div>
-        {menuOpen && <nav className="mobile-nav" id="mobile-menu" aria-label="Điều hướng trên điện thoại"><div className="container">{PRIMARY_NAV.map((item) => <NavLink key={item.to} to={item.to} className={({ isActive }) => {
-            const bookPath = location.pathname.startsWith('/tu-sach/') || location.pathname.startsWith('/cam-nang/') || location.pathname.startsWith('/phan-nha-thau/') || location.pathname.startsWith('/quan-quanh-kts/');
-            const searchAlias = ['/tra-cuu', '/tu-dien'].includes(location.pathname);
-            const nichePath = location.pathname.startsWith('/mang/');
-            const active = isActive || (item.to === '/tu-sach' && bookPath) || (item.to === '/ngach' && nichePath) || (item.to === '/tra-nhanh' && searchAlias);
-            return `mobile-nav-link ${active ? 'is-active' : ''}`;
-          }}>{item.label}<Icon name="chevron" size={16} /></NavLink>)}<div className="mobile-nav-reader"><p>GÓC NHÌN CỦA BẠN</p><ReaderSwitch variant="compact" /></div></div></nav>}
+        {menuOpen && <>
+          <button type="button" className="mobile-nav-backdrop" aria-label="Đóng menu" onClick={() => setMenuOpen(false)}/>
+          <nav className="mobile-nav" id="mobile-menu" aria-label="Điều hướng trên điện thoại">
+            <div className="container mobile-nav-inner">
+              <div className="mobile-nav-primary">
+                {PRIMARY_NAV.map((item) => <NavLink key={item.to} to={item.to} className={({ isActive }) => {
+                  const bookPath = location.pathname.startsWith('/tu-sach/') || location.pathname.startsWith('/cam-nang/') || location.pathname.startsWith('/phan-nha-thau/') || location.pathname.startsWith('/quan-quanh-kts/');
+                  const searchAlias = ['/tra-cuu', '/tu-dien'].includes(location.pathname);
+                  const nichePath = location.pathname.startsWith('/mang/');
+                  const active = isActive || (item.to === '/tu-sach' && bookPath) || (item.to === '/ngach' && nichePath) || (item.to === '/tra-nhanh' && searchAlias);
+                  return `mobile-nav-link ${item.emphasis ? 'mobile-nav-link--emphasis ' : ''}${active ? 'is-active' : ''}`;
+                }}>{item.label}<Icon name="chevron" size={16} /></NavLink>)}
+              </div>
+              <div className="mobile-nav-secondary" aria-label="Điều hướng bổ sung">
+                <Link to="/bai-viet">Bài viết</Link>
+                <Link to="/ban-nghe">Bàn nghề</Link>
+                <Link to="/ve-conspace">Về CONSPACE</Link>
+                <Link to="/quy-tac-noi-dung">Quy tắc nội dung</Link>
+              </div>
+              <div className="mobile-nav-reader"><p>GÓC NHÌN CỦA BẠN</p><ReaderSwitch variant="compact" /></div>
+            </div>
+          </nav>
+        </>}
       </header>
     </>
   );
@@ -85,7 +105,7 @@ export function Footer() {
     <footer className="site-footer">
       <div className="container footer-upper">
         <div className="footer-about"><Brand inverse /><p>Nơi chủ nhà, kiến trúc sư và nhà thầu đọc được câu chuyện của nhau. Nội dung là để hiểu nghề, không phải để quảng cáo.</p></div>
-        <div className="footer-nav-group"><p>KHÁM PHÁ</p><Link to="/tu-sach">Tủ sách</Link><Link to="/ngach">Kho 38 ngách</Link><Link to="/hien-truong">Hiện trường</Link><Link to="/hoi-dap">Hỏi đáp</Link><Link to="/tra-nhanh">Tra nhanh</Link><Link to="/ket-noi">Kết nối</Link></div>
+        <div className="footer-nav-group"><p>KHÁM PHÁ</p><Link to="/bai-viet">Bài viết</Link><Link to="/tu-sach">Tủ sách</Link><Link to="/ngach">Kho 38 ngách</Link><Link to="/hien-truong">Hiện trường</Link><Link to="/hoi-dap">Hỏi đáp</Link><Link to="/tra-nhanh">Tra nhanh</Link><Link to="/ket-noi">Kết nối</Link></div>
         <div className="footer-nav-group"><p>CONSPACE</p><Link to="/ve-conspace">Về CONSPACE</Link><Link to="/quy-tac-noi-dung">Quy tắc nội dung</Link><Link to="/lien-he">Liên hệ</Link><Link to="/ban-nghe">Bàn nghề</Link></div>
         <div className="footer-principle"><span className="footer-asterisk">✳</span><strong>Nói cả những điều bất lợi cho mình.</strong><p>Đó là cách chúng tôi hiểu hai chữ “sự thật”.</p></div>
       </div>
