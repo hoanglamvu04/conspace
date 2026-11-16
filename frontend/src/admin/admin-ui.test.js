@@ -14,7 +14,7 @@ const authorsPage = readFileSync(new URL('./pages/Authors.jsx', import.meta.url)
 const reviewFeedback = readFileSync(new URL('./ReviewFeedback.jsx', import.meta.url), 'utf8');
 
 test('ADMIN CMS navigation is limited to system administration, private intake oversight and read-only article access', () => {
-  assert.match(api, /ADMIN: \[\.\.\.EVERYONE, 'users:read', 'users:write', 'connections:read', 'settings:write'\]/);
+  assert.match(api, /ADMIN: \[\.\.\.EVERYONE, 'users:read', 'users:write', 'connections:read', 'authors:read', 'authors:verify', 'settings:write'\]/);
   assert.doesNotMatch(api, /ADMIN: \[\.\.\.new Set/);
   assert.match(api, /EDITOR_IN_CHIEF: \[\.\.\.EVERYONE,\.\.\.CHIEF, 'dictionary:publish'\]/);
 });
