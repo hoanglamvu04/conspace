@@ -64,7 +64,7 @@ Basis: current React routes, CMS routes, public/admin API wiring, and `docs/INFO
 | `/admin/audit` | COMPLETE | Unified audit/workflow event history from Backend. | P0 |
 | `/admin/users` | COMPLETE | Multi-role/person identity/delegated permission/session revocation. | P0 |
 | `/admin/settings` | COMPLETE for current Backend scope | Account/session/password security is real; business-policy toggles are intentionally absent because no settings API exists. | P2 |
-| dedicated author-management page | PARTIAL / MISSING UI | Backend author CRUD exists and Article Editor consumes authors, but there is no dedicated CMS route to manage author profiles. | P1 |
+| `/admin/authors` | COMPLETE | Dedicated profile management now exposes search, article/publication counts, create/edit/deactivate controls, CMS-account linkage, and ADMIN-only verification while preserving editorial RBAC. | P1 resolved |
 | `/admin/connections` | **COMPLETE** | ADMIN/EDITOR can inspect the private queue; contact decrypts only on detail with audit. EDITOR performs reasoned triage; reviewer/chief roles do not inherit access. | **P0 resolved** |
 
 ## Cross-route findings
@@ -74,7 +74,7 @@ Basis: current React routes, CMS routes, public/admin API wiring, and `docs/INFO
 3. **Resolved P1: Field Note public URLs now use stable Article slugs.** Legacy UUID URLs remain compatible without being emitted as canonical links.
 4. **Quick lookup is already a strong search surface, but the source-backed symptom map (“Tôi thấy…”) remains a separate content-model gap.**
 5. **Static organization pages are acceptable as code-owned content for v1; Contact cannot be completed with phone/email/address until verified source material is supplied.**
-6. **CMS is substantially more complete than the public route map.** After resolving Connection triage, the highest remaining CMS gap is the dedicated author-profile UI.
+6. **CMS is substantially more complete than the public route map.** After resolving Connection triage, the dedicated author-profile UI is now resolved; remaining visible gaps are source-dependent Contact/Tra nhanh mapping and lower-priority workflow polish.
 
 ## Execution order after audit
 
@@ -86,7 +86,7 @@ Basis: current React routes, CMS routes, public/admin API wiring, and `docs/INFO
 1. **Resolved:** `/ban-nghe` now uses explicit editorial tag selection instead of duplicating `/bai-viet`.
 2. **Resolved:** Field Note detail now uses stable slug URLs while keeping UUID compatibility.
 3. **Resolved:** chapter article linking now uses a filtered picker with explicit detach, schedule clearing and guarded empty-slot deletion.
-4. Add dedicated Author Profile management UI.
+4. **Resolved:** dedicated Author Profile management UI now separates editorial profile editing from ADMIN verification.
 5. Add source-backed “Tôi thấy…” mapping only when Cẩm nang part 9 data is actually available.
 6. Complete Contact only from verified legal/contact source data.
 
