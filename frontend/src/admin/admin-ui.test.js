@@ -9,6 +9,7 @@ const system = readFileSync(new URL('./pages/System.jsx', import.meta.url), 'utf
 const reviews = readFileSync(new URL('./pages/Reviews.jsx', import.meta.url), 'utf8');
 const editorial = readFileSync(new URL('./pages/Editorial.jsx', import.meta.url), 'utf8');
 const niches = readFileSync(new URL('./pages/Niches.jsx', import.meta.url), 'utf8');
+const library = readFileSync(new URL('./pages/Library.jsx', import.meta.url), 'utf8');
 const reviewFeedback = readFileSync(new URL('./ReviewFeedback.jsx', import.meta.url), 'utf8');
 
 test('ADMIN CMS navigation is limited to system administration, private intake oversight and read-only article access', () => {
@@ -73,4 +74,15 @@ test('Bàn nghề is an explicit article tag toggle, not a separate content copy
   assert.ok(articles.includes('Hiển thị trong Bàn nghề'));
   assert.ok(articles.includes("tag.slug==='ban-nghe'"));
   assert.ok(articles.includes("{slug:'ban-nghe',name:'Bàn nghề'}"));
+});
+
+
+test('chapter CMS uses a filtered article picker with explicit detach and safe delete controls', () => {
+  assert.ok(library.includes("contentType:selectedBook?.contentLabel"));
+  assert.ok(library.includes('Tìm bài để gắn'));
+  assert.ok(library.includes('Bài viết liên kết'));
+  assert.ok(library.includes("data:{articleId:null}"));
+  assert.ok(library.includes('Gỡ bài khỏi chương'));
+  assert.ok(library.includes('Xóa ô chương trống'));
+  assert.ok(library.includes("method:'DELETE'"));
 });
