@@ -136,9 +136,17 @@ export function createChaptersRouter(db=pool){
         if(!article.rows[0] || article.rows[0].content_type!==book.rows[0].content_label) throw new RequestError(409,'CONTENT_LABEL_MISMATCH','Article content label does not match this book');
       }
       const updated=await client.query(
-        'UPDATE conspace.book_chapters SET title=COALESCE($2,title),article_id=COALESCE($3,article_id),' +
-        'scheduled_at=COALESCE($4,scheduled_at),updated_at=now() WHERE id=$1 RETURNING *',
-        [id,input.title??null,input.articleId??null,input.scheduledAt??null]
+        'UPDATE conspace.book_chapters SET ' +
+        'title=CASE WHEN $2::boolean THEN $3 ELSE title END,' +
+        'article_id=CASE WHEN $4::boolean THEN $5::uuid ELSE article_id END,' +
+        'scheduled_at=CASE WHEN $6::boolean THEN $7::timestamptz ELSE scheduled_at END,' +
+        'updated_at=now() WHERE id=$1 RETURNING *',
+        [
+          id,
+          input.title!==undefined,input.title??null,
+          input.articleId!==undefined,input.articleId??null,
+          input.scheduledAt!==undefined,input.scheduledAt??null,
+        ]
       );
       await writeAudit(client,{actorUserId:req.auth.id,action:'BOOK_CHAPTER_UPDATED',entityType:'BOOK_CHAPTER',entityId:id,before,after:updated.rows[0],req});
       return updated.rows[0];
