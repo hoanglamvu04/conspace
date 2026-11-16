@@ -87,7 +87,7 @@ export default function HomeV1() {
       </form>
       <div className="home-trust-rail" aria-label="Nguyên tắc hiển thị nội dung">
         <div><Icon name="check" size={17}/><span><strong>Chỉ nội dung đã công khai</strong><small>Không lộ bản nháp hoặc hồ sơ đang duyệt.</small></span></div>
-        <div><Icon name="source" size={17}/><span><strong>Có dấu vết nguồn</strong><small>Nội dung xuất bản phải qua điều kiện biên tập hiện hành.</small></span></div>
+        <div><Icon name="link" size={17}/><span><strong>Có dấu vết nguồn</strong><small>Nội dung xuất bản phải qua điều kiện biên tập hiện hành.</small></span></div>
         <div><Icon name="users" size={17}/><span><strong>Ba góc nhìn cùng tồn tại</strong><small>Góc nhìn bạn chọn chỉ đổi thứ tự ưu tiên.</small></span></div>
       </div>
     </div>
