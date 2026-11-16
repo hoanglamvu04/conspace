@@ -40,6 +40,11 @@ export function ConnectionLanding(){
     <PageIntro eyebrow="CONSPACE / KẾT NỐI RIÊNG TƯ" title="Bạn muốn kết nối về điều gì?" description="Đây là kênh tiếp nhận riêng tư và xử lý thủ công. Không có nhu cầu nào được đăng công khai, không đấu giá, không xếp hạng nhà thầu hay kiến trúc sư."/>
     <main className="container content-page">
       <Breadcrumbs items={[{label:'Kết nối'}]}/>
+      <div className="connection-process" aria-label="Quy trình kết nối riêng tư">
+        <div><strong>01</strong><span><b>Chọn đúng nhu cầu</b><small>Dự án, kiến trúc, thi công hoặc tham gia nội dung.</small></span></div>
+        <div><strong>02</strong><span><b>Gửi thông tin riêng tư</b><small>Không có bài đăng công khai hoặc bảng chào giá.</small></span></div>
+        <div><strong>03</strong><span><b>Nhân sự phân loại thủ công</b><small>Yêu cầu chỉ đi tiếp khi phù hợp phạm vi xử lý hiện tại.</small></span></div>
+      </div>
       <div className="connection-choice-grid">
         {TYPE_LINKS.map(([slug,label],index)=>{
           const item=TYPES[slug];
@@ -100,12 +105,16 @@ export function ConnectionForm(){
     <PageIntro eyebrow={config.eyebrow} title={config.title} description={config.description}/>
     <main className="container content-page">
       <Breadcrumbs items={[{label:'Kết nối',to:'/ket-noi'},{label:TYPE_LINKS.find(([slug])=>slug===type)?.[1]||'Biểu mẫu'}]}/>
+      {!success && <div className="connection-form-context">
+        <div><span className="eyebrow">LOẠI YÊU CẦU ĐANG CHỌN</span><strong>{TYPE_LINKS.find(([slug])=>slug===type)?.[1]}</strong></div>
+        <Link className="text-link" to="/ket-noi">Đổi loại yêu cầu <Icon name="arrow" size={15}/></Link>
+      </div>}
       {success?<div className="connection-success" role="status">
         <span className="connection-success-icon"><Icon name="check" size={30}/></span>
         <h2>Đã tiếp nhận riêng tư</h2>
         <p>{success.message}</p>
         <small>Mã tiếp nhận: {success.id}</small>
-        <div className="connection-success-actions"><Link className="button button--primary" to="/">Về trang chủ</Link><button type="button" className="button button--outline" onClick={()=>setSuccess(null)}>Gửi yêu cầu khác</button></div>
+        <div className="connection-success-actions"><Link className="button button--primary" to="/ket-noi">Về trang Kết nối</Link><button type="button" className="button button--outline" onClick={()=>setSuccess(null)}>Gửi thêm cùng loại</button><Link className="button button--quiet" to="/">Trang chủ</Link></div>
       </div>:<div className="connection-form-layout">
         <form className="connection-form" onSubmit={submit}>
           <label htmlFor="connection-description">Bạn cần trao đổi điều gì? <span aria-hidden="true">*</span></label>
@@ -119,7 +128,7 @@ export function ConnectionForm(){
 
           <label htmlFor="connection-contact">Cách liên hệ riêng <span aria-hidden="true">*</span></label>
           <input id="connection-contact" required minLength={6} maxLength={200} value={contact} onChange={e=>setContact(e.target.value)} placeholder="Email hoặc số điện thoại"/>
-          <p className="public-privacy-note">Thông tin liên hệ chỉ dùng để xử lý yêu cầu này. Nội dung nhu cầu không được đưa lên danh sách công khai. Nhân sự nội bộ truy cập contact sẽ để lại dấu vết audit.</p>
+          <div className="connection-privacy-note"><Icon name="shield" size={18}/><p>Thông tin liên hệ chỉ dùng để xử lý yêu cầu này. Nội dung nhu cầu không được đưa lên danh sách công khai. Nhân sự nội bộ truy cập contact sẽ để lại dấu vết audit.</p></div>
           {error&&<p className="public-form-error" role="alert">{error}</p>}
           <button className="button button--primary" type="submit" disabled={busy}>{busy?'Đang gửi...':'Gửi yêu cầu riêng tư'} <Icon name="arrow" size={17}/></button>
         </form>
