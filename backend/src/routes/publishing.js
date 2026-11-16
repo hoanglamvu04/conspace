@@ -66,9 +66,9 @@ export function createPublishingRouter(db=pool){
   const total=await db.query('SELECT count(*)::integer AS total '+pred,[q.niche??null]);
   res.json({ok:true,data:rows.rows,meta:{total:total.rows[0].total,limit:q.limit,offset:q.offset,preferredAudienceRole:q.role??'homeowner'}});
  }));
- router.get('/field-notes/:id',handle(async(req,res)=>{
-  const id=validate(z.strictObject({id:uuid}),req.params).id;
-  const r=await db.query("SELECT f.id,a.id AS \"articleId\",a.slug,a.title,a.excerpt,a.body,a.published_at AS \"publishedAt\",f.phenomenon,f.root_cause AS \"rootCause\",f.intervention_point AS \"interventionPoint\",f.repair_cost_amount AS \"repairCostAmount\",f.repair_cost_currency AS \"repairCostCurrency\",f.repair_cost_source AS \"repairCostSource\",COALESCE((SELECT json_agg(json_build_object('id',m.id,'url','/api/v1/media/'||m.id::text,'caption',fm.caption) ORDER BY fm.position) FROM conspace.field_note_media fm JOIN conspace.media_assets m ON m.id=fm.media_id AND m.deleted_at IS NULL AND m.rights_confirmed=true WHERE fm.field_note_id=f.id),'[]'::json) AS images FROM conspace.field_notes f JOIN conspace.articles a ON a.id=f.article_id WHERE f.id=$1 AND "+publishedArticle+" AND "+checkedField+" LIMIT 1",[id]);
+ router.get('/field-notes/:key',handle(async(req,res)=>{
+  const key=validate(z.strictObject({key:slug}),req.params).key;
+  const r=await db.query("SELECT f.id,a.id AS \"articleId\",a.slug,a.title,a.excerpt,a.body,a.published_at AS \"publishedAt\",f.phenomenon,f.root_cause AS \"rootCause\",f.intervention_point AS \"interventionPoint\",f.repair_cost_amount AS \"repairCostAmount\",f.repair_cost_currency AS \"repairCostCurrency\",f.repair_cost_source AS \"repairCostSource\",COALESCE((SELECT json_agg(json_build_object('id',m.id,'url','/api/v1/media/'||m.id::text,'caption',fm.caption) ORDER BY fm.position) FROM conspace.field_note_media fm JOIN conspace.media_assets m ON m.id=fm.media_id AND m.deleted_at IS NULL AND m.rights_confirmed=true WHERE fm.field_note_id=f.id),'[]'::json) AS images FROM conspace.field_notes f JOIN conspace.articles a ON a.id=f.article_id WHERE (a.slug=$1 OR f.id::text=$1) AND "+publishedArticle+" AND "+checkedField+" LIMIT 1",[key]);
   if(!r.rows[0])throw new RequestError(404,'NOT_FOUND','Field note not found');
   res.json({ok:true,data:r.rows[0]});
  }));
