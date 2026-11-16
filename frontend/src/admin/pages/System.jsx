@@ -15,6 +15,7 @@ export function Media(){
   const list=useAdminList('/media',{page,limit:24,category:category||undefined,rights:['confirmed','unconfirmed'].includes(rightsFilter)?rightsFilter:undefined,search:search||undefined});
   const total=list.meta?.total;
   function setFilter(key,value){const next=new URLSearchParams(params);if(value)next.set(key,value);else next.delete(key);setParams(next);setPage(1);}
+  function resetMediaFilters(){setParams(new URLSearchParams());setPage(1);}
   async function upload(e){e.preventDefault();if(!file)return;setBusy(true);try{const item=await uploadAdminImage(file,{altText,rightsConfirmed:rights,rightsNote});notice(`Đã tải ${item.originalFilename||file.name} lên máy chủ.`);list.retry();setFile(null);setAltText('');setRights(false);setRightsNote('');}catch(error){notice(error.message,'error');}finally{setBusy(false);}}
   async function patch(e){e.preventDefault();if(!selected)return;setBusy(true);try{await adminObject(`/media/${selected.id}`,{method:'PATCH',data:{altText:selected.altText||null,rightsConfirmed:selected.rightsConfirmed,rightsNote:selected.rightsNote||null}});notice('Backend đã lưu metadata và quyền dùng tệp.');setSelected(null);list.retry();}catch(err){notice(err.message,'error');}finally{setBusy(false);}}
   async function remove(){if(!deleteId)return;setBusy(true);try{await adminRequest(`/media/${deleteId}`,{method:'DELETE'});notice('Tệp đã được lưu trạng thái xóa ở Backend.');setDeleteId(null);list.retry();}catch(err){notice(err.message,'error');}finally{setBusy(false);}}
@@ -26,6 +27,7 @@ export function Media(){
         <select aria-label="Lọc loại tệp" value={category} onChange={e=>setFilter('category',e.target.value)}><option value="">Tất cả loại</option><option value="IMAGE">Hình ảnh</option><option value="DOCUMENT">Tài liệu PDF</option></select>
         <select aria-label="Lọc quyền sử dụng" value={rightsFilter} onChange={e=>setFilter('rights',e.target.value)}><option value="">Mọi trạng thái quyền</option><option value="unconfirmed">Chưa xác nhận quyền</option><option value="confirmed">Đã xác nhận quyền</option></select>
         <input aria-label="Tìm tệp" placeholder="Tên tệp / alt / căn cứ quyền…" value={search} onChange={e=>setFilter('search',e.target.value)}/>
+        {(category||rightsFilter||search)&&<button type="button" className="cms-btn cms-btn--light cms-btn--small" onClick={resetMediaFilters}>Xóa bộ lọc</button>}
       </div>
       <DataState data={list} title="Chưa có tệp" empty="Không sử dụng hình ảnh mẫu khi chưa upload." icon="media">
         <div className="cms-media-gallery">{list.data.map(x=>{const usage=(x.articleUsageCount||0)+(x.fieldNoteUsageCount||0)+(x.questionUsageCount||0);return <article className="cms-media-item" key={x.id}>
@@ -125,14 +127,14 @@ export function Users(){
     <Surface title="Danh sách tài khoản" description="Person ID là ranh giới chống tự duyệt: nhiều tài khoản cùng personId vẫn được coi là cùng một người.">
       <label className="cms-search cms-collection-search"><CmsIcon name="search"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Tên, email hoặc personId…" aria-label="Tìm tài khoản"/></label>
       <DataState data={users} title="Chưa có nhân sự" empty="Chỉ tài khoản nội bộ thực tế từ API." icon="users">
-        <TableWrap><thead><tr><th>Nhân sự</th><th>Vai trò và quyền</th><th>Danh tính</th><th>Phiên / đăng nhập</th><th>Trạng thái</th><th>Quản lý</th></tr></thead><tbody>{filtered.map(x=><tr key={x.id}>
+        {filtered.length?<TableWrap><thead><tr><th>Nhân sự</th><th>Vai trò và quyền</th><th>Danh tính</th><th>Phiên / đăng nhập</th><th>Trạng thái</th><th>Quản lý</th></tr></thead><tbody>{filtered.map(x=><tr key={x.id}>
           <td><div className="cms-person"><span>{x.displayName?.slice(0,1).toUpperCase()||'C'}</span><div><strong>{x.displayName}</strong><small>{x.email}</small><small>Tạo <Timestamp value={x.createdAt}/></small></div></div></td>
           <td><div className="cms-role-tags">{(x.roles?.length?x.roles:[x.role]).map(role=><span className="cms-pill" key={role}>{ROLES[role]||role}</span>)}{(x.permissions||[]).map(permission=><span className="cms-pill cms-pill--orange" key={permission}>{permission==='CONTENT_PUBLISH'?'Quyền xuất bản':'Quyền thu hồi'}</span>)}</div></td>
           <td><code className="cms-identity-code">{x.personId?.slice(0,8)||'—'}</code>{users.data.filter(peer=>peer.personId&&peer.personId===x.personId).length>1&&<small className="cms-field-help">Có tài khoản khác cùng danh tính</small>}</td>
           <td><strong>{x.activeSessionCount||0} phiên</strong><small>{x.lastLoginAt?<><br/>Lần cuối <Timestamp value={x.lastLoginAt} withTime/></>:' · Chưa đăng nhập'}</small>{x.mustChangePassword&&<p><span className="cms-pill cms-pill--orange">Phải đổi mật khẩu</span></p>}</td>
           <td><Pill value={x.isActive?'ACTIVE':'INACTIVE'}/></td>
           <td>{editable&&<div className="cms-btn-row"><button type="button" className="cms-btn cms-btn--light cms-btn--small" onClick={()=>open(x)}>Sửa</button><button type="button" className="cms-btn cms-btn--light cms-btn--small" disabled={!x.activeSessionCount||x.id===user?.id} onClick={()=>setRevokeTarget(x)}>Thu hồi phiên</button></div>}</td>
-        </tr>)}</tbody></TableWrap>
+        </tr>)}</tbody></TableWrap>:<EmptyState title="Không tìm thấy nhân sự" description="Thử tên, email hoặc personId khác." icon="users"/>}
       </DataState>
     </Surface>
 
