@@ -98,3 +98,12 @@ test('author profile CMS separates editorial editing from ADMIN verification', (
   assert.ok(api.includes("'authors:read','authors:create','authors:write'"));
   assert.ok(api.includes("'authors:read', 'authors:verify'"));
 });
+
+
+test('question triage can correct the reader-guessed niche without faking answer workflow', () => {
+  assert.ok(editorial.includes('Ngách sau triage'));
+  assert.ok(editorial.includes('Lưu ngách phân loại'));
+  assert.ok(editorial.includes('guessedNicheId:guessedNicheId||null'));
+  assert.ok(editorial.includes("useAdminList('/niches'"));
+  assert.doesNotMatch(editorial, /Backend không có API sửa ngách/);
+});
