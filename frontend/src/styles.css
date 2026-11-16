@@ -1187,3 +1187,70 @@ svg { flex-shrink: 0; }
   }
   .detail-jump-nav a { min-height: 35px; padding: 7px 11px; font-size: 11px; }
 }
+
+
+/* Public UX polish: article + field note reading */
+.article-reading-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-left: auto;
+}
+.article-reading-tools a {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 11px;
+  border: 1px solid #dce8ee;
+  border-radius: 8px;
+  background: #f8fbfd;
+  color: #557486;
+  font-size: 11px;
+  font-weight: 720;
+}
+.article-reading-tools a:hover { border-color: #a9d2e3; background: #edf7fb; color: #176c98; }
+#noi-dung-bai-viet, #nguon-tham-khao { scroll-margin-top: 120px; }
+
+.field-case-summary {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 34px;
+}
+.field-case-summary section {
+  padding: 23px 24px;
+  border: 1px solid #dfeaf0;
+  border-radius: 12px;
+  background: #fff;
+}
+.field-case-summary section:nth-child(2) { background: #f7fbfd; }
+.field-case-summary section:nth-child(3) { background: #eef8fb; border-color: #d3e9f1; }
+.field-case-summary h2 {
+  margin: 8px 0 10px;
+  color: #21485f;
+  font-size: 22px;
+  line-height: 1.35;
+  letter-spacing: -.025em;
+}
+.field-case-summary p {
+  margin: 0;
+  color: #5f7c8d;
+  font-size: 14px;
+  line-height: 1.8;
+}
+.field-case-detail {
+  padding-top: 8px;
+}
+.field-case-detail > .eyebrow { margin-bottom: 10px; }
+
+@media (max-width: 800px) {
+  .article-byline { align-items: flex-start; flex-wrap: wrap; }
+  .article-reading-tools { width: 100%; margin-left: 55px; }
+}
+
+@media (max-width: 590px) {
+  .article-reading-tools { margin-left: 0; }
+  .article-reading-tools a { flex: 1 1 auto; justify-content: center; }
+  .field-case-summary section { padding: 19px 17px; }
+  .field-case-summary h2 { font-size: 19px; }
+  .field-case-summary p { font-size: 13px; }
+}
