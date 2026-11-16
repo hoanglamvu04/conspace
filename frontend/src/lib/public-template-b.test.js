@@ -10,6 +10,6 @@ test('public Template B renders seven architecture blocks from published API dat
   assert.ok(nicheDetail.includes("section.content"));
   assert.ok(nicheDetail.includes("section.sourceRef"));
   assert.ok(nicheDetail.includes('Chưa có nội dung đã kiểm duyệt và đủ nguồn để công khai.'));
-  assert.ok(nicheDetail.includes('<DesignBlocks sections={niche.sections||[]}'));
+  assert.ok(nicheDetail.includes('<DesignBlocks id="ho-so-chuyen-mon" sections={niche.sections||[]}'));
   assert.ok(!nicheDetail.includes('Hồ sơ mảng kiến trúc có cấu trúc riêng'));
 });
