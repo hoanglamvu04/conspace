@@ -217,6 +217,11 @@
 .cms-review-filter { display: flex; align-items: center; gap: 12px; padding-bottom: 17px; }
 .cms-review-filter label { font-weight: 700; color: #71879a; font-size: 11px; white-space: nowrap; }
 .cms-review-filter select { flex: 1; }
+.cms-review-entity-filter { display:flex; gap:7px; flex-wrap:wrap; padding:0 0 15px; }
+.cms-review-entity-filter button { border:1px solid #dce6ed; background:#f8fafc; color:#5f7789; border-radius:999px; min-height:34px; padding:6px 10px; display:inline-flex; align-items:center; gap:7px; font-size:10.5px; font-weight:730; }
+.cms-review-entity-filter button strong { min-width:21px; height:21px; display:grid; place-items:center; border-radius:999px; background:#eaf1f5; color:#607789; font-size:9.5px; }
+.cms-review-entity-filter button.is-active { background:#1d6f9a; border-color:#1d6f9a; color:#fff; }
+.cms-review-entity-filter button.is-active strong { background:rgba(255,255,255,.16); color:#fff; }
 .cms-review-queue { border-top: 1px solid #ecf1f4; }
 .cms-review-row { display: block; border: 0; border-bottom: 1px solid #edf1f4; width: 100%; background: white; padding: 16px 7px; text-align: left; }
 .cms-review-row:hover, .cms-review-row.is-selected { background: #f2f9fd; }
@@ -266,6 +271,9 @@
 .cms-upload-area { position: relative; text-align: center; border: 1px dashed #b4d6e7; border-radius: 9px; padding: 19px 12px; background: #f4fafd; display: flex; flex-direction: column; align-items: center; gap: 6px; color: #3b8aaf; cursor: pointer; }
 .cms-upload-area:hover { background: #eaf6fc; }
 .cms-upload-area strong { font-size: 11.7px; color: #4b7f9b; }
+.cms-upload-meta-head { display:grid; gap:4px; margin:18px 0 9px; padding:12px 13px; border:1px solid #deebf1; border-radius:9px; background:#f7fbfd; }
+.cms-upload-meta-head strong { color:#36566b; font-size:11.7px; }
+.cms-upload-meta-head small { color:#8a9eac; font-size:10.3px; line-height:1.55; }
 .cms-upload-area small { font-size: 10px; color: #92aab9; }
 .cms-cover-preview { margin: 12px 0; border-radius: 7px; overflow: hidden; background: #edf4f8; max-height: 175px; }
 .cms-cover-preview img { width: 100%; object-fit: cover; max-height: 175px; }
@@ -541,3 +549,5 @@
 .cms-review-feedback-history{border:1px solid var(--cms-border,#dbe3ea);border-radius:12px;background:#f8fafc;padding:10px 12px}
 .cms-review-feedback-history summary{cursor:pointer;font-weight:750;color:#274b63}
 .cms-review-feedback-history[open] summary{margin-bottom:10px}
+
+@media(max-width:650px){.cms-review-entity-filter{overflow-x:auto;flex-wrap:nowrap;padding-bottom:10px}.cms-review-entity-filter button{flex:0 0 auto}}
