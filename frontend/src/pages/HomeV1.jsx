@@ -44,6 +44,10 @@ export default function HomeV1() {
           <div className="hero-kicker"><span className="kicker-line"/> SỰ THẬT NGÀNH XÂY</div>
           <h1>Một công trình.<br/><span>Ba góc nhìn.</span></h1>
           <p className="hero-lead">Chủ nhà thấy một điều. Kiến trúc sư nghĩ một cách. Nhà thầu đối diện một thực tế khác. CONSPACE là nơi những câu chuyện ấy được đặt cạnh nhau.</p>
+          <div className="hero-actions">
+            <Link className="button button--primary" to="/ngach">Khám phá kho ngách <Icon name="arrow" size={17}/></Link>
+            <Link className="button button--quiet" to="/hoi-dap/gui-cau-hoi">Gửi câu hỏi <Icon name="upRight" size={16}/></Link>
+          </div>
           <div className="hero-choice-inline">
             <div className="choice-intro">
               <span className="eyebrow">BẮT ĐẦU TỪ BẠN</span>
@@ -81,6 +85,11 @@ export default function HomeV1() {
           <button className="button button--primary" type="submit">Tra nhanh <Icon name="arrow" size={17}/></button>
         </div>
       </form>
+      <div className="home-trust-rail" aria-label="Nguyên tắc hiển thị nội dung">
+        <div><Icon name="check" size={17}/><span><strong>Chỉ nội dung đã công khai</strong><small>Không lộ bản nháp hoặc hồ sơ đang duyệt.</small></span></div>
+        <div><Icon name="source" size={17}/><span><strong>Có dấu vết nguồn</strong><small>Nội dung xuất bản phải qua điều kiện biên tập hiện hành.</small></span></div>
+        <div><Icon name="users" size={17}/><span><strong>Ba góc nhìn cùng tồn tại</strong><small>Góc nhìn bạn chọn chỉ đổi thứ tự ưu tiên.</small></span></div>
+      </div>
     </div>
 
     <section className="section section--editorial">
@@ -104,13 +113,13 @@ export default function HomeV1() {
 
           <div className="home-feed-grid">
             <section>
-              <SectionHeading eyebrow="GHI CHÉP ĐÃ ẨN DANH" title="Hiện trường"/>
+              <SectionHeading eyebrow="GHI CHÉP ĐÃ ẨN DANH" title="Hiện trường" action="Xem tất cả" to="/hien-truong"/>
               {fieldNotes.length ? <div className="home-feed-cards">{fieldNotes.slice(0, 3).map((item) => <Link className="home-feed-card" to={'/hien-truong/' + encodeURIComponent(item.slug)} key={item.id}>
                 <span className="eyebrow">CA ĐÃ XUẤT BẢN</span><h3>{item.title}</h3><p>{item.excerpt || item.phenomenon}</p><span className="text-link">Đọc ca hiện trường <Icon name="arrow" size={16}/></span>
               </Link>)}</div> : <StatusPanel status="empty" compact title="Chưa có ca hiện trường công khai" description="Ca chỉ hiển thị sau khi được duyệt, ẩn danh và xác nhận quyền ảnh."/>}
             </section>
             <section>
-              <SectionHeading eyebrow="CÂU TRẢ LỜI ĐÃ DUYỆT" title="Hỏi đáp"/>
+              <SectionHeading eyebrow="CÂU TRẢ LỜI ĐÃ DUYỆT" title="Hỏi đáp" action="Mở Hỏi đáp" to="/hoi-dap"/>
               {questions.length ? <Link className="home-feature-question" to={'/hoi-dap/' + questions[0].id}>
                 <span className="eyebrow">HỎI ĐÁP / ĐÃ XUẤT BẢN</span><h3>{questions[0].description}</h3><p>{questions[0].answer}</p><span className="text-link">Đọc câu trả lời <Icon name="arrow" size={16}/></span>
               </Link> : <StatusPanel status="empty" compact title="Chưa có câu trả lời công khai" description="Câu hỏi và câu trả lời chỉ xuất hiện sau khi được duyệt."/>}
