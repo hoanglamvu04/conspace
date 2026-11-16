@@ -9,6 +9,7 @@ const publicPages = readFileSync(new URL('../pages/PublicPages.jsx', import.meta
 const config = readFileSync(new URL('../config.js', import.meta.url), 'utf8');
 const connection = readFileSync(new URL('../pages/Connection.jsx', import.meta.url), 'utf8');
 const articlesPage = readFileSync(new URL('../pages/Articles.jsx', import.meta.url), 'utf8');
+const ui = readFileSync(new URL('../components/UI.jsx', import.meta.url), 'utf8');
 
 test('IA public routes include the new sections and keep legacy aliases working', () => {
   for (const route of ['/tu-sach', '/ngach', '/hien-truong', '/hoi-dap', '/tra-nhanh', '/tra-cuu', '/tu-dien', '/ban-nghe', '/lien-he', '/ket-noi']) {
@@ -90,4 +91,24 @@ test('field-note public links use stable article slugs and canonicalize legacy U
   assert.ok(publicPages.includes("'/hien-truong/' + encodeURIComponent(item.slug)"));
   assert.ok(publicPages.includes("navigate('/hien-truong/' + encodeURIComponent(canonicalSlug), { replace: true })"));
   assert.ok(publicPages.includes("canonicalPath:canonicalSlug?'/hien-truong/'+canonicalSlug:'/hien-truong'"));
+});
+
+
+test('responsive public navigation keeps mobile behavior and Connection emphasis', () => {
+  assert.ok(config.includes("{ to: '/ket-noi', label: 'Kết nối', emphasis: true }"));
+  assert.ok(ui.includes("document.body.classList.toggle('public-menu-open', menuOpen)"));
+  assert.ok(ui.includes('mobile-nav-backdrop'));
+  assert.ok(ui.includes('mobile-nav-secondary'));
+  for (const label of ['Bài viết','Bàn nghề','Về CONSPACE','Quy tắc nội dung']) assert.ok(ui.includes(label));
+  assert.ok(ui.includes("item.emphasis ? 'nav-link--emphasis '"));
+  assert.ok(ui.includes("item.emphasis ? 'mobile-nav-link--emphasis '"));
+});
+
+test('homepage first screen exposes direct paths and trust cues without fake metrics', () => {
+  assert.ok(home.includes('Khám phá kho ngách'));
+  assert.ok(home.includes('Gửi câu hỏi'));
+  assert.ok(home.includes('home-trust-rail'));
+  assert.ok(home.includes('Chỉ nội dung đã công khai'));
+  assert.ok(home.includes('Ba góc nhìn cùng tồn tại'));
+  assert.ok(config.includes("{ to: '/ket-noi', title: 'Kết nối'"));
 });
