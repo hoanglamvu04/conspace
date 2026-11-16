@@ -1254,3 +1254,157 @@ svg { flex-shrink: 0; }
   .field-case-summary h2 { font-size: 19px; }
   .field-case-summary p { font-size: 13px; }
 }
+
+
+/* Public UX polish: library Q&A lookup connection */
+.library-overview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  margin: 0 0 24px;
+  padding: 20px 22px;
+  border: 1px solid #dce9f0;
+  border-radius: 13px;
+  background: #f7fbfd;
+}
+.library-overview > div:first-child { max-width: 680px; }
+.library-overview h2 { margin: 7px 0 5px; color: #23485f; font-size: 22px; letter-spacing: -.025em; }
+.library-overview p { margin: 0; color: #728b99; font-size: 12px; line-height: 1.7; }
+
+.book-progress-summary {
+  display: grid;
+  grid-template-columns: auto minmax(180px,320px) minmax(0,1fr);
+  gap: 18px;
+  align-items: center;
+  margin: 0 0 26px;
+  padding: 18px 20px;
+  border: 1px solid #e0eaf0;
+  border-radius: 12px;
+  background: #f8fbfd;
+}
+.book-progress-summary > div:first-child { display: grid; gap: 2px; }
+.book-progress-summary strong { color: #1d7198; font-size: 27px; line-height: 1; }
+.book-progress-summary span { color: #6f8795; font-size: 11px; }
+.book-progress-summary p { margin: 0; color: #758d9a; font-size: 12px; line-height: 1.65; }
+.book-progress-track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #dfeaf0;
+}
+.book-progress-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #2687ad;
+}
+#noi-dung-chuong, #nguon-chuong { scroll-margin-top: 120px; }
+
+.qa-process,
+.connection-process {
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: 10px;
+  margin: 0 0 28px;
+}
+.qa-process > div,
+.connection-process > div {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 17px;
+  border: 1px solid #dfeaf0;
+  border-radius: 11px;
+  background: #fff;
+}
+.qa-process > div > strong,
+.connection-process > div > strong {
+  color: #2b87a9;
+  font-size: 18px;
+  line-height: 1;
+  letter-spacing: -.03em;
+}
+.qa-process span,
+.connection-process span { display: grid; gap: 4px; min-width: 0; }
+.qa-process b,
+.connection-process b { color: #284d63; font-size: 12px; }
+.qa-process small,
+.connection-process small { color: #7b919e; font-size: 10.5px; line-height: 1.55; }
+
+.question-detail-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 20px;
+}
+.form-trust-note,
+.connection-privacy-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 0 auto 18px;
+  padding: 16px 18px;
+  border: 1px solid #d9e9ef;
+  border-radius: 11px;
+  background: #f4f9fb;
+  color: #557486;
+}
+.form-trust-note { max-width: 790px; }
+.form-trust-note svg,
+.connection-privacy-note svg { margin-top: 2px; color: #2f7e9e; }
+.form-trust-note strong { color: #284e64; font-size: 13px; }
+.form-trust-note p,
+.connection-privacy-note p { margin: 4px 0 0; font-size: 11.5px; line-height: 1.7; }
+
+.lookup-clear { margin-left: auto; border-style: dashed !important; background: #fff !important; color: #6b8190 !important; }
+.lookup-empty-actions > div:last-child {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.connection-form-context {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 0 0 18px;
+  padding: 15px 18px;
+  border: 1px solid #dce9f0;
+  border-radius: 11px;
+  background: #f8fbfd;
+}
+.connection-form-context > div { display: grid; gap: 4px; }
+.connection-form-context strong { color: #234b62; font-size: 16px; }
+.connection-privacy-note { margin: 0; }
+
+@media (max-width: 900px) {
+  .library-overview { align-items: flex-start; flex-direction: column; }
+  .book-progress-summary { grid-template-columns: auto 1fr; }
+  .book-progress-summary p { grid-column: 1 / -1; }
+}
+
+@media (max-width: 680px) {
+  .qa-process,
+  .connection-process { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 590px) {
+  .library-overview { padding: 17px; }
+  .library-overview .reader-switch { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); width: 100%; }
+  .library-overview .reader-option { padding-inline: 7px; font-size: 10.5px; }
+  .book-progress-summary { grid-template-columns: 1fr; gap: 12px; }
+  .book-progress-summary p { grid-column: auto; }
+  .book-progress-track { width: 100%; }
+  .question-detail-actions .button { width: 100%; }
+  .lookup-facets { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 3px; }
+  .lookup-facets button { flex: 0 0 auto; }
+  .lookup-empty-actions > div:last-child { align-items: stretch; flex-direction: column; }
+  .lookup-empty-actions .button { width: 100%; }
+  .connection-form-context { align-items: flex-start; flex-direction: column; }
+  .connection-form-context .text-link { align-self: flex-start; }
+}
