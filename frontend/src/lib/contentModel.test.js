@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { chapterPath, chapterDisplayLabel, nicheLayersForRole, addOpenLayerRole, toggleOpenLayerRole } from './contentModel.js';
+import { chapterPath, chapterDisplayLabel, nicheLayersForRole, addOpenLayerRole, toggleOpenLayerRole, nichePathForSlug } from './contentModel.js';
 
 test('book chapters use the canonical IA route families', () => {
   assert.equal(chapterPath('cam-nang-kien-truc-hoa-lac', 3), '/cam-nang/phan-3/muc-3');
@@ -65,4 +65,12 @@ test('shared niche content is reusable only when it has a source reference', () 
   assert.equal(contractor[0].published, true);
   const unsupported = nicheLayersForRole([{...sections[0], sharedSourceRef: null}], 'homeowner');
   assert.equal(unsupported[0].published, false);
+});
+
+test('niche cross-links use canonical design versus construction paths', () => {
+  const taxonomy = [{ slug: 'house', group: 'design' }, { slug: 'roofing', group: 'construction' }];
+  assert.equal(nichePathForSlug('house', taxonomy), '/mang/house');
+  assert.equal(nichePathForSlug('roofing', taxonomy), '/ngach/roofing');
+  assert.equal(nichePathForSlug('unknown', taxonomy), '/ngach/unknown');
+  assert.equal(nichePathForSlug('../admin', taxonomy), '/ngach');
 });

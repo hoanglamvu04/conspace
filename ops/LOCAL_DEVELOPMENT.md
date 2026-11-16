@@ -98,3 +98,12 @@ After the test, clear the password variables from that CMD session if it will re
     npm.cmd run build
 
 Only after local tests, the role acceptance harness and GitHub Actions pass should the owner review a separate production release checklist. Push to main is not permission to deploy. VPS, Nginx, PM2, SSL and other applications remain untouched during local development.
+
+## Public Web read-only acceptance
+
+Start Docker, Backend and Frontend. For a full fixture-based pass, reset the local demo seed first (see the role-acceptance section above), because the role suite withdraws/archives its test fixtures. Then run:
+
+    cd /d D:\conspace
+    ops\scripts\public-acceptance.cmd
+
+This read-only script checks 18 public route entry points, three reader feeds, real Template B structure, public books/chapters, search, and publishing isolation. A seeded public Article must be readable; a returned Article, a draft Field Note and a non-published demo Q&A must remain hidden. The runner does not log in, post questions, mutate records or contact production. Browser rendering and actual mobile device behavior still require a separate manual visual walkthrough.

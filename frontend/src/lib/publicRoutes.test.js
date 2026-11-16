@@ -171,3 +171,8 @@ test('contact page routes readers only to existing intake paths without inventin
   assert.ok(contactPage.includes('Kết nối riêng tư'));
   assert.ok(contactPage.includes('chưa có trong nguồn thông tin được xác nhận'));
 });
+
+test('article and Q&A cross-links resolve design slugs to the canonical /mang route', () => {
+  assert.ok(articlesPage.includes('nichePathForSlug(tag, activeNiches)'));
+  assert.ok(publicPages.includes('nichePathForSlug(data.niche'));
+});

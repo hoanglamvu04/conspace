@@ -59,3 +59,13 @@ export function chapterDisplayLabel(bookSlug, chapterNo, title) {
   const prefix = bookSlug === 'cam-nang-kien-truc-hoa-lac' ? 'Phần ' : 'Chương ';
   return prefix + Number(chapterNo);
 }
+
+/**
+ * Use the active taxonomy as the source of truth for a field's canonical path.
+ * Unresolved slugs keep the existing /ngach alias, which redirects after loading.
+ */
+export function nichePathForSlug(slug, activeNiches = []) {
+  if (typeof slug !== 'string' || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) return '/ngach';
+  const niche = Array.isArray(activeNiches) ? activeNiches.find((item) => item.slug === slug) : null;
+  return (niche?.group === 'design' ? '/mang/' : '/ngach/') + encodeURIComponent(slug);
+}

@@ -4,7 +4,7 @@ import { formatDate, safeMediaUrl } from '../config.js';
 import { useReader } from '../context/ReaderContext.jsx';
 import { useFieldNotes, useNiches, useQuestions, useResource } from '../hooks/useResources.js';
 import { apiUrl, getJson, postJson } from '../lib/api.js';
-import { chapterPath, chapterDisplayLabel } from '../lib/contentModel.js';
+import { chapterPath, chapterDisplayLabel, nichePathForSlug } from '../lib/contentModel.js';
 import { useSeoMetadata } from '../lib/seo.js';
 import { sortByLens } from '../lib/readerLens.js';
 import { Markdown } from '../components/Markdown.jsx';
@@ -318,6 +318,7 @@ export function QuestionDetail() {
   const { id } = useParams();
   const validId = /^[0-9a-f-]{36}$/i.test(id || '');
   const question = useResource(validId ? apiUrl('/questions/' + id) : null, { list: false, enabled: validId });
+  const nicheDirectory = useNiches();
   usePageMeta(question.status === 'success' ? 'Hỏi đáp: ' + question.data.description : null, question.status === 'success' ? question.data.description : null,{canonicalPath:validId?'/hoi-dap/'+id:'/hoi-dap',index:question.status==='success'});
   if (!validId) return <main className="container content-page"><StatusPanel status="empty" title="Mã câu hỏi không hợp lệ"/></main>;
   if (question.status === 'loading') return <main className="container content-page"><StatusPanel status="loading" kind="articles"/></main>;
@@ -330,7 +331,7 @@ export function QuestionDetail() {
     <article className="public-question-detail">
       <span className="eyebrow">CÂU HỎI ĐỘC GIẢ · ĐÃ ẨN DANH</span>
       <h1>{data.description}</h1>
-      {data.niche && <p className="public-question-niche">Ngách liên quan: <Link to={'/ngach/' + encodeURIComponent(data.niche)}>{data.niche}</Link></p>}
+      {data.niche && <p className="public-question-niche">Lĩnh vực liên quan: <Link to={nichePathForSlug(data.niche, nicheDirectory.status === 'success' ? nicheDirectory.data : [])}>{data.niche}</Link></p>}
       {images.length > 0 && <div className="public-field-images">{images.map((src, index) => { const url = safeMediaUrl(src); return url ? <figure key={src}><img src={url} alt={'Ảnh câu hỏi đã xác nhận quyền sử dụng ' + (index + 1)} loading="lazy"/></figure> : null; })}</div>}
       <section className="public-answer"><span className="eyebrow">CÂU TRẢ LỜI ĐÃ DUYỆT</span><Markdown body={data.answer}/><p className="public-answer-date">Xuất bản {formatDate(data.publishedAt)}</p></section>
       <div className="question-detail-actions"><Link className="button button--outline" to="/hoi-dap">Xem câu hỏi khác</Link><Link className="button button--primary" to="/hoi-dap/gui-cau-hoi">Gửi câu hỏi của bạn <Icon name="arrow" size={16}/></Link></div>

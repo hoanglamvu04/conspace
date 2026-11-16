@@ -2,7 +2,8 @@ import { Link, useParams } from 'react-router-dom';
 import { useEffect } from 'react';
 import { formatDate, READERS, safeMediaUrl } from '../config.js';
 import { useReader } from '../context/ReaderContext.jsx';
-import { useArticles, useResource } from '../hooks/useResources.js';
+import { useArticles, useNiches, useResource } from '../hooks/useResources.js';
+import { nichePathForSlug } from '../lib/contentModel.js';
 import { apiUrl } from '../lib/api.js';
 import { useSeoMetadata } from '../lib/seo.js';
 import { Markdown } from '../components/Markdown.jsx';
@@ -53,6 +54,8 @@ export function ArticleDetail() {
   const validSlug = typeof slug === 'string' && /^[a-z0-9][a-z0-9-]*$/.test(slug);
   const article = useResource(validSlug ? apiUrl(`/articles/${slug}`) : null, { list: false, enabled: validSlug });
   const entry = article.status === 'success' ? article.data : null;
+  const niches = useNiches();
+  const activeNiches = niches.status === 'success' ? niches.data : [];
   const related = useArticles(reader, entry?.niches?.[0] || null, 4);
   const image = safeMediaUrl(entry?.coverImage);
   useSeoMetadata({
@@ -101,7 +104,7 @@ export function ArticleDetail() {
             <span className="eyebrow">TRONG BÀI VIẾT</span>
             <h3>Chủ đề liên quan</h3>
             {Array.isArray(entry.niches) && entry.niches.length
-              ? <div className="tag-list">{entry.niches.map((tag) => <Link key={tag} to={`/ngach/${encodeURIComponent(tag)}`}>{tag}<Icon name="upRight" size={14}/></Link>)}</div>
+              ? <div className="tag-list">{entry.niches.map((tag) => <Link key={tag} to={nichePathForSlug(tag, activeNiches)}>{tag}<Icon name="upRight" size={14}/></Link>)}</div>
               : <p className="side-caption">Bài viết chưa được gắn với một ngách cụ thể.</p>}
           </div>
           <div className="side-panel side-panel--soft">
