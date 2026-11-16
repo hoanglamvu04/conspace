@@ -10,10 +10,10 @@ import { Markdown } from '../components/Markdown.jsx';
 import { ArticleCard, Breadcrumbs, PageIntro, ReaderSwitch, SectionHeading, StatusPanel } from '../components/UI.jsx';
 import { Icon } from '../components/Icons.jsx';
 
-function DesignBlocks({ sections, expected=7 }) {
+function DesignBlocks({ sections, expected=7, id }) {
   const blocks=Array.isArray(sections)?[...sections].sort((a,b)=>a.sectionNo-b.sectionNo):[];
   const publishedCount=blocks.filter(section=>typeof section.content==='string'&&section.content.trim()&&section.sourceRef).length;
-  return <section className="public-design-section">
+  return <section className="public-design-section" id={id}>
     <SectionHeading eyebrow="TEMPLATE B / 07 KHỐI" title="Hồ sơ mảng kiến trúc" description={publishedCount+'/'+expected+' khối đã được kiểm duyệt và xuất bản. Khối chưa đủ nguồn được giữ trống thay vì điền nội dung suy đoán.'}/>
     <div className="public-design-grid">{blocks.map(section=>{
       const published=Boolean(typeof section.content==='string'&&section.content.trim()&&section.sourceRef);
@@ -108,7 +108,7 @@ export default function NicheDetailV1() {
       {isConstruction ? <section className="public-layers-section" id="ho-so-chuyen-mon">
         <SectionHeading eyebrow="TEMPLATE A / 12 KHỐI" title="Ba lớp nội dung cùng một trang" description="Chỉ các khối đã có nội dung, nguồn và trạng thái xuất bản mới được hiển thị. Mở thêm góc nhìn khác mà không đổi URL."/>
         <div className="public-layer-stack">{READERS.map((role) => <LayerAccordion key={role.id} role={role} sections={niche.sections || []} open={openRoles.includes(role.id)} onToggle={(id, open) => setOpenRoles((current) => toggleOpenLayerRole(current, id, open))}/>)}</div>
-      </section> : <DesignBlocks sections={niche.sections||[]} expected={niche.expectedSectionCount||7}/>}
+      </section> : <DesignBlocks id="ho-so-chuyen-mon" sections={niche.sections||[]} expected={niche.expectedSectionCount||7}/>}
 
       <section className="public-related-content" id="bai-viet-lien-quan">
         <SectionHeading eyebrow="BÀI VIẾT ĐÃ XUẤT BẢN" title="Đọc sâu trong lĩnh vực"/>
