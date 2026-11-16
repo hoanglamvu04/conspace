@@ -107,3 +107,22 @@ test('question triage can correct the reader-guessed niche without faking answer
   assert.ok(editorial.includes("useAdminList('/niches'"));
   assert.doesNotMatch(editorial, /Backend không có API sửa ngách/);
 });
+
+
+test('review queue exposes entity breakdown filters and dashboard labels article-only counts accurately', () => {
+  assert.ok(reviews.includes('cms-review-entity-filter'));
+  assert.ok(reviews.includes("['ALL','Tất cả']"));
+  assert.ok(reviews.includes("['QUESTION_ANSWER','Q&A']"));
+  assert.ok(reviews.includes('filteredItems'));
+  assert.ok(dashboard.includes('Bài chờ duyệt kỹ thuật'));
+  assert.ok(dashboard.includes('Chỉ Article · SUBMITTED + TECHNICAL_REVIEW'));
+});
+
+test('article media upload metadata is transient and does not create false unsaved draft state', () => {
+  assert.ok(articles.includes('Metadata cho ảnh tải lên tiếp theo'));
+  assert.ok(articles.includes('không thuộc payload bài viết'));
+  assert.ok(articles.includes("setForm(f=>({...f,rightsConfirmed:e.target.checked}))"));
+  assert.ok(articles.includes("rightsConfirmed:false,rightsNote:'',altText:''"));
+  assert.ok(articles.includes('Cần ghi căn cứ quyền sử dụng trước khi xác nhận quyền cho ảnh.'));
+  assert.ok(articles.includes('Xóa bộ lọc'));
+});
