@@ -447,6 +447,7 @@
   .cms-book-reference { gap: 8px; }
 }
 @media (max-width: 900px) {
+  body.cms-menu-open { overflow: hidden; }
   .cms-shell { display: block; }
   .cms-sidebar { position: fixed; left: 0; top: 0; height: 100vh; width: min(285px,85vw); transform: translateX(-105%); transition: transform .23s ease; box-shadow: 10px 0 35px rgba(12,35,55,.16); }
   .cms-sidebar.is-open { transform: translateX(0); }
