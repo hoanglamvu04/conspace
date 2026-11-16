@@ -110,7 +110,7 @@ export default function NicheDetailV1() {
       <div className="public-content-grid">
         <section>
           <SectionHeading eyebrow="CA ĐÃ ẨN DANH" title="Hiện trường liên quan"/>
-          {fieldNotes.length ? <div className="public-link-list">{fieldNotes.map((item) => <Link to={'/hien-truong/' + item.id} key={item.id}><span><strong>{item.title}</strong><small>{item.phenomenon}</small></span><Icon name="arrow" size={17}/></Link>)}</div> : <StatusPanel status="empty" compact title="Chưa có ca hiện trường công khai"/>}
+          {fieldNotes.length ? <div className="public-link-list">{fieldNotes.map((item) => <Link to={'/hien-truong/' + encodeURIComponent(item.slug)} key={item.id}><span><strong>{item.title}</strong><small>{item.phenomenon}</small></span><Icon name="arrow" size={17}/></Link>)}</div> : <StatusPanel status="empty" compact title="Chưa có ca hiện trường công khai"/>}
         </section>
         <section>
           <SectionHeading eyebrow="CHƯƠNG ĐÃ XUẤT BẢN" title="Từ tủ sách"/>
