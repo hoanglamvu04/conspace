@@ -9,6 +9,7 @@ const publicPages = readFileSync(new URL('../pages/PublicPages.jsx', import.meta
 const config = readFileSync(new URL('../config.js', import.meta.url), 'utf8');
 const connection = readFileSync(new URL('../pages/Connection.jsx', import.meta.url), 'utf8');
 const articlesPage = readFileSync(new URL('../pages/Articles.jsx', import.meta.url), 'utf8');
+const contactPage = readFileSync(new URL('../pages/Contact.jsx', import.meta.url), 'utf8');
 const ui = readFileSync(new URL('../components/UI.jsx', import.meta.url), 'utf8');
 
 test('IA public routes include the new sections and keep legacy aliases working', () => {
@@ -161,4 +162,12 @@ test('Connection journey explains private manual handling and supports changing 
   assert.ok(connection.includes('Đổi loại yêu cầu'));
   assert.ok(connection.includes('connection-privacy-note'));
   assert.ok(connection.includes('Về trang Kết nối'));
+});
+
+
+test('contact page routes readers only to existing intake paths without inventing contact details', () => {
+  assert.ok(contactPage.includes('/hoi-dap/gui-cau-hoi'));
+  assert.ok(contactPage.includes('/ket-noi'));
+  assert.ok(contactPage.includes('Kết nối riêng tư'));
+  assert.ok(contactPage.includes('chưa có trong nguồn thông tin được xác nhận'));
 });
