@@ -26,7 +26,7 @@ Basis: current React routes, CMS routes, public/admin API wiring, and `docs/INFO
 | `/ngach/:slug` | 1 | COMPLETE | Template A, 12 blocks, reader layers on one URL, related published content. | P0 |
 | `/mang/:slug` | 2 | COMPLETE for current scope | Template B has exactly 7 slots and exposes only published, sourced sections. Depth depends on real editorial content. | P1 |
 | `/hien-truong` | 1 | COMPLETE | Published compliant cases only; pagination and reader-lens ranking. | P0 |
-| `/hien-truong/:id` | 1 | PARTIAL | Functional detail page, but IA target says human-readable `/hien-truong/{slug}`; current public URL exposes UUID. | P1 |
+| `/hien-truong/:slug` | 1 | COMPLETE | Public cards, search and sitemap use the linked Article slug. Legacy UUID URLs still resolve and are client-replaced with the canonical slug URL. | P1 resolved |
 | `/hoi-dap` | 1 | COMPLETE | Published question + published answer only. | P0 |
 | `/hoi-dap/gui-cau-hoi` | 1 | COMPLETE | Anonymous intake, optional encrypted private contact, max 5 images, no reader account. | P0 |
 | `/hoi-dap/:id` | 1 | COMPLETE | Published answer detail and rights-confirmed public images only. | P0 |
@@ -71,7 +71,7 @@ Basis: current React routes, CMS routes, public/admin API wiring, and `docs/INFO
 
 1. **Resolved P0: Connection intake.** The phase-1 flow now has private public forms, encrypted persistence, no public listing, audited contact access and internal manual triage.
 2. **Resolved P1: Bàn nghề now has real editorial selection.** It uses the `ban-nghe` tag on the existing Article model, preserving one canonical article and one review workflow.
-3. **Field Note public URLs are functional but not aligned with the IA slug target.**
+3. **Resolved P1: Field Note public URLs now use stable Article slugs.** Legacy UUID URLs remain compatible without being emitted as canonical links.
 4. **Quick lookup is already a strong search surface, but the source-backed symptom map (“Tôi thấy…”) remains a separate content-model gap.**
 5. **Static organization pages are acceptable as code-owned content for v1; Contact cannot be completed with phone/email/address until verified source material is supplied.**
 6. **CMS is substantially more complete than the public route map.** After resolving Connection triage, the highest CMS gaps are author-profile UI and chapter-linking ergonomics.
@@ -84,7 +84,7 @@ Basis: current React routes, CMS routes, public/admin API wiring, and `docs/INFO
 
 ### P1 — close visible “half-built” routes
 1. **Resolved:** `/ban-nghe` now uses explicit editorial tag selection instead of duplicating `/bai-viet`.
-2. Move Field Note detail to a stable slug URL while keeping UUID compatibility.
+2. **Resolved:** Field Note detail now uses stable slug URLs while keeping UUID compatibility.
 3. Improve chapter article linking UI and expose safe detach/delete behavior.
 4. Add dedicated Author Profile management UI.
 5. Add source-backed “Tôi thấy…” mapping only when Cẩm nang part 9 data is actually available.
