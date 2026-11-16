@@ -59,7 +59,7 @@ Basis: current React routes, CMS routes, public/admin API wiring, and `docs/INFO
 | `/admin/chapters` | COMPLETE | Searchable article picker is filtered by the selected book content type; linked article status/preview are visible; detach, schedule clearing and guarded empty-slot deletion are explicit. | P1 resolved |
 | `/admin/field-notes` | COMPLETE | Compliance dashboard, authoring, sources/media, submit readiness and feedback. | P0 |
 | `/admin/dictionary` | COMPLETE | Create/edit/source/niche link/submit/publish plus review feedback. | P1 |
-| `/admin/questions` | COMPLETE with one known limitation | Intake triage, private contact access audit, answer workflow and publishing exist. Guessed niche cannot currently be corrected because Backend has no such PATCH field. | P1 |
+| `/admin/questions` | COMPLETE | Intake triage, audited private-contact access, reader-guessed niche correction/clearing against active taxonomy, answer workflow and publishing are implemented. Niche-only corrections are audited without creating fake workflow transitions. | P1 resolved |
 | `/admin/media` | COMPLETE | Upload, rights metadata, usage awareness and guarded deletion. | P0 |
 | `/admin/audit` | COMPLETE | Unified audit/workflow event history from Backend. | P0 |
 | `/admin/users` | COMPLETE | Multi-role/person identity/delegated permission/session revocation. | P0 |
