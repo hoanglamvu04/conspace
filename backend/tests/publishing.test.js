@@ -175,3 +175,28 @@ test('field-note list ranks selected perspective and keeps other published cases
  assert.equal(calls[0].params[1],'architect');
  assert.ok(calls[0].sql.includes('CASE WHEN $2::text IS NOT NULL AND a.audience_role=$2'));
 });
+
+test('field-note detail prefers article slug and keeps legacy UUID lookup compatible',async(t)=>{
+ const calls=[];
+ const row={
+  id,articleId:'22222222-2222-4222-8222-222222222222',slug:'demo-field-case',
+  title:'Ca hiện trường',excerpt:'Mô tả',body:'Chi tiết',publishedAt:'2026-11-14T00:00:00.000Z',
+  phenomenon:'Hiện tượng',rootCause:'Nguyên nhân',interventionPoint:'Điểm chặn',images:[],
+ };
+ const db={query:async(sql,params=[])=>{
+   calls.push({sql,params});
+   if(sql.includes('FROM conspace.field_notes f JOIN conspace.articles a'))return {rows:[row]};
+   return {rows:[]};
+ }};
+ const base=await serverFor(t,'/api/v1',createPublishingRouter(db));
+ const bySlug=await fetch(base+'/api/v1/field-notes/demo-field-case');
+ assert.equal(bySlug.status,200);
+ assert.equal((await bySlug.json()).data.slug,'demo-field-case');
+ assert.equal(calls[0].params[0],'demo-field-case');
+ assert.ok(calls[0].sql.includes('(a.slug=$1 OR f.id::text=$1)'));
+
+ const legacy=await fetch(base+'/api/v1/field-notes/'+id);
+ assert.equal(legacy.status,200);
+ assert.equal((await legacy.json()).data.slug,'demo-field-case');
+ assert.equal(calls[1].params[0],id);
+});
