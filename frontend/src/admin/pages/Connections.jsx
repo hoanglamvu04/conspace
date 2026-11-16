@@ -58,6 +58,7 @@ export default function Connections(){
     }
   }
 
+  function resetFilters(){setSearch('');setType('');setStatus('');setPage(1);setSelected(null);}
   const data=detail.data;
   return <>
     <PageHeading
@@ -72,15 +73,16 @@ export default function Connections(){
 
     <Surface title="Bộ lọc tiếp nhận" description="Lọc trực tiếp ở Backend; contact mã hóa không tham gia tìm kiếm.">
       <div className="cms-table-tools">
-        <label className="cms-search"><CmsIcon name="search"/><input value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}} placeholder="Nhu cầu, khu vực, mảng/ngách…" aria-label="Tìm yêu cầu kết nối"/></label>
-        <select value={type} onChange={e=>{setType(e.target.value);setPage(1);}} aria-label="Lọc loại kết nối">
+        <label className="cms-search"><CmsIcon name="search"/><input value={search} onChange={e=>{setSearch(e.target.value);setPage(1);setSelected(null);}} placeholder="Nhu cầu, khu vực, mảng/ngách…" aria-label="Tìm yêu cầu kết nối"/></label>
+        <select value={type} onChange={e=>{setType(e.target.value);setPage(1);setSelected(null);}} aria-label="Lọc loại kết nối">
           <option value="">Mọi loại</option>
           {Object.entries(TYPE_LABELS).map(([value,label])=><option key={value} value={value}>{label}</option>)}
         </select>
-        <select value={status} onChange={e=>{setStatus(e.target.value);setPage(1);}} aria-label="Lọc trạng thái">
+        <select value={status} onChange={e=>{setStatus(e.target.value);setPage(1);setSelected(null);}} aria-label="Lọc trạng thái">
           <option value="">Mọi trạng thái</option>
           {['SUBMITTED','IN_REVIEW','CLOSED','REJECTED'].map(value=><option key={value} value={value}>{value}</option>)}
         </select>
+        {(search||type||status)&&<button type="button" className="cms-btn cms-btn--light cms-btn--small" onClick={resetFilters}>Xóa bộ lọc</button>}
       </div>
     </Surface>
 
