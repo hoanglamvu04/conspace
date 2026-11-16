@@ -82,3 +82,12 @@ test('Bàn nghề uses an editorial tag instead of duplicating the full article 
   assert.ok(articlesPage.includes('Chưa có bài Bàn nghề đã xuất bản'));
   assert.ok(articlesPage.includes('Không lấy toàn bộ dòng bài để lấp chỗ trống'));
 });
+
+
+test('field-note public links use stable article slugs and canonicalize legacy UUID URLs', () => {
+  assert.ok(home.includes("'/hien-truong/' + encodeURIComponent(item.slug)"));
+  assert.ok(niche.includes("'/hien-truong/' + encodeURIComponent(item.slug)"));
+  assert.ok(publicPages.includes("'/hien-truong/' + encodeURIComponent(item.slug)"));
+  assert.ok(publicPages.includes("navigate('/hien-truong/' + encodeURIComponent(canonicalSlug), { replace: true })"));
+  assert.ok(publicPages.includes("canonicalPath:canonicalSlug?'/hien-truong/'+canonicalSlug:'/hien-truong'"));
+});
