@@ -94,3 +94,24 @@ Basis: current React routes, CMS routes, public/admin API wiring, and `docs/INFO
 - Công nghệ nghề (phase 2).
 - Hồ sơ ngành (phase 3).
 - Deep SEO/structured-data expansion only after the product routes above are stable.
+
+
+## CMS UX hardening pass — 2026-11-16
+
+The route-completeness status above is unchanged; this pass hardened day-to-day CMS operation without adding fake content or new business modules.
+
+- **Dashboard:** technical-review metric now explicitly states it counts Article records only instead of implying an all-entity queue total.
+- **Articles:** list filters have recovery; next-upload media rights/alt fields are treated as transient upload metadata rather than false unsaved Article state; rights confirmation requires a basis note.
+- **Reviews:** Technical/Chief queues can be filtered by Article, Term, Q&A answer, or Niche section, with real per-queue counts.
+- **Field Notes:** create-vs-write and media-upload permissions are applied consistently across every editable control; preview/authoring state is explicit.
+- **Niches:** group/search filters have recovery and a meaningful no-match state.
+- **Chapters:** create-vs-write permissions are consistent for schedule/title/article linking; filtered lists no longer collapse into unexplained blank space.
+- **Questions:** status filtering is server-backed; private-contact display honors an explicit secondary EDITOR role as well as the primary role, while access remains audited.
+- **Dictionary:** search can be cleared without losing the surrounding workflow.
+- **Media:** category/rights/search filters can be reset in one action.
+- **Connections:** changing filters clears an already-open private record so stale decrypted contact is not left beside an unrelated filtered queue.
+- **Users:** local search now presents an explicit no-match state rather than a blank table.
+- **Audit:** filters can be reset in one action.
+- **Mobile CMS shell:** opening the sidebar locks background-page scrolling and still supports Escape/backdrop close.
+
+All of these are UX/RBAC hardening on existing APIs. No migration or production deployment is introduced by this pass.
