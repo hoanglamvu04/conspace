@@ -105,7 +105,7 @@ async function createArticleWithClient(client, actor, input, req) {
 
 export function createEditorialService(db = pool) {
   return {
-    async listArticles({ status, role, search, page = 1, limit = 20 }) {
+    async listArticles({ status, role, contentType, search, page = 1, limit = 20 }) {
       const offset = (page - 1) * limit;
       const result = await db.query(
         'SELECT a.id,a.slug,a.title,a.excerpt,a.status,a.audience_role AS "audienceRole",' +
@@ -115,15 +115,17 @@ export function createEditorialService(db = pool) {
         'FROM conspace.articles a JOIN conspace.authors au ON au.id=a.author_id ' +
         'LEFT JOIN conspace.cms_users u ON u.id=a.updated_by_user_id ' +
         'WHERE ($1::text IS NULL OR a.status=$1) AND ($2::text IS NULL OR a.audience_role=$2) ' +
-        "AND ($3::text IS NULL OR a.title ILIKE '%' || $3 || '%' OR a.slug ILIKE '%' || $3 || '%') " +
-        'ORDER BY a.updated_at DESC,a.id DESC LIMIT $4 OFFSET $5',
-        [status ?? null, role ?? null, search ?? null, limit, offset]
+        'AND ($3::text IS NULL OR a.content_type=$3) ' +
+        "AND ($4::text IS NULL OR a.title ILIKE '%' || $4 || '%' OR a.slug ILIKE '%' || $4 || '%') " +
+        'ORDER BY a.updated_at DESC,a.id DESC LIMIT $5 OFFSET $6',
+        [status ?? null, role ?? null, contentType ?? null, search ?? null, limit, offset]
       );
       const count = await db.query(
         'SELECT count(*)::integer AS total FROM conspace.articles a ' +
         'WHERE ($1::text IS NULL OR a.status=$1) AND ($2::text IS NULL OR a.audience_role=$2) ' +
-        "AND ($3::text IS NULL OR a.title ILIKE '%' || $3 || '%' OR a.slug ILIKE '%' || $3 || '%')",
-        [status ?? null, role ?? null, search ?? null]
+        'AND ($3::text IS NULL OR a.content_type=$3) ' +
+        "AND ($4::text IS NULL OR a.title ILIKE '%' || $4 || '%' OR a.slug ILIKE '%' || $4 || '%')",
+        [status ?? null, role ?? null, contentType ?? null, search ?? null]
       );
       return { rows: result.rows, total: count.rows[0].total };
     },
