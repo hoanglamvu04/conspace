@@ -531,6 +531,12 @@ test('real PostgreSQL flow: login -> create -> technical review -> chief review 
   assert.equal(clearedClassification.status,200,JSON.stringify(clearedClassification.body));
   assert.equal(clearedClassification.body.data.guessedNicheId,null);
 
+  const invalidClassification=await editorApi('PATCH','/api/admin/questions/'+questionId,{
+    guessedNicheId:'55555555-5555-4555-8555-555555555555',
+  });
+  assert.equal(invalidClassification.status,400,JSON.stringify(invalidClassification.body));
+  assert.equal(invalidClassification.body.error.code,'INVALID_NICHE');
+
   const answerSaved=await editorApi('POST','/api/admin/questions/'+questionId+'/answer',{
     body:'Câu trả lời kiểm thử có nội dung pháp lý.',sensitivityFlags:['LEGAL_CONTENT'],sensitivityAssessed:true,
   });
