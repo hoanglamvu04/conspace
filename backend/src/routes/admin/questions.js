@@ -56,7 +56,7 @@ export function createQuestionsRouter(db=pool,config){
     );
     const row=result.rows[0];
     if(!row) throw new RequestError(404,'NOT_FOUND','Question not found');
-    if(row.request_private_reply && row.contact_ciphertext && ['ADMIN','EDITOR'].includes(req.auth.role)){
+    if(row.request_private_reply && row.contact_ciphertext && rolesOf(req).some(role=>['ADMIN','EDITOR'].includes(role))){
       row.privateContact=decryptPrivateContact({
         ciphertext:row.contact_ciphertext,iv:row.contact_iv,authTag:row.contact_auth_tag,
       },config.contactEncryptionKey);
