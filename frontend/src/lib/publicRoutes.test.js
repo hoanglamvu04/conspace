@@ -124,3 +124,14 @@ test('niche directory and detail expose mobile recovery and in-page navigation',
   }
   assert.ok(niche.includes('id="ho-so-chuyen-mon"'));
 });
+
+
+test('article and field-note detail pages expose readable in-page structure', () => {
+  assert.ok(articlesPage.includes('article-reading-tools'));
+  assert.ok(articlesPage.includes('id="noi-dung-bai-viet"'));
+  assert.ok(articlesPage.includes('id="nguon-tham-khao"'));
+  assert.ok(publicPages.includes('field-case-summary'));
+  assert.ok(publicPages.includes('01 / HIỆN TƯỢNG'));
+  assert.ok(publicPages.includes('03 / ĐIỂM CHẶN'));
+  assert.ok(publicPages.includes('Về kho Hiện trường'));
+});
