@@ -19,6 +19,8 @@ export function FieldNotes(){
   const [page,setPage]=useState(1),[search,setSearch]=useState(''),[statusFilter,setStatusFilter]=useState(''),[complianceFilter,setComplianceFilter]=useState('');
   const records=useAdminList('/field-notes',{page,limit:20,search:search||undefined,status:statusFilter||undefined,compliance:complianceFilter||undefined},can('field-notes:read'));
   const detail=useAdminObject(selected&&!creating?`/field-notes/${selected}`:null,Boolean(selected)&&!creating);
+  const fieldEditable=can(creating?'field-notes:create':'field-notes:write');
+  const fieldCanUpload=fieldEditable&&can('media:upload');
 
   useEffect(()=>{if(detail.status==='success'){setForm(fieldNormalize(detail.data));setDirty(false);}},[detail.status,detail.data]);
   const edit=(k,v)=>{setForm(f=>({...f,[k]:v}));setDirty(true);};
@@ -38,7 +40,7 @@ export function FieldNotes(){
 
   async function save(e){
     e?.preventDefault();
-    if(!can(creating?'field-notes:create':'field-notes:write'))return;
+    if(!fieldEditable)return;
     if(!form.title.trim()||!form.phenomenon.trim()||!form.rootCause.trim()||!form.interventionPoint.trim()){notice('Cần hiện tượng, nguyên nhân và mốc dừng nghiệm thu.','error');return;}
     if(!costSourceOk){notice('Giá sửa chữa phải có nguồn số liệu thực tế.','error');return;}
     setBusy(true);
@@ -61,7 +63,7 @@ export function FieldNotes(){
   }
 
   async function upload(){
-    if(!file)return;
+    if(!file||!fieldCanUpload)return;
     setBusy(true);
     try{
       const result=await uploadAdminImage(file,{rightsConfirmed:form.photoRightsConfirmed,rightsNote,altText:'Ảnh hiện trường'});
@@ -115,30 +117,30 @@ export function FieldNotes(){
     <Surface className="cms-editor-side" title={creating?'Nhập ca mới':'Biên tập hồ sơ'} description="Mỗi trường phải gắn với quan sát, nguồn hoặc mốc nghiệm thu thật.">
       {!open&&<EmptyState title="Chọn ca hiện trường" description={detail.error?.message||'Chỉ ca đã được nhập vào API mới xuất hiện tại đây.'} icon="field"/>}
       {open&&<form className="cms-stack-form" onSubmit={save}>
-        <FormField label="Tiêu đề" required><input value={form.title} required disabled={!can('field-notes:write')} onChange={e=>{edit('title',e.target.value);if(creating)edit('slug',slugify(e.target.value));}}/></FormField>
-        <FormField label="Slug"><input value={form.slug} disabled={!can('field-notes:write')} onChange={e=>edit('slug',slugify(e.target.value))}/></FormField>
-        <FormField label="Hiện tượng (quan sát nguyên trạng)" required><textarea rows={5} value={form.phenomenon} disabled={!can('field-notes:write')} onChange={e=>edit('phenomenon',e.target.value)} required/></FormField>
-        <FormField label="Nguyên nhân gốc (có đối chiếu)" required><textarea rows={5} value={form.rootCause} disabled={!can('field-notes:write')} onChange={e=>edit('rootCause',e.target.value)} required/></FormField>
-        <FormField label="Điểm dừng nghiệm thu" required><textarea rows={4} value={form.interventionPoint} disabled={!can('field-notes:write')} onChange={e=>edit('interventionPoint',e.target.value)} required/></FormField>
+        <FormField label="Tiêu đề" required><input value={form.title} required disabled={!fieldEditable} onChange={e=>{edit('title',e.target.value);if(creating)edit('slug',slugify(e.target.value));}}/></FormField>
+        <FormField label="Slug"><input value={form.slug} disabled={!fieldEditable} onChange={e=>edit('slug',slugify(e.target.value))}/></FormField>
+        <FormField label="Hiện tượng (quan sát nguyên trạng)" required><textarea rows={5} value={form.phenomenon} disabled={!fieldEditable} onChange={e=>edit('phenomenon',e.target.value)} required/></FormField>
+        <FormField label="Nguyên nhân gốc (có đối chiếu)" required><textarea rows={5} value={form.rootCause} disabled={!fieldEditable} onChange={e=>edit('rootCause',e.target.value)} required/></FormField>
+        <FormField label="Điểm dừng nghiệm thu" required><textarea rows={4} value={form.interventionPoint} disabled={!fieldEditable} onChange={e=>edit('interventionPoint',e.target.value)} required/></FormField>
 
-        <div className="cms-form-two"><FormField label="Chi phí sửa (chỉ nếu có thật)"><input type="number" min={0} value={form.repairCostAmount} onChange={e=>edit('repairCostAmount',e.target.value)}/></FormField><FormField label="Nguồn chứng từ chi phí"><input value={form.repairCostSource} onChange={e=>edit('repairCostSource',e.target.value)}/></FormField></div>
+        <div className="cms-form-two"><FormField label="Chi phí sửa (chỉ nếu có thật)"><input type="number" min={0} disabled={!fieldEditable} value={form.repairCostAmount} onChange={e=>edit('repairCostAmount',e.target.value)}/></FormField><FormField label="Nguồn chứng từ chi phí"><input disabled={!fieldEditable} value={form.repairCostSource} onChange={e=>edit('repairCostSource',e.target.value)}/></FormField></div>
 
-        <NichePicker value={form.nicheIds} onChange={v=>edit('nicheIds',v)} disabled={!can('field-notes:write')}/>
+        <NichePicker value={form.nicheIds} onChange={v=>edit('nicheIds',v)} disabled={!fieldEditable}/>
 
-        <FormField label="Nguồn truy vết"><div className="cms-stack-form">{(form.sources||[]).map((source,index)=><div className="cms-source-editor" key={index}><input disabled={!can('field-notes:write')} value={source.title} onChange={e=>edit('sources',form.sources.map((x,i)=>i===index?{...x,title:e.target.value}:x))} placeholder="Tên nguồn / hồ sơ / biên bản"/><input type="url" disabled={!can('field-notes:write')} value={source.url} onChange={e=>edit('sources',form.sources.map((x,i)=>i===index?{...x,url:e.target.value}:x))} placeholder="URL https nếu có"/><input disabled={!can('field-notes:write')} value={source.citation} onChange={e=>edit('sources',form.sources.map((x,i)=>i===index?{...x,citation:e.target.value}:x))} placeholder="Trích dẫn / số hồ sơ"/>{can('field-notes:write')&&<button type="button" className="cms-btn cms-btn--light" onClick={()=>edit('sources',form.sources.filter((_,i)=>i!==index))}>Bỏ nguồn</button>}</div>)}{can('field-notes:write')&&<button type="button" className="cms-btn cms-btn--light" onClick={()=>edit('sources',[...(form.sources||[]),{title:'',url:'',citation:''}])}><CmsIcon name="plus"/> Thêm nguồn</button>}</div></FormField>
+        <FormField label="Nguồn truy vết"><div className="cms-stack-form">{(form.sources||[]).map((source,index)=><div className="cms-source-editor" key={index}><input disabled={!fieldEditable} value={source.title} onChange={e=>edit('sources',form.sources.map((x,i)=>i===index?{...x,title:e.target.value}:x))} placeholder="Tên nguồn / hồ sơ / biên bản"/><input type="url" disabled={!fieldEditable} value={source.url} onChange={e=>edit('sources',form.sources.map((x,i)=>i===index?{...x,url:e.target.value}:x))} placeholder="URL https nếu có"/><input disabled={!fieldEditable} value={source.citation} onChange={e=>edit('sources',form.sources.map((x,i)=>i===index?{...x,citation:e.target.value}:x))} placeholder="Trích dẫn / số hồ sơ"/>{fieldEditable&&<button type="button" className="cms-btn cms-btn--light" onClick={()=>edit('sources',form.sources.filter((_,i)=>i!==index))}>Bỏ nguồn</button>}</div>)}{fieldEditable&&<button type="button" className="cms-btn cms-btn--light" onClick={()=>edit('sources',[...(form.sources||[]),{title:'',url:'',citation:''}])}><CmsIcon name="plus"/> Thêm nguồn</button>}</div></FormField>
 
-        <div className="cms-list-editor-head"><h3>Nội dung mô tả bổ sung</h3><button className="cms-btn cms-btn--light" type="button" onClick={()=>setPreview(!preview)}>Preview / Soạn</button></div>
-        {preview?<div className="cms-markdown cms-preview"><Markdown body={form.body}/></div>:<textarea className="cms-body-textarea" rows={8} value={form.body} onChange={e=>edit('body',e.target.value)} />}
+        <div className="cms-list-editor-head"><h3>Nội dung mô tả bổ sung</h3><button className="cms-btn cms-btn--light" type="button" onClick={()=>setPreview(!preview)}>{preview?'Quay lại soạn':'Xem Preview'}</button></div>
+        {preview?<div className="cms-markdown cms-preview"><Markdown body={form.body}/></div>:<textarea className="cms-body-textarea" rows={8} disabled={!fieldEditable} value={form.body} onChange={e=>edit('body',e.target.value)} />}
 
-        <FormField label="Ảnh và tài liệu"><div className="cms-check-list">{(form.media||[]).map(item=><span key={item.id}><a href={`/api/admin/media/${item.id}/download`} target="_blank" rel="noreferrer">Mở {item.filename||item.id.slice(0,8)}</a> · {item.rightsConfirmed?'đã có quyền':'chưa có quyền'} {can('field-notes:write')&&<button type="button" className="cms-text-danger" onClick={()=>removeMedia(item.id)}>Bỏ liên kết</button>}</span>)}</div><input type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>setFile(e.target.files?.[0]||null)}/><input placeholder="Căn cứ quyền sử dụng ảnh" aria-label="Căn cứ quyền ảnh" value={rightsNote} onChange={e=>setRightsNote(e.target.value)}/><button type="button" disabled={busy||!file||form.photoRightsConfirmed&&!rightsNote.trim()} className="cms-btn cms-btn--secondary" onClick={upload}>Tải ảnh lên Backend</button></FormField>
+        <FormField label="Ảnh và tài liệu"><div className="cms-check-list">{(form.media||[]).map(item=><span key={item.id}><a href={`/api/admin/media/${item.id}/download`} target="_blank" rel="noreferrer">Mở {item.filename||item.id.slice(0,8)}</a> · {item.rightsConfirmed?'đã có quyền':'chưa có quyền'} {fieldEditable&&<button type="button" className="cms-text-danger" onClick={()=>removeMedia(item.id)}>Bỏ liên kết</button>}</span>)}</div><input type="file" disabled={!fieldCanUpload} accept="image/jpeg,image/png,image/webp" onChange={e=>setFile(e.target.files?.[0]||null)}/><input disabled={!fieldCanUpload} placeholder="Căn cứ quyền sử dụng ảnh" aria-label="Căn cứ quyền ảnh" value={rightsNote} onChange={e=>setRightsNote(e.target.value)}/><button type="button" disabled={busy||!fieldCanUpload||!file||form.photoRightsConfirmed&&!rightsNote.trim()} className="cms-btn cms-btn--secondary" onClick={upload}>Tải ảnh lên Backend</button></FormField>
 
-        <FormField label="Ghi chú ẩn danh"><textarea rows={3} value={form.anonymizationNote} onChange={e=>edit('anonymizationNote',e.target.value)} placeholder="Cách che địa chỉ, tên đơn vị, biển hiệu…"/></FormField>
-        {[['unitAnonymized','Đã ẩn danh đơn vị'],['addressAnonymized','Đã ẩn danh địa chỉ'],['photoRightsConfirmed','Đã kiểm tra quyền sử dụng ảnh']].map(([key,label])=><label className="cms-sensitive-check" key={key}><input type="checkbox" checked={form[key]} onChange={e=>edit(key,e.target.checked)} /><span>{label}</span></label>)}
+        <FormField label="Ghi chú ẩn danh"><textarea rows={3} disabled={!fieldEditable} value={form.anonymizationNote} onChange={e=>edit('anonymizationNote',e.target.value)} placeholder="Cách che địa chỉ, tên đơn vị, biển hiệu…"/></FormField>
+        {[['unitAnonymized','Đã ẩn danh đơn vị'],['addressAnonymized','Đã ẩn danh địa chỉ'],['photoRightsConfirmed','Đã kiểm tra quyền sử dụng ảnh']].map(([key,label])=><label className="cms-sensitive-check" key={key}><input type="checkbox" disabled={!fieldEditable} checked={form[key]} onChange={e=>edit(key,e.target.checked)} /><span>{label}</span></label>)}
 
         <div className="cms-submit-checklist"><h3>Điều kiện gửi duyệt hiện trường</h3>{submitChecks.map(item=><p key={item.label} className={item.ok?'is-ok':'is-missing'}><CmsIcon name={item.ok?'check':'alert'} size={16}/> {item.label}</p>)}</div>
         {form.articleId&&<ReviewFeedback entityType="ARTICLE" entityId={form.articleId} status={form.status}/>}
 
-        <div className="cms-form-footer">{dirty?'Thay đổi chưa lưu':<Pill value={form.status}/>}<div className="cms-btn-row">{can('field-notes:write')&&<button className="cms-btn cms-btn--primary" disabled={busy}>{busy?'Đang lưu…':'Lưu ca'}</button>}{selected&&form.articleId&&can('field-notes:submit')&&['DRAFT','NEEDS_CHANGES'].includes(form.status)&&<button className="cms-btn cms-btn--secondary" type="button" disabled={busy||!readyToSubmit} onClick={()=>setConfirm(true)}>Gửi duyệt bài hiện trường</button>}</div></div>
+        <div className="cms-form-footer">{dirty?'Thay đổi chưa lưu':<Pill value={form.status}/>}<div className="cms-btn-row">{fieldEditable&&<button className="cms-btn cms-btn--primary" disabled={busy}>{busy?'Đang lưu…':'Lưu ca'}</button>}{selected&&form.articleId&&can('field-notes:submit')&&['DRAFT','NEEDS_CHANGES'].includes(form.status)&&<button className="cms-btn cms-btn--secondary" type="button" disabled={busy||!readyToSubmit} onClick={()=>setConfirm(true)}>Gửi duyệt bài hiện trường</button>}</div></div>
         {form.articleId&&<Link className="cms-text-link" to={`/admin/articles/${form.articleId}/edit`}>Xem bài viết của ca →</Link>}
       </form>}
     </Surface></div>
