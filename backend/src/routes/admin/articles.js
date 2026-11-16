@@ -33,6 +33,7 @@ const patchSchema=articleSchema.partial();
 const querySchema=z.strictObject({
   status:z.enum(['DRAFT','SUBMITTED','TECHNICAL_REVIEW','EDITOR_IN_CHIEF_REVIEW','APPROVED','SCHEDULED','PUBLISHED','NEEDS_CHANGES','REJECTED','WITHDRAWN','ARCHIVED','IN_REVIEW']).optional(),
   role:z.enum(['homeowner','architect','contractor']).optional(),
+  contentType:z.enum(['REFERENCE','NON_FICTION','FICTIONALIZED','FIELD_CASE','Q_AND_A','REGULATION','EDITORIAL']).optional(),
   search:z.string().trim().max(120).optional(),
   page:z.coerce.number().int().min(1).default(1),
   limit:z.coerce.number().int().min(1).max(100).default(20),
@@ -47,7 +48,7 @@ export function createArticlesRouter(db=pool, editorial=createEditorialService(d
 
   router.get('/',asyncHandler(async(req,res)=>{
     const query=validate(querySchema,req.query);
-    const {rows,total}=await editorial.listArticles({status:query.status==='IN_REVIEW'?'TECHNICAL_REVIEW':query.status,role:query.role,search:query.search,page:query.page,limit:query.limit});
+    const {rows,total}=await editorial.listArticles({status:query.status==='IN_REVIEW'?'TECHNICAL_REVIEW':query.status,role:query.role,contentType:query.contentType,search:query.search,page:query.page,limit:query.limit});
     res.json({ok:true,data:rows,meta:{total,page:query.page,limit:query.limit}});
   }));
 
