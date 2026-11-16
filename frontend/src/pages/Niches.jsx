@@ -22,6 +22,8 @@ export function NicheDirectory() {
     const normalized = foldVietnamese(query.trim());
     return niches.data.filter((item) => (group === 'all' || item.group === group) && (!normalized || foldVietnamese(`${item.name} ${item.summary || ''}`).includes(normalized)));
   }, [niches.status, niches.data, group, query]);
+  const designCount = niches.status === 'success' ? niches.data.filter((item) => item.group === 'design').length : 0;
+  const constructionCount = niches.status === 'success' ? niches.data.filter((item) => item.group === 'construction').length : 0;
   const update = (next) => {
     const value = new URLSearchParams(params);
     Object.entries(next).forEach(([key, field]) => { if (!field || field === 'all') value.delete(key); else value.set(key, field); });
@@ -31,8 +33,13 @@ export function NicheDirectory() {
   return <>
     <PageIntro eyebrow="BẢN ĐỒ TRI THỨC / TỐI ĐA 38 LĨNH VỰC" title="Kho 38 ngách" description="Cấu trúc gồm 8 mảng kiến trúc và tối đa 30 ngách thi công. Chỉ hồ sơ đã có nguồn và được kích hoạt mới hiển thị." />
     <main className="container content-page niche-directory"><Breadcrumbs items={[{ label: 'Kho 38 ngách' }]}/>
+      {niches.status === 'success' && <div className="directory-overview" aria-label="Tổng quan danh mục đang hoạt động">
+        <div><strong>{niches.data.length}</strong><span>Lĩnh vực đang hoạt động</span></div>
+        <button type="button" className={group === 'design' ? 'is-active' : ''} onClick={() => update({ group: 'design' })}><strong>{designCount}</strong><span>Mảng kiến trúc</span></button>
+        <button type="button" className={group === 'construction' ? 'is-active' : ''} onClick={() => update({ group: 'construction' })}><strong>{constructionCount}</strong><span>Ngách thi công</span></button>
+      </div>}
       <div className="directory-toolbar"><div className="directory-tabs" role="group" aria-label="Lọc nhóm lĩnh vực">{GROUPS.map((item) => <button key={item.id} type="button" className={`directory-tab ${group === item.id ? 'is-active' : ''}`} aria-pressed={group === item.id} onClick={() => update({ group: item.id })}>{item.label}</button>)}</div><div className="filter-input"><Icon name="search" size={19}/><label className="sr-only" htmlFor="niche-search">Tìm theo tên ngách</label><input id="niche-search" type="search" value={query} onChange={(e) => update({ q: e.target.value })} placeholder="Tìm tên lĩnh vực..."/></div></div>
-      {niches.status === 'success' && <p className="results-count" role="status">{filtered.length} lĩnh vực phù hợp từ dữ liệu hiện có{query ? ` · “${query}”` : ''}</p>}
+      {niches.status === 'success' && <div className="directory-results-head"><p className="results-count" role="status">{filtered.length} lĩnh vực phù hợp từ dữ liệu hiện có{query ? ` · “${query}”` : ''}</p>{(query || group !== 'all') && <button type="button" className="text-link directory-clear" onClick={() => setParams({}, { replace: true })}>Xóa bộ lọc <Icon name="close" size={15}/></button>}</div>}
       {niches.status === 'success' && filtered.length ? <div className="niche-directory-grid">{filtered.map((item, index) => <NicheCard key={item.id} niche={item} index={index}/>)}</div> : <StatusPanel status={niches.status === 'success' ? 'empty' : niches.status} onRetry={niches.retry} title={niches.status === 'success' ? 'Không tìm thấy lĩnh vực phù hợp' : undefined} description={niches.status === 'success' ? 'Thử một từ khóa khác hoặc mở rộng nhóm danh mục. Những ngách chưa được xác nhận chưa có trong API.' : undefined}/>}<div className="directory-note"><Icon name="info" size={20}/><p>CONSPACE không tự tạo hồ sơ ngách hoặc đếm bài theo kế hoạch. Chỉ các danh mục đã được nhập vào hệ thống mới hiển thị ở đây.</p></div>
     </main>
   </>;
