@@ -56,6 +56,10 @@ export function AdminShell({ children }) {
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [mobileMenu]);
+  useEffect(() => {
+    document.body.classList.toggle('cms-menu-open', mobileMenu);
+    return () => document.body.classList.remove('cms-menu-open');
+  }, [mobileMenu]);
   const selected = ADMIN_NAV.find((item) => location.pathname === item.href || location.pathname.startsWith(item.href + '/'));
   const crumbs = location.pathname.startsWith('/admin/articles/') && location.pathname !== '/admin/articles'
     ? [{ label: 'Bài viết', href: '/admin/articles' }, { label: location.pathname.endsWith('/new') ? 'Tạo bài mới' : 'Chỉnh sửa bài' }]
