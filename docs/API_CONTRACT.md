@@ -231,7 +231,7 @@ Chapter titles and body content are not fabricated. Chapters link to articles so
 
 - `GET /field-notes?status=&compliance=ready|blocked&search=&page=&limit=`, `POST /field-notes`, `GET /field-notes/:id`, `PATCH /field-notes/:id`, `DELETE /field-notes/:id`.
 - Field-note list rows include `sourceCount`, `mediaCount`, `unconfirmedMediaCount`, `fieldComplianceReady` and `reviewReady`; response metadata includes totals for compliant, blocked, ready-to-submit and returned cases.
-- Field-note detail includes the linked article niches, sources, sensitivity flags and media rights metadata so editing does not erase existing relations.
+- Field-note detail includes the linked article niches, sources, sensitivity flags and media rights metadata so editing does not erase existing relations. Public detail uses the linked Article slug as the canonical key and URL (`/hien-truong/:slug`). Legacy Field Note UUID keys remain accepted by the API and client route for backward compatibility, but the frontend replaces them with the canonical slug URL and the sitemap emits slug URLs only.
 
 Structured fields: phenomenon, root cause, intervention point, optional repair cost and its source, related niches, media, unit/company anonymization, address anonymization and photo-rights confirmation. A cost cannot be entered without a source. Field notes cannot be submitted until both anonymization flags and image-rights confirmation are true; every attached image must independently have confirmed usage rights. Article body, audience, sensitivity assessment and at least one traceable source are also required before review.
 
