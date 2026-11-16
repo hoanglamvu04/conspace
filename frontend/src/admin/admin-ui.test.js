@@ -11,6 +11,9 @@ const editorial = readFileSync(new URL('./pages/Editorial.jsx', import.meta.url)
 const niches = readFileSync(new URL('./pages/Niches.jsx', import.meta.url), 'utf8');
 const library = readFileSync(new URL('./pages/Library.jsx', import.meta.url), 'utf8');
 const authorsPage = readFileSync(new URL('./pages/Authors.jsx', import.meta.url), 'utf8');
+const connectionsPage = readFileSync(new URL('./pages/Connections.jsx', import.meta.url), 'utf8');
+const auditPage = readFileSync(new URL('./pages/Audit.jsx', import.meta.url), 'utf8');
+const adminUi = readFileSync(new URL('./ui.jsx', import.meta.url), 'utf8');
 const reviewFeedback = readFileSync(new URL('./ReviewFeedback.jsx', import.meta.url), 'utf8');
 
 test('ADMIN CMS navigation is limited to system administration, private intake oversight and read-only article access', () => {
@@ -125,4 +128,34 @@ test('article media upload metadata is transient and does not create false unsav
   assert.ok(articles.includes("rightsConfirmed:false,rightsNote:'',altText:''"));
   assert.ok(articles.includes('Cần ghi căn cứ quyền sử dụng trước khi xác nhận quyền cho ảnh.'));
   assert.ok(articles.includes('Xóa bộ lọc'));
+});
+
+
+test('field-note and chapter forms respect create-vs-write permissions consistently', () => {
+  assert.ok(editorial.includes("const fieldEditable=can(creating?'field-notes:create':'field-notes:write')"));
+  assert.ok(editorial.includes("const fieldCanUpload=fieldEditable&&can('media:upload')"));
+  assert.ok(editorial.includes("disabled={!fieldEditable}"));
+  assert.ok(library.includes("const chapterEditable=can(creating?'chapters:create':'chapters:write')"));
+  assert.ok(library.includes('Không có chương phù hợp'));
+});
+
+test('CMS collections expose filter recovery and meaningful empty-search states', () => {
+  assert.ok(niches.includes('Xóa bộ lọc'));
+  assert.ok(niches.includes('Không có ngách phù hợp'));
+  assert.ok(connectionsPage.includes('resetFilters'));
+  assert.ok(connectionsPage.includes('Xóa bộ lọc'));
+  assert.ok(system.includes('resetMediaFilters'));
+  assert.ok(system.includes('Không tìm thấy nhân sự'));
+  assert.ok(auditPage.includes('resetFilters'));
+  assert.ok(auditPage.includes('Xóa bộ lọc'));
+});
+
+test('Q&A and dictionary management expose server-backed filter recovery', () => {
+  assert.ok(editorial.includes("status:statusFilter||undefined"));
+  assert.ok(editorial.includes('Lọc trạng thái câu hỏi'));
+  assert.ok(editorial.includes('Xóa tìm kiếm'));
+});
+
+test('CMS mobile sidebar locks background scrolling while open', () => {
+  assert.ok(adminUi.includes("document.body.classList.toggle('cms-menu-open', mobileMenu)"));
 });
