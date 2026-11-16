@@ -97,28 +97,36 @@ export default function NicheDetailV1() {
         <div><span className="eyebrow">GÓC NHÌN ĐANG CHỌN</span><h3>{selectedRole.label}</h3><p>{selectedRole.detail}</p></div>
       </div>
 
-      {isConstruction ? <section className="public-layers-section">
+      <nav className="detail-jump-nav" aria-label="Đi nhanh trong hồ sơ lĩnh vực">
+        <a href="#ho-so-chuyen-mon">Hồ sơ chuyên môn</a>
+        <a href="#bai-viet-lien-quan">Bài viết</a>
+        <a href="#hien-truong-lien-quan">Hiện trường</a>
+        <a href="#chuong-sach-lien-quan">Tủ sách</a>
+        {related.length > 0 && <a href="#linh-vuc-lien-quan">Liên quan</a>}
+      </nav>
+
+      {isConstruction ? <section className="public-layers-section" id="ho-so-chuyen-mon">
         <SectionHeading eyebrow="TEMPLATE A / 12 KHỐI" title="Ba lớp nội dung cùng một trang" description="Chỉ các khối đã có nội dung, nguồn và trạng thái xuất bản mới được hiển thị. Mở thêm góc nhìn khác mà không đổi URL."/>
         <div className="public-layer-stack">{READERS.map((role) => <LayerAccordion key={role.id} role={role} sections={niche.sections || []} open={openRoles.includes(role.id)} onToggle={(id, open) => setOpenRoles((current) => toggleOpenLayerRole(current, id, open))}/>)}</div>
       </section> : <DesignBlocks sections={niche.sections||[]} expected={niche.expectedSectionCount||7}/>}
 
-      <section className="public-related-content">
+      <section className="public-related-content" id="bai-viet-lien-quan">
         <SectionHeading eyebrow="BÀI VIẾT ĐÃ XUẤT BẢN" title="Đọc sâu trong lĩnh vực"/>
         {articles.length ? <div className="articles-grid">{articles.map((article) => <ArticleCard key={article.id} article={article}/>)}</div> : <StatusPanel status="empty" compact title="Chưa có bài viết công khai trong lĩnh vực này"/>}
       </section>
 
       <div className="public-content-grid">
-        <section>
+        <section id="hien-truong-lien-quan">
           <SectionHeading eyebrow="CA ĐÃ ẨN DANH" title="Hiện trường liên quan"/>
           {fieldNotes.length ? <div className="public-link-list">{fieldNotes.map((item) => <Link to={'/hien-truong/' + encodeURIComponent(item.slug)} key={item.id}><span><strong>{item.title}</strong><small>{item.phenomenon}</small></span><Icon name="arrow" size={17}/></Link>)}</div> : <StatusPanel status="empty" compact title="Chưa có ca hiện trường công khai"/>}
         </section>
-        <section>
+        <section id="chuong-sach-lien-quan">
           <SectionHeading eyebrow="CHƯƠNG ĐÃ XUẤT BẢN" title="Từ tủ sách"/>
           {chapters.length ? <div className="public-link-list">{chapters.map((item) => <Link to={chapterPath(item.bookSlug, item.chapterNo)} key={item.bookSlug + '-' + item.chapterNo}><span><strong>{chapterDisplayLabel(item.bookSlug, item.chapterNo, item.chapterTitle || item.displayLabel)}</strong><small>{item.bookTitle || item.bookSlug}</small></span><Icon name="arrow" size={17}/></Link>)}</div> : <StatusPanel status="empty" compact title="Chưa có chương sách liên quan"/>}
         </section>
       </div>
 
-      {related.length > 0 && <section className="public-related-niches"><SectionHeading eyebrow="LIÊN KẾT CHÉO" title="Lĩnh vực có liên quan"/><div className="niche-directory-grid">{related.map((item, index) => <Link className="niche-card" to={(item.group === 'design' ? '/mang/' : '/ngach/') + encodeURIComponent(item.slug)} key={item.id}><span className="niche-card-top"><span className="niche-card-code">{item.group === 'design' ? 'MẢNG KIẾN TRÚC' : 'NGÁCH THI CÔNG'} / {String(index + 1).padStart(2, '0')}</span><Icon name="upRight" size={18}/></span><span className="niche-card-main"><span className="niche-card-icon"><Icon name={item.group === 'design' ? 'draft' : 'hardhat'} size={24}/></span><strong>{item.name}</strong></span><span className="niche-card-bottom">Mở lĩnh vực <Icon name="arrow" size={15}/></span></Link>)}</div></section>}
+      {related.length > 0 && <section className="public-related-niches" id="linh-vuc-lien-quan"><SectionHeading eyebrow="LIÊN KẾT CHÉO" title="Lĩnh vực có liên quan"/><div className="niche-directory-grid">{related.map((item, index) => <Link className="niche-card" to={(item.group === 'design' ? '/mang/' : '/ngach/') + encodeURIComponent(item.slug)} key={item.id}><span className="niche-card-top"><span className="niche-card-code">{item.group === 'design' ? 'MẢNG KIẾN TRÚC' : 'NGÁCH THI CÔNG'} / {String(index + 1).padStart(2, '0')}</span><Icon name="upRight" size={18}/></span><span className="niche-card-main"><span className="niche-card-icon"><Icon name={item.group === 'design' ? 'draft' : 'hardhat'} size={24}/></span><strong>{item.name}</strong></span><span className="niche-card-bottom">Mở lĩnh vực <Icon name="arrow" size={15}/></span></Link>)}</div></section>}
     </main>
   </>;
 }
