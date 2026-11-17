@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { apiUrl } from './api.js';
+import { PRIMARY_NAV } from '../config.js';
 
 const app = readFileSync(new URL('../App.jsx', import.meta.url), 'utf8');
 const home = readFileSync(new URL('../pages/HomeV1.jsx', import.meta.url), 'utf8');
@@ -222,4 +223,16 @@ test('Public mobile navigation dismisses overlays and restores keyboard focus', 
 test('Public question cards keep long answers on detail pages', () => {
   assert.ok(publicPages.includes('questionAnswerTeaser(item.answer)'));
   assert.ok(publicPages.includes('<Markdown body={data.answer}/>'));
+});
+
+test('public header exposes Article index on both desktop and mobile without duplicate mobile links', () => {
+  assert.deepEqual(PRIMARY_NAV.map(item => item.to), [
+    '/bai-viet','/tu-sach','/ngach','/hien-truong','/hoi-dap','/tra-nhanh','/ket-noi'
+  ]);
+  assert.equal(PRIMARY_NAV.filter(item => item.to === '/bai-viet').length, 1);
+  assert.ok(app.includes('path="/bai-viet"'));
+  assert.ok(ui.includes('className="desktop-nav"'));
+  assert.ok(ui.includes('className="mobile-nav-primary"'));
+  assert.equal(ui.includes('<Link to="/bai-viet">Bài viết</Link>'), true, 'Footer still links to Article index');
+  assert.ok(!ui.includes('<div className="mobile-nav-secondary" aria-label="Điều hướng bổ sung">\n                <Link to="/bai-viet">'), 'Article link should not be duplicated in mobile secondary menu');
 });

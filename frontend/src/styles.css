@@ -492,11 +492,11 @@ svg { flex-shrink: 0; }
 .not-found-links a:hover { color: #1479ab; }
 
 @media (max-width: 1190px) {
-  .desktop-nav { gap: 13px; }
+  .desktop-nav { gap: 9px; }
   .nav-link { font-size: 12px; }
   .brand-wordmark { font-size: 17px; }
   .brand-dot { left: 103px; }
-  .header-inner { gap: 18px; }
+  .header-inner { gap: 14px; }
   .explore-grid { gap: 10px; }
   .explore-card { padding: 19px 15px; }
   .footer-upper { gap: 35px; }

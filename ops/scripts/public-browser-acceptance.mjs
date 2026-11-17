@@ -54,6 +54,7 @@ export async function runPublicBrowserAcceptance({ env = process.env, log = cons
       await tab.visit(frontend, '/');
       await tab.waitFor('document.querySelector("h1")?.textContent.includes("Một công trình")', 'homepage heading');
       assert.equal(await tab.evaluate('getComputedStyle(document.querySelector(".desktop-nav")).display !== "none"'), true);
+      assert.equal(await tab.evaluate('document.querySelectorAll(".desktop-nav a[href=\"/bai-viet\"]").length'), 1, 'Article link must appear in desktop header');
     });
 
     await step('Published article loads and unapproved article stays hidden', async () => {
@@ -98,6 +99,7 @@ export async function runPublicBrowserAcceptance({ env = process.env, log = cons
       assert.equal(await tab.evaluate('getComputedStyle(document.querySelector(".mobile-menu-button")).display !== "none"'), true);
       await tab.evaluate('document.querySelector(".mobile-menu-button").click()');
       await tab.waitFor('!!document.querySelector(".mobile-nav") && document.body.classList.contains("public-menu-open")', 'open mobile menu');
+      assert.equal(await tab.evaluate('document.querySelectorAll(".mobile-nav-primary a[href=\"/bai-viet\"]").length'), 1, 'Article link must appear once in primary mobile navigation');
       assert.equal(await tab.evaluate('document.querySelector("#main-content").inert'), true);
       await tab.key('Escape');
       await tab.waitFor('!document.querySelector(".mobile-nav") && !document.querySelector("#main-content").inert', 'Escape closes menu');

@@ -22,6 +22,7 @@ export const READERS = [
 export const DESIGN_AREAS = ['HOUSE', 'LUXURY', 'F&B', 'STAY', 'OFFICE', 'PROJECT', 'FACTORY', 'SACRED'];
 
 export const PRIMARY_NAV = [
+  { to: '/bai-viet', label: 'Bài viết' },
   { to: '/tu-sach', label: 'Tủ sách' },
   { to: '/ngach', label: 'Kho 38 ngách' },
   { to: '/hien-truong', label: 'Hiện trường' },

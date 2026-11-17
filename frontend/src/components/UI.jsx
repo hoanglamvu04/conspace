@@ -131,7 +131,6 @@ export function Header() {
                 }}>{item.label}<Icon name="chevron" size={16} /></NavLink>)}
               </div>
               <div className="mobile-nav-secondary" aria-label="Điều hướng bổ sung">
-                <Link to="/bai-viet">Bài viết</Link>
                 <Link to="/ban-nghe">Bàn nghề</Link>
                 <Link to="/ve-conspace">Về CONSPACE</Link>
                 <Link to="/quy-tac-noi-dung">Quy tắc nội dung</Link>
