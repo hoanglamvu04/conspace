@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { BOOKS, formatDate, PRIMARY_NAV, READERS, safeMediaUrl } from '../config.js';
 import { useReader } from '../context/ReaderContext.jsx';
@@ -13,12 +13,12 @@ export function Brand({ inverse = false }) {
   );
 }
 
-export function ReaderSwitch({ variant = 'inline', ariaLabel = 'Chọn góc nhìn' }) {
+export function ReaderSwitch({ variant = 'inline', ariaLabel = 'Chọn góc nhìn', onSelect }) {
   const { reader, setReader } = useReader();
   return (
     <div className={`reader-switch reader-switch--${variant}`} role="group" aria-label={ariaLabel}>
       {READERS.map((role) => (
-        <button type="button" key={role.id} className={`reader-option ${reader === role.id ? 'is-selected' : ''}`} aria-pressed={reader === role.id} onClick={() => setReader(role.id)}>
+        <button type="button" key={role.id} className={`reader-option ${reader === role.id ? 'is-selected' : ''}`} aria-pressed={reader === role.id} onClick={() => { setReader(role.id); onSelect?.(role.id); }}>
           {variant === 'cards' && <span className="reader-option-icon"><Icon name={role.icon} size={24} /></span>}
           <span>{variant === 'compact' ? role.short : role.label}</span>
         </button>
@@ -30,20 +30,65 @@ export function ReaderSwitch({ variant = 'inline', ariaLabel = 'Chọn góc nhì
 export function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [roleOpen, setRoleOpen] = useState(false);
+  const mobileButtonRef = useRef(null);
+  const mobileNavRef = useRef(null);
+  const roleButtonRef = useRef(null);
+  const readerPopoverRef = useRef(null);
   const location = useLocation();
   const { reader } = useReader();
   useEffect(() => { setMenuOpen(false); setRoleOpen(false); }, [location.pathname, location.search]);
   useEffect(() => {
+    if (!roleOpen) return undefined;
+    const dismissOutside = (event) => {
+      if (!readerPopoverRef.current?.contains(event.target)) setRoleOpen(false);
+    };
+    document.addEventListener('pointerdown', dismissOutside);
+    return () => document.removeEventListener('pointerdown', dismissOutside);
+  }, [roleOpen]);
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    mobileNavRef.current?.querySelector('a[href]')?.focus();
+    return undefined;
+  }, [menuOpen]);
+  useEffect(() => {
     if (!menuOpen && !roleOpen) return undefined;
     const onKey = (event) => {
-      if (event.key === 'Escape') { setMenuOpen(false); setRoleOpen(false); }
+      if (event.key === 'Escape') {
+        if (menuOpen) { setMenuOpen(false); mobileButtonRef.current?.focus(); }
+        if (roleOpen) { setRoleOpen(false); roleButtonRef.current?.focus(); }
+        return;
+      }
+      if (event.key !== 'Tab' || !menuOpen || !mobileNavRef.current) return;
+      const controls = [mobileButtonRef.current, ...mobileNavRef.current.querySelectorAll('a[href], button:not([disabled])')]
+        .filter((element) => element && element.getClientRects().length > 0);
+      if (!controls.length) return;
+      const first = controls[0];
+      const last = controls[controls.length - 1];
+      if (!controls.includes(document.activeElement)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+      } else if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [menuOpen, roleOpen]);
   useEffect(() => {
     document.body.classList.toggle('public-menu-open', menuOpen);
-    return () => document.body.classList.remove('public-menu-open');
+    const content = document.getElementById('main-content');
+    const footer = document.querySelector('.site-footer');
+    if (content) content.inert = menuOpen;
+    if (footer) footer.inert = menuOpen;
+    return () => {
+      document.body.classList.remove('public-menu-open');
+      if (content) content.inert = false;
+      if (footer) footer.inert = false;
+    };
   }, [menuOpen]);
   const selected = READERS.find((role) => role.id === reader);
   return (
@@ -63,18 +108,18 @@ export function Header() {
           </nav>
           <div className="header-actions">
             <Link className="header-search" to="/tra-nhanh" aria-label="Mở tra nhanh"><Icon name="search" size={20} /></Link>
-            <div className="header-reader">
-              <button type="button" className="role-trigger" aria-expanded={roleOpen} aria-controls="header-role-menu" onClick={() => setRoleOpen((open) => !open)}>
+            <div className="header-reader" ref={readerPopoverRef}>
+              <button type="button" ref={roleButtonRef} className="role-trigger" aria-label="Đổi góc nhìn độc giả" aria-expanded={roleOpen} aria-controls="header-role-menu" onClick={() => { setMenuOpen(false); setRoleOpen((open) => !open); }}>
                 <span className="role-dot" /><span>{selected?.short}</span><Icon name="chevronDown" size={15} />
               </button>
-              {roleOpen && <div id="header-role-menu" className="role-dropdown"><p>ĐỌC VỚI GÓC NHÌN</p><ReaderSwitch variant="compact" /></div>}
+              {roleOpen && <div id="header-role-menu" className="role-dropdown"><p>ĐỌC VỚI GÓC NHÌN</p><ReaderSwitch variant="compact" onSelect={() => { setRoleOpen(false); roleButtonRef.current?.focus(); }}/></div>}
             </div>
-            <button type="button" className="mobile-menu-button" aria-label={menuOpen ? 'Đóng menu' : 'Mở menu'} aria-controls="mobile-menu" aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)}><Icon name={menuOpen ? 'close' : 'menu'} size={23} /></button>
+            <button type="button" ref={mobileButtonRef} className="mobile-menu-button" aria-label={menuOpen ? 'Đóng menu' : 'Mở menu'} aria-controls="mobile-menu" aria-expanded={menuOpen} onClick={() => { setRoleOpen(false); setMenuOpen((open) => !open); }}><Icon name={menuOpen ? 'close' : 'menu'} size={23} /></button>
           </div>
         </div>
         {menuOpen && <>
-          <button type="button" className="mobile-nav-backdrop" aria-label="Đóng menu" onClick={() => setMenuOpen(false)}/>
-          <nav className="mobile-nav" id="mobile-menu" aria-label="Điều hướng trên điện thoại">
+          <button type="button" className="mobile-nav-backdrop" aria-label="Đóng menu" tabIndex={-1} onClick={() => { setMenuOpen(false); mobileButtonRef.current?.focus(); }}/>
+          <nav className="mobile-nav" id="mobile-menu" aria-label="Điều hướng trên điện thoại" ref={mobileNavRef}>
             <div className="container mobile-nav-inner">
               <div className="mobile-nav-primary">
                 {PRIMARY_NAV.map((item) => <NavLink key={item.to} to={item.to} className={({ isActive }) => {
@@ -91,7 +136,7 @@ export function Header() {
                 <Link to="/ve-conspace">Về CONSPACE</Link>
                 <Link to="/quy-tac-noi-dung">Quy tắc nội dung</Link>
               </div>
-              <div className="mobile-nav-reader"><p>GÓC NHÌN CỦA BẠN</p><ReaderSwitch variant="compact" /></div>
+              <div className="mobile-nav-reader"><p>GÓC NHÌN CỦA BẠN</p><ReaderSwitch variant="compact" onSelect={() => { setMenuOpen(false); mobileButtonRef.current?.focus(); }}/></div>
             </div>
           </nav>
         </>}

@@ -27,3 +27,13 @@ export function hasMoreFieldPage(meta,offset,receivedCount) {
     && Number.isInteger(meta?.total) && Number.isInteger(receivedCount)
     && receivedCount>0 && meta.total>offset+receivedCount;
 }
+
+/** Keeps reader answer cards concise without changing the full published answer detail. */
+export function questionAnswerTeaser(value, maxLength = 220) {
+  const text = typeof value === 'string' ? value.replace(/\s+/g, ' ').trim() : '';
+  if (text.length <= maxLength) return text;
+  const segment = text.slice(0, maxLength + 1);
+  const boundary = segment.lastIndexOf(' ');
+  const end = boundary >= Math.floor(maxLength * 0.65) ? boundary : maxLength;
+  return text.slice(0, end).trimEnd() + '…';
+}

@@ -767,7 +767,7 @@ svg { flex-shrink: 0; }
 .public-field-card, .public-question-card { min-width: 0; display: flex; flex-direction: column; gap: 11px; padding: 25px; border: 1px solid #e0eaf0; border-radius: 13px; background: #fff; color: inherit; }
 .public-field-card:hover, .public-question-card:hover { border-color: #8fc7df; box-shadow: 0 12px 28px rgba(20, 66, 94, .07); }
 .public-field-card h2, .public-question-card h2 { margin: 0; color: #1c4058; font-size: 20px; line-height: 1.42; }
-.public-field-card p, .public-question-card p { margin: 0; color: #708b9a; font-size: 13px; line-height: 1.8; }
+.public-field-card p, .public-question-card p { margin: 0; color: #708b9a; font-size: 13px; line-height: 1.8; overflow-wrap: anywhere; }
 .public-field-card small, .public-question-card small { color: #4a89a5; font-size: 12px; }
 .public-field-card .text-link, .public-question-card .text-link { margin-top: auto; }
 .public-qa-actions { display: flex; align-items: center; justify-content: space-between; gap: 22px; margin: 0 0 30px; padding: 25px 28px; border: 1px solid #dcecf4; border-radius: 13px; background: #f3f9fc; }

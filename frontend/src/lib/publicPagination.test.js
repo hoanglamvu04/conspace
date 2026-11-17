@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {searchResultKey,appendUniqueSearchResults,hasMoreQuestionPage,hasMoreFieldPage} from './publicPagination.js';
+import {searchResultKey,appendUniqueSearchResults,hasMoreQuestionPage,hasMoreFieldPage,questionAnswerTeaser} from './publicPagination.js';
 
 test('search key distinguishes reader lens, filter and search term',()=>{
   const baseline=searchResultKey('chống thấm','homeowner','all','');
@@ -33,4 +33,14 @@ test('Field Note pagination prevents advancing on stale metadata and empty pages
   assert.equal(hasMoreFieldPage({offset:0,total:30},12,12),false);
   assert.equal(hasMoreFieldPage({offset:24,total:30},24,6),false);
   assert.equal(hasMoreFieldPage({offset:12,total:30},12,0),false);
+});
+
+test('published Q&A cards show a concise answer with the full detail untouched', () => {
+  assert.equal(questionAnswerTeaser('  Bê tông   cần bảo dưỡng.  '), 'Bê tông cần bảo dưỡng.');
+  const long = ('Câu trả lời kỹ thuật gồm các bước nghiệm thu. ').repeat(20);
+  const teaser = questionAnswerTeaser(long);
+  assert.ok(teaser.length <= 221);
+  assert.ok(teaser.endsWith('…'));
+  assert.ok(!teaser.includes('  '));
+  assert.equal(questionAnswerTeaser(null), '');
 });

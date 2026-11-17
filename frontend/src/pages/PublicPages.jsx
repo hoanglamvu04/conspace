@@ -4,7 +4,7 @@ import { formatDate, safeMediaUrl } from '../config.js';
 import { useReader } from '../context/ReaderContext.jsx';
 import { useFieldNotes, useNiches, useQuestions, useResource } from '../hooks/useResources.js';
 import { apiUrl, getJson, postJson, requireList } from '../lib/api.js';
-import { searchResultKey, appendUniqueSearchResults, hasMoreQuestionPage, hasMoreFieldPage } from '../lib/publicPagination.js';
+import { searchResultKey, appendUniqueSearchResults, hasMoreQuestionPage, hasMoreFieldPage, questionAnswerTeaser } from '../lib/publicPagination.js';
 import { chapterPath, chapterDisplayLabel, nichePathForSlug } from '../lib/contentModel.js';
 import { useSeoMetadata } from '../lib/seo.js';
 import { sortByLens } from '../lib/readerLens.js';
@@ -306,7 +306,7 @@ export function Questions() {
       {items.length > 0 && <>
         <p className="results-count" role="status">{items.length} / {questions.meta?.total ?? items.length} câu hỏi đã có câu trả lời công khai</p>
         <div className="public-content-grid">{items.map((item) => <Link className="public-question-card" to={'/hoi-dap/' + item.id} key={item.id}>
-          <span className="eyebrow">ĐÃ CÓ CÂU TRẢ LỜI · {formatDate(item.publishedAt)}</span><h2>{item.description}</h2><p>{item.answer}</p>{item.niche && <small>Ngách: {item.niche}</small>}<span className="text-link">Đọc trả lời <Icon name="arrow" size={16}/></span>
+          <span className="eyebrow">ĐÃ CÓ CÂU TRẢ LỜI · {formatDate(item.publishedAt)}</span><h2>{item.description}</h2><p>{questionAnswerTeaser(item.answer)}</p>{item.niche && <small>Ngách: {item.niche}</small>}<span className="text-link">Đọc trả lời <Icon name="arrow" size={16}/></span>
         </Link>)}</div>
       </>}
       {questions.status === 'success' && page === 1 && !questions.data.length && <StatusPanel status="empty" title="Chưa có câu trả lời công khai" description="Câu hỏi chưa được trả lời hoặc chưa qua kiểm duyệt sẽ không xuất hiện trên trang này."/>}

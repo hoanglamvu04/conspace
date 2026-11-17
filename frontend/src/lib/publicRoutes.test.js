@@ -207,3 +207,19 @@ test('published article authors use API authorName instead of showing the defaul
   assert.ok(articlesPage.includes("entry.author?.displayName || entry.authorName"));
   assert.ok(articlesPage.includes("(article.author?.displayName || article.authorName) ?"));
 });
+
+test('Public mobile navigation dismisses overlays and restores keyboard focus', () => {
+  assert.ok(ui.includes('mobileNavRef.current?.querySelector'));
+  assert.ok(ui.includes("event.key !== 'Tab'"));
+  assert.ok(ui.includes('document.activeElement'));
+  assert.ok(ui.includes('readerPopoverRef.current?.contains(event.target)'));
+  assert.ok(ui.includes('onSelect={() => { setRoleOpen(false)'));
+  assert.ok(ui.includes('onSelect={() => { setMenuOpen(false)'));
+  assert.ok(ui.includes('content.inert = menuOpen'));
+  assert.ok(ui.includes('footer.inert = menuOpen'));
+});
+
+test('Public question cards keep long answers on detail pages', () => {
+  assert.ok(publicPages.includes('questionAnswerTeaser(item.answer)'));
+  assert.ok(publicPages.includes('<Markdown body={data.answer}/>'));
+});
