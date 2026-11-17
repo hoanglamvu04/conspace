@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { formatDate, safeMediaUrl } from '../config.js';
 import { useReader } from '../context/ReaderContext.jsx';
 import { useFieldNotes, useNiches, useQuestions, useResource } from '../hooks/useResources.js';
-import { apiUrl, getJson, postJson } from '../lib/api.js';
+import { apiUrl, getJson, postJson, requireList } from '../lib/api.js';
+import { searchResultKey, appendUniqueSearchResults, hasMoreQuestionPage, hasMoreFieldPage } from '../lib/publicPagination.js';
 import { chapterPath, chapterDisplayLabel, nichePathForSlug } from '../lib/contentModel.js';
 import { useSeoMetadata } from '../lib/seo.js';
 import { sortByLens } from '../lib/readerLens.js';
@@ -206,7 +207,7 @@ export function FieldNotes() {
       ? records.data
       : [...current, ...records.data.filter((item) => !current.some((old) => old.id === item.id))]);
   }, [records.status, records.data, records.meta, offset]);
-  const hasMore = records.status === 'success' && Number(records.meta?.total || 0) > offset + records.data.length;
+  const hasMore = records.status === 'success' && hasMoreFieldPage(records.meta, offset, records.data.length);
 
   return <>
     <PageIntro eyebrow="GHI CHÉP / HIỆN TRƯỜNG" title="Hiện trường" description="Từ hiện tượng đến nguyên nhân gốc và mốc nghiệm thu có thể ngăn vấn đề. Ca công khai phải được ẩn danh và có quyền sử dụng tư liệu."/>
@@ -225,6 +226,7 @@ export function FieldNotes() {
         </Link>)}</div>
       </>}
       {records.status === 'success' && offset === 0 && !records.data.length && <StatusPanel status="empty" title="Chưa có ca hiện trường công khai" description="Kho hiện trường chỉ hiển thị ca đã được duyệt, ẩn danh đơn vị/địa chỉ và xác nhận quyền sử dụng ảnh."/>}
+      {records.status === 'loading' && offset > 0 && <p className="results-count" role="status">Đang tải thêm ca hiện trường...</p>}
       {records.status === 'error' && offset > 0 && <p className="inline-error" role="alert">{records.error?.message || 'Chưa thể tải thêm ca hiện trường.'} <button type="button" onClick={records.retry}>Thử lại</button></p>}
       {hasMore && <div className="pagination-actions"><button type="button" className="button button--outline" disabled={records.status === 'loading'} onClick={() => setOffset((value) => value + records.data.length)}>{records.status === 'loading' ? 'Đang tải...' : 'Xem thêm ca hiện trường'} <Icon name="arrow" size={17}/></button></div>}
     </main>
@@ -287,7 +289,7 @@ export function Questions() {
       ? questions.data
       : [...current, ...questions.data.filter((item) => !current.some((old) => old.id === item.id))]);
   }, [questions.status, questions.data, questions.meta, page]);
-  const hasMore = questions.status === 'success' && Number(questions.meta?.total || 0) > page * Number(questions.meta?.limit || 30);
+  const hasMore = questions.status === 'success' && hasMoreQuestionPage(questions.meta, page);
 
   return <>
     <PageIntro eyebrow="CONSPACE / HỎI ĐÁP" title="Hỏi đáp" description="Câu hỏi được gửi ẩn danh. Chỉ câu hỏi có câu trả lời đã duyệt và xuất bản mới xuất hiện công khai."/>
@@ -308,6 +310,7 @@ export function Questions() {
         </Link>)}</div>
       </>}
       {questions.status === 'success' && page === 1 && !questions.data.length && <StatusPanel status="empty" title="Chưa có câu trả lời công khai" description="Câu hỏi chưa được trả lời hoặc chưa qua kiểm duyệt sẽ không xuất hiện trên trang này."/>}
+      {questions.status === 'loading' && page > 1 && <p className="results-count" role="status">Đang tải thêm câu hỏi...</p>}
       {questions.status === 'error' && page > 1 && <p className="inline-error" role="alert">{questions.error?.message || 'Chưa thể tải thêm câu hỏi.'} <button type="button" onClick={questions.retry}>Thử lại</button></p>}
       {hasMore && <div className="pagination-actions"><button type="button" className="button button--outline" disabled={questions.status === 'loading'} onClick={() => setPage((value) => value + 1)}>{questions.status === 'loading' ? 'Đang tải...' : 'Xem thêm câu hỏi'} <Icon name="arrow" size={17}/></button></div>}
     </main>
@@ -439,33 +442,41 @@ function useDebounced(value, delay) {
 }
 
 function useSearchResults(query, page, role, type='all', niche='') {
-  const [state, setState] = useState({ status: 'idle', data: [], meta: null, error: null, loadingMore: false });
-  useEffect(() => {
-    if (query.length < 2) {
-      setState({ status: 'idle', data: [], meta: null, error: null, loadingMore: false });
+  const key=searchResultKey(query,role,type,niche);
+  const [revision,setRevision]=useState(0);
+  const [state,setState]=useState({key:null,status:'idle',data:[],meta:null,error:null,loadingMore:false});
+  useEffect(()=>{
+    if(query.length<2){
+      setState({key,status:'idle',data:[],meta:null,error:null,loadingMore:false});
       return undefined;
     }
-    const controller = new AbortController();
-    setState((current) => page === 1
-      ? { status: 'loading', data: [], meta: null, error: null, loadingMore: false }
-      : { ...current, loadingMore: true, error: null });
-    getJson(apiUrl('/search', { q: query, type, role, niche: niche || undefined, limit: 20, page }), { signal: controller.signal })
-      .then((payload) => {
-        if (controller.signal.aborted) return;
-        setState((current) => ({
-          status: 'success',
-          data: page === 1 ? payload.data : [...current.data, ...payload.data.filter((item) => !current.data.some((old) => old.id === item.id && old.type === item.type))],
-          meta: payload.meta || null,
-          error: null,
-          loadingMore: false,
-        }));
+    const controller=new AbortController();
+    setState((current)=>page===1 || current.key!==key
+      ? {key,status:'loading',data:[],meta:null,error:null,loadingMore:false}
+      : {...current,loadingMore:true,error:null});
+    getJson(apiUrl('/search',{q:query,type,role,niche:niche||undefined,limit:20,page}),{signal:controller.signal})
+      .then((payload)=>{
+        if(controller.signal.aborted)return;
+        const data=requireList(payload);
+        if(payload.meta?.page!==page)throw new Error('Máy chủ trả về sai trang kết quả.');
+        setState((current)=>current.key!==key?current:{
+          key,status:'success',
+          data:page===1?data:appendUniqueSearchResults(current.data,data),
+          meta:payload.meta,
+          error:null,
+          loadingMore:false,
+        });
       })
-      .catch((error) => {
-        if (!controller.signal.aborted) setState((current) => ({ ...current, status: page === 1 ? 'error' : current.status, error, loadingMore: false }));
+      .catch((error)=>{
+        if(controller.signal.aborted)return;
+        setState((current)=>current.key!==key?current:{
+          ...current,status:page===1?'error':'success',error,loadingMore:false,
+        });
       });
-    return () => controller.abort();
-  }, [query, page, role, type, niche]);
-  return state;
+    return ()=>controller.abort();
+  },[query,page,role,type,niche,revision,key]);
+  const retry=useCallback(()=>setRevision((current)=>current+1),[]);
+  return {...state,retry};
 }
 
 const RESULT_LABELS = { article: 'Bài viết', niche: 'Lĩnh vực', term: 'Thuật ngữ', chapter: 'Chương sách', field_note: 'Hiện trường' };
@@ -579,7 +590,10 @@ export function Lookup() {
     commitParams({ q: input.trim(), type: activeType, niche: activeNiche });
   }
 
-  const facets = results.meta?.facets || {};
+  const activeResultsKey=searchResultKey(activeQuery,reader,activeType,activeNiche);
+  const resultsCurrent=debounced===activeQuery && results.key===activeResultsKey;
+  const resultStatus=resultsCurrent?results.status:'loading';
+  const facets=resultsCurrent?results.meta?.facets||{}:{};
   return <>
     <PageIntro eyebrow="TRA NHANH / TÌM ĐÚNG CHỖ" title="Bạn thấy gì, cần xem mục nào?" description="Tìm trong bài viết, ngách, chương sách, ca hiện trường và thuật ngữ đã được xuất bản. Không có tư vấn tự động hoặc kết luận không nguồn."/>
     <main className="container content-page">
@@ -608,16 +622,18 @@ export function Lookup() {
 
       {!activeQuery && <div className="lookup-intro"><div><Icon name="compass" size={37}/><h2>Bắt đầu từ điều bạn đang thấy.</h2><p>Tra nhanh tìm trong kho nội dung công khai. Kết quả không bao gồm bản nháp, câu hỏi chưa trả lời hoặc hồ sơ chưa duyệt.</p></div><div className="lookup-shortcuts"><Link to="/ngach"><Icon name="grid" size={22}/> Duyệt kho ngách <Icon name="arrow" size={17}/></Link><Link to="/tu-sach"><Icon name="book" size={22}/> Mở tủ sách <Icon name="arrow" size={17}/></Link><Link to="/hoi-dap/gui-cau-hoi"><Icon name="users" size={22}/> Gửi câu hỏi ẩn danh <Icon name="arrow" size={17}/></Link></div></div>}
       {activeQuery.length === 1 && <StatusPanel status="empty" title="Nhập thêm ít nhất một ký tự" description="Tìm kiếm yêu cầu tối thiểu hai ký tự."/>}
-      {activeQuery.length >= 2 && results.status === 'loading' && <StatusPanel status="loading" kind="articles"/>}
-      {activeQuery.length >= 2 && results.status === 'error' && <StatusPanel status="error" title="Chưa thể tra cứu" description={results.error?.message} onRetry={() => setPage(1)}/>}
-      {activeQuery.length >= 2 && results.status === 'success' && <>
+      {activeQuery.length >= 2 && resultStatus === 'loading' && <StatusPanel status="loading" kind="articles"/>}
+      {activeQuery.length >= 2 && resultStatus === 'error' && <StatusPanel status="error" title="Chưa thể tra cứu" description={results.error?.message} onRetry={results.retry}/>}
+      {activeQuery.length >= 2 && resultStatus === 'success' && <>
         <p className="results-count" role="status">{results.meta?.total ?? results.data.length} kết quả cho “{activeQuery}” · ưu tiên {reader === 'homeowner' ? 'chủ nhà' : reader === 'architect' ? 'kiến trúc sư' : 'nhà thầu'}, không ẩn kết quả của hai phía còn lại</p>
         {results.data.length ? <div className="public-search-results">{results.data.map((item) => <Link className="public-search-result" to={resultPath(item)} key={item.type + '-' + item.id}>
           <span className="public-search-type">{RESULT_LABELS[item.type] || 'Nội dung'}</span>
           <span><strong>{item.title}</strong>{item.snippet && <small>{item.snippet}</small>}</span>
           <Icon name="arrow" size={17}/>
         </Link>)}</div> : <div className="lookup-empty-actions"><StatusPanel status="empty" title="Không tìm thấy kết quả" description="Thử một từ khóa khác, bỏ bộ lọc hoặc mở kho ngách để duyệt danh mục đã có."/><div><Link className="button button--outline" to="/ngach">Duyệt kho ngách</Link><Link className="button button--primary" to="/hoi-dap/gui-cau-hoi">Gửi câu hỏi <Icon name="arrow" size={16}/></Link></div></div>}
-        {results.meta?.hasMore && <div className="pagination-actions"><button type="button" className="button button--outline" disabled={results.loadingMore} onClick={() => setPage((value) => value + 1)}>{results.loadingMore ? 'Đang tải...' : 'Tải thêm kết quả'} <Icon name="arrow" size={17}/></button></div>}
+        {results.loadingMore && <p className="results-count" role="status">Đang tải thêm kết quả...</p>}
+        {results.error && <p className="inline-error" role="alert">Không tải được trang kết quả tiếp theo: {results.error.message || 'Vui lòng thử lại.'} <button type="button" onClick={results.retry}>Thử lại trang này</button></p>}
+        {results.meta?.hasMore && results.meta?.page===page && !results.loadingMore && !results.error && <div className="pagination-actions"><button type="button" className="button button--outline" onClick={() => setPage((value) => value + 1)}>Tải thêm kết quả <Icon name="arrow" size={17}/></button></div>}
       </>}
     </main>
   </>;

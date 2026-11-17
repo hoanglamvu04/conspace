@@ -73,9 +73,11 @@ export async function runPublicAcceptance({fetcher=fetch,env=process.env,log=con
   const pub=await json('/api/v1/articles/demo-public-design-overview');
   const draft=await json('/api/v1/articles/demo-review-needs-changes',404);
   const field=await json('/api/v1/field-notes/demo-field-ready',404);
-  const questions=await json('/api/v1/questions');
+  const questions=await json('/api/v1/questions?page=1&limit=10');
+  if(questions.meta?.page!==1 || questions.meta?.limit!==10 || !Number.isInteger(questions.meta?.total) || typeof questions.meta?.hasMore!=='boolean')throw new Error('Q&A pagination metadata invalid');
   assertPublishedOnly({published:pub.data,draft,fieldDraft:field,listedQuestions:questions.data});
   log('PASS: published article accessible; draft article, field note and Q&A hidden');
+  log('PASS: public Q&A pagination metadata');
   const term=await json('/api/v1/terms/demo-thuat-ngu-cong-khai');
   const draftTerm=await json('/api/v1/terms/demo-thuat-ngu-can-sua',404);
   if(term.data?.slug!=='demo-thuat-ngu-cong-khai' || !term.data?.sourceRef || draftTerm.error?.code!=='NOT_FOUND') {

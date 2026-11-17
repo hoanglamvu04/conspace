@@ -186,3 +186,18 @@ test('Field Note and Dictionary details request allowed slug APIs and recover on
   assert.ok(publicPages.includes('Trở lại kho Hiện trường'));
   assert.ok(publicPages.includes('Trở lại Tra nhanh'));
 });
+
+test('Public Q&A uses server-backed pagination metadata and blocks stale page actions',()=>{
+  assert.ok(publicPages.includes('hasMoreQuestionPage(questions.meta, page)'));
+  assert.ok(publicPages.includes('Đang tải thêm câu hỏi'));
+  assert.ok(publicPages.includes('questions.retry'));
+});
+
+test('Public search retries the failed page and hides stale query/filter results',()=>{
+  assert.ok(publicPages.includes('searchResultKey(activeQuery,reader,activeType,activeNiche)'));
+  assert.ok(publicPages.includes("const resultStatus=resultsCurrent?results.status:'loading'"));
+  assert.ok(publicPages.includes('onRetry={results.retry}'));
+  assert.ok(publicPages.includes('onClick={results.retry}'));
+  assert.ok(publicPages.includes('!results.error &&'));
+  assert.ok(publicPages.includes('appendUniqueSearchResults(current.data,data)'));
+});
