@@ -125,6 +125,34 @@ jobs:
           npm run db:migrate --prefix backend
           npm run db:seed --prefix backend
           npm run db:seed --prefix backend
+      - name: Full local demo content seed, idempotency and coverage
+        env:
+          NODE_ENV: development
+          DEMO_SEED_CONFIRM: LOCAL_DEMO_ONLY
+          DEMO_USER_PASSWORD: ci-only-full-demo-credential-1234
+        run: |
+          set -euo pipefail
+          npm run db:seed-demo-full --prefix backend
+          npm run db:seed-demo-full --prefix backend
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import { pool, closeDatabase } from './backend/src/database/pool.js';
+          try {
+            const count=async(sql)=>Number((await pool.query(sql)).rows[0].total);
+            const niches=await count("SELECT COUNT(*)::integer AS total FROM conspace.niches WHERE is_active=true");
+            const articles=await count("SELECT COUNT(*)::integer AS total FROM conspace.articles WHERE status='PUBLISHED' AND slug LIKE 'demo-full-%'");
+            const chapters=await count("SELECT COUNT(*)::integer AS total FROM conspace.book_chapters WHERE article_id IS NOT NULL");
+            const terms=await count("SELECT COUNT(*)::integer AS total FROM conspace.terms WHERE status='PUBLISHED' AND slug LIKE 'demo-full-%'");
+            const questions=await count("SELECT COUNT(*)::integer AS total FROM conspace.reader_questions WHERE status='PUBLISHED' AND description LIKE '[DEMO] %'");
+            assert.ok(niches>=8,{niches});
+            assert.ok(articles>=100,{articles});
+            assert.ok(chapters>=30,{chapters});
+            assert.ok(terms>=8,{terms});
+            assert.ok(questions>=8,{questions});
+            console.log('PASS: full demo public dataset', { niches,articles,chapters,terms,questions });
+          } finally { await closeDatabase(); }
+          JS
+
       - name: Install frontend dependencies
         id: frontend_install
         run: npm ci --prefix frontend --ignore-scripts --no-audit --no-fund

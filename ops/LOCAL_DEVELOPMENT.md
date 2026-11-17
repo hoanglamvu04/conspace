@@ -129,3 +129,35 @@ Chrome or Chromium must be installed. Set CONSPACE_BROWSER_BIN to its executable
 GitHub Actions runs the same browser acceptance on a clean PostgreSQL service with synthetic [DEMO] seed data and saves a screenshot and service logs as failure-only diagnostic artifacts. This is not a production test or a full visual design approval.
 
 In GitHub Actions the browser fixture uses `DEMO_NICHE_SLUG=luxury` to avoid overwriting the non-demo HOUSE architecture blocks created by integration tests. On a clean local database the default `house` fixture remains supported.
+
+## Full-site synthetic seed (populate Public Web and CMS)
+
+Use this when the public website looks empty. The older db:seed-demo creates a SMALL workflow fixture only; db:seed-demo-full is a separate LOCAL-ONLY command to populate the public reader experience.
+
+Start your existing local Docker PostgreSQL first, run migrations and the documented eight design niches, and then invoke the full seed:
+
+    cd /d D:\conspace
+    docker start conspace-db-local
+    npm.cmd run db:migrate --prefix backend
+    npm.cmd run db:seed --prefix backend
+    set "DEMO_SEED_CONFIRM=LOCAL_DEMO_ONLY"
+    set /p DEMO_USER_PASSWORD=Nhap mat khau demo local (toi thieu 14 ky tu):
+    npm.cmd run db:seed-demo-full --prefix backend
+    set DEMO_USER_PASSWORD=
+
+This populates all eight documented design areas, up to thirty **explicitly [DEMO] synthetic construction niches** arranged in at most five demo groups, source-marked Template A/B sample blocks, three reader lenses worth of public Articles, full mock chapters for the three configured books, anonymized Field Notes, Dictionary terms and approved Q&A examples. Every narrative/source says DEMO ONLY; there are no verified technical claims, prices, legal standards, real identities or third-party images. **The thirty construction niche titles are just unapproved demo placeholders**, not CONSPACE's confirmed final taxonomy. Browser pages that collect private connection submissions are intentionally NOT pre-filled with fake private contacts, and Media Library rights metadata is never forged.
+
+The script requires NODE_ENV=development, DEMO_SEED_CONFIRM=LOCAL_DEMO_ONLY, a local PostgreSQL connection named conspace and a 14+ character demo password. It refuses VPS/production, uses a single transaction, and does not overwrite existing authored book chapters, sections or editorial content. Re-running it fills missing sample records without duplicating them. Existing CMS admin credentials are never changed; the three demo editorial roles are created only if absent, or left intact. If the local database is already at taxonomy capacity, the remaining synthetic categories are skipped.
+
+Check examples after restarting Backend/Frontend:
+
+    http://127.0.0.1:5176/
+    http://127.0.0.1:5176/ngach
+    http://127.0.0.1:5176/mang/house
+    http://127.0.0.1:5176/tu-sach
+    http://127.0.0.1:5176/bai-viet
+    http://127.0.0.1:5176/hien-truong
+    http://127.0.0.1:5176/hoi-dap
+    http://127.0.0.1:5176/tra-nhanh
+
+This is a dataset for preview and testing only. It must never be treated as production editorial material, search engine content or evidence of compliance. No migration or VPS deployment.
