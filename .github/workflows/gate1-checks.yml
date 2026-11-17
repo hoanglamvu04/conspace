@@ -169,7 +169,10 @@ jobs:
             echo 'SKIP: frontend/package.json has no test script; no frontend test suite is defined yet.'
           fi
           npm run build
+      # Browser UI verification still runs when an upstream npm audit reports a vulnerability.
+      # The mandatory security audit remains a failed gate; this never waives it.
       - name: Chromium Public Web acceptance (local synthetic fixtures)
+        if: ${{ always() && steps.frontend_install.outcome == 'success' }}
         env:
           CI: 'true'
           NODE_ENV: development
