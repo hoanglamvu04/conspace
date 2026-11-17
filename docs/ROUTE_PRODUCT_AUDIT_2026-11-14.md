@@ -119,3 +119,11 @@ All of these are UX/RBAC hardening on existing APIs. No migration or production 
 ## Public detail route hardening — 2026-11-16
 
 The public Field Note detail page used Article slug URLs but the frontend API allowlist accepted only UUIDs. The Dictionary detail page used `/terms/:slug` but the allowlist accepted only `/terms`. Both were runtime failures before calling the Backend. The client URL builder now matches the slug-based published-only API contracts; oversized/invalid detail paths recover with contextual links. The local Public acceptance runner additionally checks a source-backed published Dictionary term and a draft term that must remain 404. The HTTP 200 SPA entrypoint checks do not constitute rendered browser testing. No migration, demo content injection or production deploy.
+
+## Public Web reader acceptance/hardening — 2026-11-17
+
+- Public Q&A now accepts validated page/limit and returns real pagination metadata. The public query and count apply the same published-and-approved visibility predicate and deterministic ordering, avoiding the previous silent 50-record truncation.
+- Reader Search now tracks the active query, reader lens and filters. The initial error retry makes an actual repeat request; a later-page error retries that page rather than skipping it, and duplicate results do not repeat on recovery.
+- Field Note and Q&A load-more actions are blocked while prior page metadata is stale and show loading feedback for subsequent pages.
+- Published article cards, detail bylines and structured author data now respect Backend's `authorName` field rather than defaulting all non-nested author records to the editorial team.
+- Tests cover paging boundary/recovery wiring and published Q&A visibility. Browser-rendering and mobile-device QA remain distinct, pending manual walkthrough. No migration or production deployment.

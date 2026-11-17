@@ -39,7 +39,7 @@ function ArticleStructuredData({ article }) {
       datePublished: article.publishedAt || undefined,
       dateModified: article.updatedAt || article.publishedAt || undefined,
       mainEntityOfPage: window.location.href,
-      author: article.author?.displayName ? { '@type': 'Person', name: article.author.displayName } : undefined,
+      author: (article.author?.displayName || article.authorName) ? { '@type': 'Person', name: article.author?.displayName || article.authorName } : undefined,
       publisher: { '@type': 'Organization', name: 'CONSPACE' },
     }).replace(/</g, '\\u003c');
     document.head.appendChild(script);
@@ -81,7 +81,7 @@ export function ArticleDetail() {
         {entry.excerpt && <p className="article-deck">{entry.excerpt}</p>}
         <div className="article-byline">
           <div className="author-avatar" aria-hidden="true"><Icon name="note" size={20}/></div>
-          <div><strong>{entry.author?.displayName || 'Ban biên tập CONSPACE'}</strong><span>{formatDate(entry.publishedAt) || 'Bài viết'}</span></div>
+          <div><strong>{entry.author?.displayName || entry.authorName || 'Ban biên tập CONSPACE'}</strong><span>{formatDate(entry.publishedAt) || 'Bài viết'}</span></div>
         </div>
         <nav className="article-reading-tools" aria-label="Đi nhanh trong bài viết">
           <a href="#noi-dung-bai-viet">Nội dung</a>

@@ -201,3 +201,9 @@ test('Public search retries the failed page and hides stale query/filter results
   assert.ok(publicPages.includes('!results.error &&'));
   assert.ok(publicPages.includes('appendUniqueSearchResults(current.data,data)'));
 });
+
+test('published article authors use API authorName instead of showing the default editorial byline',()=>{
+  assert.ok(ui.includes("article.author?.displayName || article.authorName"));
+  assert.ok(articlesPage.includes("entry.author?.displayName || entry.authorName"));
+  assert.ok(articlesPage.includes("(article.author?.displayName || article.authorName) ?"));
+});
