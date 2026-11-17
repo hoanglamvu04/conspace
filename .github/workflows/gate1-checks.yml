@@ -64,6 +64,8 @@ jobs:
           node --check ops/scripts/local-smoke.mjs
           node --check ops/scripts/local-role-acceptance.mjs
           node --check ops/scripts/public-acceptance.mjs
+          node --check ops/scripts/chromium-cdp.mjs
+          node --check ops/scripts/public-browser-acceptance.mjs
           node --test ops/tests/*.test.mjs
       - name: Confirm full dependency audit remains mandatory
         run: |
@@ -139,3 +141,37 @@ jobs:
             echo 'SKIP: frontend/package.json has no test script; no frontend test suite is defined yet.'
           fi
           npm run build
+      - name: Chromium Public Web acceptance (local synthetic fixtures)
+        env:
+          CI: 'true'
+          NODE_ENV: development
+          DEMO_SEED_CONFIRM: LOCAL_DEMO_ONLY
+          DEMO_USER_PASSWORD: ci-only-browser-fixture-password
+          CONSPACE_BROWSER_ARTIFACTS: ${{ runner.temp }}/conspace-browser-artifacts
+        run: |
+          set -euo pipefail
+          npm run db:seed-demo --prefix backend
+          (cd backend && exec node src/server.js) > "$RUNNER_TEMP/conspace-browser-api.log" 2>&1 &
+          api_pid=$!
+          (cd frontend && exec node node_modules/vite/bin/vite.js) > "$RUNNER_TEMP/conspace-browser-web.log" 2>&1 &
+          web_pid=$!
+          trap 'kill "$api_pid" "$web_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:5088/api/ready >/dev/null \
+               && curl -fsS http://127.0.0.1:5176/ >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          command -v google-chrome || command -v chromium
+          node ops/scripts/public-browser-acceptance.mjs
+      - name: Upload Chromium diagnostics if acceptance fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-browser-diagnostics
+          if-no-files-found: ignore
+          path: |
+            ${{ runner.temp }}/conspace-browser-artifacts/
+            ${{ runner.temp }}/conspace-browser-api.log
+            ${{ runner.temp }}/conspace-browser-web.log

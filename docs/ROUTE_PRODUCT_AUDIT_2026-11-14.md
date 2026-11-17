@@ -127,3 +127,9 @@ The public Field Note detail page used Article slug URLs but the frontend API al
 - Field Note and Q&A load-more actions are blocked while prior page metadata is stale and show loading feedback for subsequent pages.
 - Published article cards, detail bylines and structured author data now respect Backend's `authorName` field rather than defaulting all non-nested author records to the editorial team.
 - Tests cover paging boundary/recovery wiring and published Q&A visibility. Browser-rendering and mobile-device QA remain distinct, pending manual walkthrough. No migration or production deployment.
+
+## Browser-level Public Web acceptance — 2026-11-17
+
+The previous HTTP route probe only verified SPA entry-point responses. An independent **Chromium DevTools browser gate** now renders the actual React application in desktop (1280 px) and mobile (390 px) viewports. It covers published-versus-unpublished Article detail, Template B architecture layout, source-reviewed Dictionary detail, Quick Search facets, Q&A private-contact opt-in, mobile menu Escape/focus recovery and reader-lens persistence, as well as mobile horizontal overflow and uncaught JavaScript exceptions.
+
+The browser gate runs after Backend/Frontend unit tests and build on GitHub Actions, with a local PostgreSQL service and [DEMO] seed fixtures only. A failure records a screenshot plus frontend/backend logs. No new package dependency, migration, real CMS login, production deployment or public form submission is introduced.

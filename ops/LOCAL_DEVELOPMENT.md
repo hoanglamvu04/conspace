@@ -107,3 +107,24 @@ Start Docker, Backend and Frontend. For a full fixture-based pass, reset the loc
     ops\scripts\public-acceptance.cmd
 
 This read-only script checks 18 public route entry points, three reader feeds, real Template B structure, public books/chapters, search, and publishing isolation. A seeded public Article must be readable; a returned Article, a draft Field Note and a non-published demo Q&A must remain hidden. The runner does not log in, post questions, mutate records or contact production. Browser rendering and actual mobile device behavior still require a separate manual visual walkthrough.
+
+## Public Web browser acceptance (real Chromium)
+
+Run this after the local Backend, Frontend and Docker are ready. This test uses real Chrome/Chromium, checks rendered React pages and mobile interactions, and never logs into CMS or submits a public form.
+
+Prepare synthetic fixtures with the **existing local-only demo seed** (no real credentials or production data):
+
+    cd /d D:\conspace
+    set DEMO_SEED_CONFIRM=LOCAL_DEMO_ONLY
+    set DEMO_USER_PASSWORD=YOUR_LOCAL_DEMO_PASSWORD
+    npm.cmd run db:seed-demo --prefix backend
+
+Then start Backend and Frontend in separate CMD windows as above. In another CMD window run:
+
+    cd /d D:\conspace
+    ops\scripts\public-browser-acceptance.cmd
+
+Chrome or Chromium must be installed. Set CONSPACE_BROWSER_BIN to its executable path only if automatic discovery fails. The test rejects production URLs and performs HTTP GETs only. It verifies the actual DOM at desktop/mobile widths: homepage, published/draft article isolation, Template B, Dictionary, Search facet, anonymous Q&A form, mobile navigation/keyboard and reader preference; it also detects uncaught browser JavaScript exceptions and horizontal mobile overflow. On failure, a local screenshot is written to the temporary browser-artifacts directory.
+
+GitHub Actions runs the same browser acceptance on a clean PostgreSQL service with synthetic [DEMO] seed data and saves a screenshot and service logs as failure-only diagnostic artifacts. This is not a production test or a full visual design approval.
+
