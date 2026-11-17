@@ -147,6 +147,7 @@ jobs:
           NODE_ENV: development
           DEMO_SEED_CONFIRM: LOCAL_DEMO_ONLY
           DEMO_USER_PASSWORD: ci-only-browser-fixture-password
+          DEMO_NICHE_SLUG: luxury
           CONSPACE_BROWSER_ARTIFACTS: ${{ runner.temp }}/conspace-browser-artifacts
         run: |
           set -euo pipefail

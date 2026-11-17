@@ -29,6 +29,9 @@ export async function runPublicBrowserAcceptance({ env = process.env, log = cons
   assert.equal(ready.checks?.database, 'up', 'Local PostgreSQL must be ready');
   const seeded = await (await localGet(backend, '/api/v1/articles/demo-public-design-overview')).json();
   assert.equal(seeded.data?.slug, 'demo-public-design-overview', 'Run local demo seed first');
+  const niche = env.DEMO_NICHE_SLUG || 'house';
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(niche)) throw new Error('DEMO_NICHE_SLUG must be a safe active design slug');
+  const designTitle = JSON.stringify(niche.toUpperCase());
 
   const chrome = await openLocalChrome();
   const artifacts = env.CONSPACE_BROWSER_ARTIFACTS || join(tmpdir(), 'conspace-browser-artifacts');
@@ -62,8 +65,8 @@ export async function runPublicBrowserAcceptance({ env = process.env, log = cons
     });
 
     await step('Architecture Template B and Dictionary detail render published data', async () => {
-      await tab.visit(frontend, '/mang/house');
-      await tab.waitFor('document.querySelector("h1")?.textContent.includes("HOUSE") && !!document.querySelector(".public-design-grid")', 'Template B design grid');
+      await tab.visit(frontend, '/mang/' + niche);
+      await tab.waitFor('document.querySelector("h1")?.textContent.includes(' + designTitle + ') && !!document.querySelector(".public-design-grid")', 'Template B design grid');
       await tab.visit(frontend, '/tu-dien/demo-thuat-ngu-cong-khai');
       await tab.waitFor('!!document.querySelector(".public-term-definition")', 'published Dictionary definition');
     });

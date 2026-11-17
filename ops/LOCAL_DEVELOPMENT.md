@@ -128,3 +128,4 @@ Chrome or Chromium must be installed. Set CONSPACE_BROWSER_BIN to its executable
 
 GitHub Actions runs the same browser acceptance on a clean PostgreSQL service with synthetic [DEMO] seed data and saves a screenshot and service logs as failure-only diagnostic artifacts. This is not a production test or a full visual design approval.
 
+In GitHub Actions the browser fixture uses `DEMO_NICHE_SLUG=luxury` to avoid overwriting the non-demo HOUSE architecture blocks created by integration tests. On a clean local database the default `house` fixture remains supported.

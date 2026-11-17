@@ -19,11 +19,12 @@ test('Chromium acceptance tests real public reader flows without submitting data
   const script = readFileSync(new URL('../scripts/public-browser-acceptance.mjs', import.meta.url), 'utf8');
   for (const route of [
     '/bai-viet/demo-public-design-overview', '/bai-viet/demo-review-needs-changes',
-    '/mang/house', '/tu-dien/demo-thuat-ngu-cong-khai',
+    '/tu-dien/demo-thuat-ngu-cong-khai',
     '/tra-nhanh?q=demo', '/hoi-dap/gui-cau-hoi',
   ]) {
     assert.ok(script.includes(route), 'Missing reader scenario: ' + route);
   }
+  assert.ok(script.includes("'/mang/' + niche"), 'Template B browser test must follow selected demo niche');
   assert.ok(script.includes('tab.viewport(390, 844, true)'));
   assert.ok(script.includes('tab.key(\'Escape\')'));
   assert.ok(script.includes('document.documentElement.scrollWidth'));
