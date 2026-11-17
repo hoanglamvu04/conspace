@@ -52,7 +52,7 @@ export async function runPublicBrowserAcceptance({ env = process.env, log = cons
 
     await step('Desktop homepage renders React heading and navigation', async () => {
       await tab.visit(frontend, '/');
-      await tab.waitFor('document.querySelector("h1")?.textContent.includes("Một công trình")', 'homepage heading');
+      await tab.waitFor('!!document.querySelector(".editorial-home .ed-hero h1") && !!document.querySelector(".ed-niche-section")', 'editorial homepage layout');
       assert.equal(await tab.evaluate('getComputedStyle(document.querySelector(".desktop-nav")).display !== "none"'), true);
       assert.equal(await tab.evaluate(`document.querySelectorAll('.desktop-nav a[href="/bai-viet"]').length`), 1, 'Article link must appear in desktop header');
     });
@@ -95,7 +95,7 @@ export async function runPublicBrowserAcceptance({ env = process.env, log = cons
 
     await step('Mobile menu manages background, Escape and focus restoration', async () => {
       await tab.visit(frontend, '/');
-      await tab.waitFor('document.querySelector("h1")?.textContent.includes("Một công trình")', 'mobile homepage');
+      await tab.waitFor('!!document.querySelector(".editorial-home .ed-hero h1")', 'mobile editorial homepage');
       assert.equal(await tab.evaluate('getComputedStyle(document.querySelector(".mobile-menu-button")).display !== "none"'), true);
       await tab.evaluate('document.querySelector(".mobile-menu-button").click()');
       await tab.waitFor('!!document.querySelector(".mobile-nav") && document.body.classList.contains("public-menu-open")', 'open mobile menu');

@@ -137,3 +137,9 @@ The browser gate runs after Backend/Frontend unit tests and build on GitHub Acti
 ## Full local-only demo content dataset — 2026-11-17
 
 Introduced backend db:seed-demo-full, separate from the smaller workflow acceptance db:seed-demo. The new command covers eight documented design areas, optional synthetic construction niche capacity, local [DEMO] source-marked Template A/B sections, all three reader lenses, three configured books and their chapter slots, public articles, Field Notes, glossary entries, and moderated Q&A. It uses the existing editorial approval columns for synthetic fixture data only and avoids overwriting existing authored sections/chapter links. All content explicitly disclaims technical/legal/market evidence; unverified thirty construction niche names are labeled DEMO placeholders. No real media rights, private connection contacts, production deployment or migrations. CI tests idempotency in the isolated PostgreSQL service.
+
+## Editorial homepage redesign — 2026-11-17
+
+Implemented the approved modern blue-grey editorial reference on the real Public Web frontend. Shared header has light utility/navigation bars; homepage now uses a two-column feature, taxonomy photo strip, article list with three real reader-lens sorting tabs, a published content-based feature, Tủ sách / Hiện trường / Q&A shortcuts, search and restrained source/visibility cues. The main data comes from existing public APIs (published content only). No route, CMS RBAC, or database changes.
+
+Fallback images from Unsplash are explicitly marked **illustrations only**, never as verified editorial/project photos and never written into CMS Media Library or represented as user-provided documents. Before production release, replace them with cleared owned/licensed design assets through the existing media rights workflow. Responsive layout and keyboard links are covered by tests; Chromium checks were updated to detect the new real React editorial layout.

@@ -28,11 +28,16 @@ test('IA public routes include the new sections and keep legacy aliases working'
   assert.ok(app.includes('path="/ket-noi/:type"'));
 });
 
-test('homepage keeps the architectural drawing and presents three reader choices without a carousel', () => {
+test('editorial homepage follows approved architecture magazine layout and uses real published data', () => {
   for (const label of ['Tôi sắp xây nhà', 'Tôi là kiến trúc sư', 'Tôi là nhà thầu']) assert.ok(config.includes(label));
-  assert.match(home, /ConstructionDrawing/);
-  assert.doesNotMatch(home, /carousel/i);
+  for (const className of ['ed-hero', 'ed-niche-strip', 'ed-article-layout', 'ed-panels', 'ed-manifesto']) {
+    assert.ok(home.includes(className), 'Missing editorial section: ' + className);
+  }
   assert.ok(home.includes('useFeed(reader)'), 'Homepage feed must use the selected reader lens.');
+  assert.ok(home.includes('useArticles('), 'Homepage must get real published articles.');
+  assert.ok(home.includes('useNiches()'), 'Homepage must use API taxonomy.');
+  assert.ok(home.includes('safeMediaUrl(image)'), 'Homepage must sanitize published media URLs.');
+  assert.ok(!home.includes('nha-o-2-tang-trong-khu-vuon-nho'), 'Do not create fake article links.');
 });
 
 test('niche detail fetches all public layers from one URL and renders accessible disclosures', () => {
@@ -89,7 +94,7 @@ test('Bàn nghề uses an editorial tag instead of duplicating the full article 
 
 
 test('field-note public links use stable article slugs and canonicalize legacy UUID URLs', () => {
-  assert.ok(home.includes("'/hien-truong/' + encodeURIComponent(item.slug)"));
+  assert.ok(home.includes("'/hien-truong/' + encodeURIComponent(fieldNotes[0].slug)"));
   assert.ok(niche.includes("'/hien-truong/' + encodeURIComponent(item.slug)"));
   assert.ok(publicPages.includes("'/hien-truong/' + encodeURIComponent(item.slug)"));
   assert.ok(publicPages.includes("navigate('/hien-truong/' + encodeURIComponent(canonicalSlug), { replace: true })"));
@@ -235,4 +240,16 @@ test('public header exposes Article index on both desktop and mobile without dup
   assert.ok(ui.includes('className="mobile-nav-primary"'));
   assert.equal(ui.includes('<Link to="/bai-viet">Bài viết</Link>'), true, 'Footer still links to Article index');
   assert.ok(!ui.includes('<div className="mobile-nav-secondary" aria-label="Điều hướng bổ sung">\n                <Link to="/bai-viet">'), 'Article link should not be duplicated in mobile secondary menu');
+});
+
+test('editorial header stays shared across public pages and homepage uses functional controls', () => {
+  const editorialStyles = readFileSync(new URL('../editorial.css', import.meta.url), 'utf8');
+  const main = readFileSync(new URL('../main.jsx', import.meta.url), 'utf8');
+  assert.ok(main.includes("import './editorial.css'"));
+  for (const key of ['.ed-hero', '.ed-niche-strip', '.ed-article-layout', '.ed-panels', '.ed-manifesto']) assert.ok(editorialStyles.includes(key));
+  assert.ok(home.includes("setFeaturedIndex((value) => (value + 1) % featuredCount)"));
+  assert.ok(home.includes("setArticleLens(id)"));
+  assert.ok(home.includes("navigate('/tra-nhanh'"));
+  assert.ok(ui.includes('CONSPACE — Tạp chí &amp; Thư viện ngành xây'));
+  assert.ok(ui.includes('utility-links'));
 });

@@ -1,171 +1,214 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { READERS, SECTION_LINKS } from '../config.js';
+import { READERS, DESIGN_AREAS, formatDate, safeMediaUrl } from '../config.js';
 import { useReader } from '../context/ReaderContext.jsx';
-import { useFeed, useNiches } from '../hooks/useResources.js';
-import { ArticleCard, SectionHeading, StatusPanel } from '../components/UI.jsx';
+import { useArticles, useFeed, useNiches } from '../hooks/useResources.js';
+import { StatusPanel } from '../components/UI.jsx';
 import { Icon } from '../components/Icons.jsx';
-import { ConstructionDrawing } from './Home.jsx';
 import { chapterPath } from '../lib/contentModel.js';
-import { sortByLens } from '../lib/readerLens.js';
 
-function FeedArticle({ article }) {
-  return <ArticleCard article={{
-    ...article,
-    author: article.author || (article.authorName ? { displayName: article.authorName } : null),
-  }} />;
+// Presentation-only fallback photography for the local design preview.
+// Never represent these images as documented CONSPACE projects or licensed CMS media.
+// Published article covers from the API always take precedence.
+const PREVIEW_IMAGES = Object.freeze({
+  hero: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1600&q=82',
+  house: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=640&q=80',
+  'f-b': 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=640&q=80',
+  office: 'https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=640&q=80',
+  stay: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=640&q=80',
+  factory: 'https://images.unsplash.com/photo-1565043589221-1a6fd9ae45c7?auto=format&fit=crop&w=640&q=80',
+  project: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=640&q=80',
+  book: 'https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=600&q=80',
+  field: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?auto=format&fit=crop&w=600&q=80',
+  question: 'https://images.unsplash.com/photo-1581092918056-0c4c3acd3789?auto=format&fit=crop&w=600&q=80',
+  manifesto: 'https://images.unsplash.com/photo-1511818966892-d7d671e672a2?auto=format&fit=crop&w=1200&q=80',
+});
+
+const DESIGN_SUBTITLES = Object.freeze({
+  house:'Nhà ở', luxury:'Công trình cao cấp', 'f-b':'Ẩm thực và dịch vụ',
+  fb:'Ẩm thực và dịch vụ', office:'Văn phòng', stay:'Lưu trú',
+  factory:'Nhà xưởng', project:'Dự án', sacred:'Công trình tín ngưỡng',
+});
+
+function previewImageFor(slug) {
+  const normalized = String(slug || '').toLowerCase().replace(/&/g, '-').replace(/[^a-z0-9-]/g, '');
+  return PREVIEW_IMAGES[normalized] || PREVIEW_IMAGES.house;
+}
+
+function EditorialPhoto({ image, fallback, className = '', eager = false }) {
+  const confirmed = safeMediaUrl(image);
+  const source = confirmed || fallback || null;
+  return <div className={'ed-photo ' + className}>
+    {source && <img src={source} alt="" loading={eager ? 'eager' : 'lazy'} decoding="async" referrerPolicy="no-referrer" onError={(event) => { event.currentTarget.style.display = 'none'; }}/>}
+    {!confirmed && <span className="ed-preview-caption">Ảnh minh họa</span>}
+  </div>;
+}
+
+function EditorialSectionHeading({ title, description, to, action }) {
+  return <div className="ed-section-heading">
+    <div className="ed-section-heading-copy"><h2>{title}</h2>{description && <p>{description}</p>}</div>
+    {to && <Link className="ed-text-link" to={to}>{action || 'Xem tất cả'} <Icon name="arrow" size={16}/></Link>}
+  </div>;
+}
+
+function ArticleHeading({ item }) {
+  return <Link to={'/bai-viet/' + encodeURIComponent(item.slug)} className="ed-article-title-link">{item.title}</Link>;
 }
 
 export default function HomeV1() {
   const { reader, setReader } = useReader();
   const [query, setQuery] = useState('');
+  const [featuredIndex, setFeaturedIndex] = useState(0);
+  const [articleLens, setArticleLens] = useState('all');
   const navigate = useNavigate();
   const feed = useFeed(reader);
   const niches = useNiches();
+  const published = useArticles(articleLens === 'all' ? null : articleLens, null, 9);
   const data = feed.status === 'success' ? feed.data : null;
-  const articles = sortByLens(data?.articles || [], reader);
+  const articles = published.status === 'success' ? published.data : [];
+  const featuredCount = Math.min(articles.length, 4);
+  const heroArticle = featuredCount ? articles[featuredIndex % featuredCount] : null;
+  const relatedArticles = articles.filter((item) => item?.id !== heroArticle?.id);
+  const mainArticle = relatedArticles[0] || heroArticle || null;
+  const sideArticles = relatedArticles.filter((item) => item?.id !== mainArticle?.id).slice(0, 3);
   const fieldNotes = data?.fieldNotes || [];
   const questions = data?.questions || [];
   const books = data?.books || [];
-  const design = niches.status === 'success' ? niches.data.filter((item) => item.group === 'design') : [];
-  const construction = niches.status === 'success' ? niches.data.filter((item) => item.group === 'construction') : [];
+  const latestChapter = books[0] || null;
+  const design = niches.status === 'success' ? niches.data
+    .filter((item) => item.group === 'design')
+    .sort((a,b) => DESIGN_AREAS.indexOf(a.name.toUpperCase()) - DESIGN_AREAS.indexOf(b.name.toUpperCase())) : [];
 
   function search(event) {
     event.preventDefault();
     navigate('/tra-nhanh' + (query.trim() ? '?q=' + encodeURIComponent(query.trim()) : ''));
   }
 
-  const latestChapter = books[0] || null;
+  function chooseLens(id) {
+    setArticleLens(id);
+    if (id !== 'all') setReader(id);
+    setFeaturedIndex(0);
+  }
 
-  return <>
-    <section className="home-hero">
-      <div className="container home-hero-grid">
-        <div className="hero-copy">
-          <div className="hero-kicker"><span className="kicker-line"/> SỰ THẬT NGÀNH XÂY</div>
-          <h1>Một công trình.<br/><span>Ba góc nhìn.</span></h1>
-          <p className="hero-lead">Chủ nhà thấy một điều. Kiến trúc sư nghĩ một cách. Nhà thầu đối diện một thực tế khác. CONSPACE là nơi những câu chuyện ấy được đặt cạnh nhau.</p>
-          <div className="hero-actions">
-            <Link className="button button--primary" to="/ngach">Khám phá kho ngách <Icon name="arrow" size={17}/></Link>
-            <Link className="button button--quiet" to="/hoi-dap/gui-cau-hoi">Gửi câu hỏi <Icon name="upRight" size={16}/></Link>
-          </div>
-          <div className="hero-choice-inline">
-            <div className="choice-intro">
-              <span className="eyebrow">BẮT ĐẦU TỪ BẠN</span>
-              <h2>Bạn đang ở phía nào của công trình?</h2>
-            </div>
-            <div className="choice-grid choice-grid--hero" aria-label="Chọn góc nhìn đọc">
-              {READERS.map((role) => (
-                <button type="button" className={'choice-card' + (reader === role.id ? ' is-active' : '')} aria-pressed={reader === role.id} onClick={() => setReader(role.id)} key={role.id}>
-                  <span className="choice-icon"><Icon name={role.icon} size={24}/></span>
-                  <span className="choice-text">
-                    <span className="choice-index">GÓC NHÌN {role.number}</span>
-                    <strong>{role.heading}</strong>
-                    <span>{role.description}</span>
-                  </span>
-                  <Icon className="choice-arrow" name="upRight" size={19}/>
-                </button>
-              ))}
-            </div>
-          </div>
-          <p className="hero-footnote"><Icon name="check" size={16}/> Không quảng cáo trả tiền. Không xếp hạng nhà thầu.</p>
+  return <main className="editorial-home">
+    <div className="ed-container">
+      <section className="ed-hero" aria-label="Bài viết nổi bật">
+        <div className="ed-hero-content">
+          <span className="ed-overline">GÓC NHÌN CÔNG TRÌNH</span>
+          <h1>{heroArticle ? heroArticle.title : 'Một công trình. Ba góc nhìn.'}</h1>
+          <p>{heroArticle?.excerpt || 'Chủ nhà, kiến trúc sư và nhà thầu cùng nhìn một công trình từ những trải nghiệm khác nhau. CONSPACE đặt các câu chuyện cạnh nhau để người đọc có thêm dữ kiện.'}</p>
+          <Link className="ed-hero-link" to={heroArticle ? '/bai-viet/' + encodeURIComponent(heroArticle.slug) : '/bai-viet'}>
+            {heroArticle ? 'Đọc bài viết' : 'Khám phá bài viết'} <Icon name="arrow" size={18}/>
+          </Link>
+          {heroArticle?.publishedAt && <span className="ed-hero-date">{formatDate(heroArticle.publishedAt)}</span>}
+          {published.status === 'error' && <div className="ed-hero-error"><StatusPanel status="error" compact onRetry={published.retry}/></div>}
         </div>
-        <ConstructionDrawing/>
-      </div>
-    </section>
+        <div className="ed-hero-visual">
+          <EditorialPhoto image={heroArticle?.coverImage} fallback={PREVIEW_IMAGES.hero} eager className="ed-hero-picture"/>
+          <div className="ed-hero-controls">
+            <button type="button" aria-label="Bài trước" disabled={featuredCount < 2} onClick={() => setFeaturedIndex((value) => (value - 1 + featuredCount) % featuredCount)}>
+              <Icon name="arrow" size={17}/>
+            </button>
+            <button type="button" aria-label="Bài tiếp theo" disabled={featuredCount < 2} onClick={() => setFeaturedIndex((value) => (value + 1) % featuredCount)}>
+              <Icon name="arrow" size={17}/>
+            </button>
+            <span>{featuredCount ? String(featuredIndex % featuredCount + 1).padStart(2,'0') : '00'} / {String(featuredCount).padStart(2,'0')}</span>
+          </div>
+        </div>
+      </section>
 
-    <div className="container">
-      <form className="quick-search" onSubmit={search} role="search" aria-label="Tra nhanh kiến thức">
-        <div className="quick-search-label">
-          <span className="search-symbol"><Icon name="search" size={22}/></span>
-          <div><strong>Bạn đang muốn tìm hiểu điều gì?</strong><span>Tìm trong bài viết, ngách, chương sách và thuật ngữ đã xuất bản.</span></div>
+      <section className="ed-section ed-niche-section" id="kho-ngach">
+        <EditorialSectionHeading title="Kho mảng kiến trúc" description="Tri thức được phân loại theo từng loại hình công trình, từ nhà ở đến các không gian chuyên dụng." to="/ngach?group=design" action="Xem tất cả mảng"/>
+        {niches.status === 'loading' && <StatusPanel status="loading" kind="articles"/>}
+        {niches.status === 'error' && <StatusPanel status="error" compact onRetry={niches.retry}/>}
+        {niches.status === 'success' && (design.length ? <div className="ed-niche-strip">
+          {design.slice(0,6).map((item) => <Link className="ed-niche-tile" key={item.id} to={'/mang/' + encodeURIComponent(item.slug)}>
+            <EditorialPhoto fallback={previewImageFor(item.slug)}/>
+            <span className="ed-niche-label"><strong>{item.name}</strong><small>{DESIGN_SUBTITLES[item.slug] || 'Mảng kiến trúc'}</small><Icon name="arrow" size={15}/></span>
+          </Link>)}
+        </div> : <StatusPanel status="empty" compact title="Chưa có mảng kiến trúc công khai"/>)}
+      </section>
+
+      <section className="ed-section ed-articles-section">
+        <div className="ed-articles-heading">
+          <h2>Bài viết <em>mới</em></h2>
+          <div className="ed-lens-tabs" role="group" aria-label="Ưu tiên bài viết theo góc nhìn">
+            <button type="button" className={articleLens === 'all' ? 'is-selected' : ''} aria-pressed={articleLens === 'all'} onClick={() => chooseLens('all')}>Tất cả</button>
+            {READERS.map((item) => <button type="button" key={item.id} className={articleLens === item.id ? 'is-selected' : ''} aria-pressed={articleLens === item.id} onClick={() => chooseLens(item.id)}>{item.label}</button>)}
+          </div>
+          <Link className="ed-text-link ed-article-all" to="/bai-viet">Xem tất cả bài viết <Icon name="arrow" size={16}/></Link>
         </div>
-        <div className="quick-search-input">
-          <label className="sr-only" htmlFor="home-search">Từ khóa tra nhanh</label>
-          <input id="home-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Ví dụ: chống thấm, móng, bản vẽ..."/>
-          <button className="button button--primary" type="submit">Tra nhanh <Icon name="arrow" size={17}/></button>
-        </div>
+        {published.status === 'loading' && <StatusPanel status="loading" kind="articles"/>}
+        {published.status === 'error' && <StatusPanel status="error" compact onRetry={published.retry}/>}
+        {published.status === 'success' && (mainArticle ? <div className="ed-article-layout">
+          <article className="ed-main-story">
+            <Link to={'/bai-viet/' + encodeURIComponent(mainArticle.slug)} className="ed-main-photo" aria-label={'Đọc ' + mainArticle.title}>
+              <EditorialPhoto image={mainArticle.coverImage} fallback={PREVIEW_IMAGES.house}/>
+            </Link>
+            <div className="ed-main-summary">
+              <span className="ed-overline">BÀI ĐÃ XUẤT BẢN</span>
+              <h3><ArticleHeading item={mainArticle}/></h3>
+              <p>{mainArticle.excerpt || 'Nội dung đã được công khai qua quy trình biên tập CONSPACE.'}</p>
+              <small>{formatDate(mainArticle.publishedAt)}{mainArticle.author?.displayName ? '  ·  ' + mainArticle.author.displayName : ''}</small>
+            </div>
+          </article>
+          <div className="ed-story-list">
+            {sideArticles.length ? sideArticles.map((item,index) => <Link className="ed-story-row" to={'/bai-viet/' + encodeURIComponent(item.slug)} key={item.id}>
+              <EditorialPhoto image={item.coverImage} fallback={previewImageFor(design[index]?.slug)}/>
+              <span><small>BÀI ĐÃ XUẤT BẢN</small><strong>{item.title}</strong></span>
+            </Link>) : <p className="ed-muted-empty">Các bài tiếp theo sẽ xuất hiện khi được duyệt và xuất bản.</p>}
+          </div>
+          <aside className="ed-perspectives">
+            <h3>Góc nhìn <em>đa chiều</em></h3>
+            <p>Cùng một công trình, ba cách tiếp cận. Chọn góc nhìn để ưu tiên thứ tự bài đọc.</p>
+            {READERS.map((role) => <button type="button" key={role.id} onClick={() => chooseLens(role.id)} aria-pressed={reader === role.id} className={reader === role.id ? 'is-selected' : ''}>
+              <Icon name={role.icon} size={22}/>
+              <span><strong>{role.label}</strong><small>{role.id === 'homeowner' ? 'Nhu cầu, chi phí và trải nghiệm' : role.id === 'architect' ? 'Hồ sơ, giải pháp và thẩm mỹ' : 'Thi công, tiến độ và kiểm soát'}</small></span>
+              <Icon name="arrow" size={15}/>
+            </button>)}
+          </aside>
+        </div> : <StatusPanel status="empty" compact title="Chưa có bài viết được xuất bản"/>)}
+      </section>
+
+      <section className="ed-panels" aria-label="Các chuyên mục">
+        <article className="ed-panel">
+          <EditorialPhoto fallback={PREVIEW_IMAGES.book}/>
+          <div><h2>Tủ sách</h2><p>{latestChapter ? latestChapter.bookTitle + ': ' + (latestChapter.chapterTitle || latestChapter.displayLabel) : 'Sách chuyên môn, cẩm nang và những chương đã được biên tập, xuất bản.'}</p>
+          <Link className="ed-text-link" to={latestChapter ? chapterPath(latestChapter.bookSlug,latestChapter.chapterNo) : '/tu-sach'}>Xem tủ sách <Icon name="arrow" size={16}/></Link></div>
+        </article>
+        <article className="ed-panel">
+          <EditorialPhoto fallback={PREVIEW_IMAGES.field}/>
+          <div><h2>Hiện trường</h2><p>{fieldNotes[0]?.excerpt || fieldNotes[0]?.phenomenon || 'Những ghi chép đã ẩn danh về tình huống tại công trình.'}</p>
+          <Link className="ed-text-link" to={fieldNotes.length ? '/hien-truong/' + encodeURIComponent(fieldNotes[0].slug) : '/hien-truong'}>Xem hiện trường <Icon name="arrow" size={16}/></Link></div>
+        </article>
+        <article className="ed-panel">
+          <EditorialPhoto fallback={PREVIEW_IMAGES.question}/>
+          <div><h2>Hỏi đáp</h2><p>{questions[0]?.description || 'Thắc mắc thực tế và câu trả lời đã được kiểm duyệt.'}</p>
+          <Link className="ed-text-link" to={questions.length ? '/hoi-dap/' + questions[0].id : '/hoi-dap/gui-cau-hoi'}>Gửi câu hỏi <Icon name="arrow" size={16}/></Link></div>
+        </article>
+      </section>
+
+      <form className="ed-quick-search" onSubmit={search} role="search" aria-label="Tra nhanh kiến thức">
+        <span><Icon name="search" size={19}/> Tra cứu bài viết, ngách, thuật ngữ đã công khai</span>
+        <label className="sr-only" htmlFor="home-search">Từ khóa tra nhanh</label>
+        <input id="home-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Nhập điều bạn muốn tìm..." />
+        <button type="submit">Tra nhanh <Icon name="arrow" size={16}/></button>
       </form>
-      <div className="home-trust-rail" aria-label="Nguyên tắc hiển thị nội dung">
-        <div><Icon name="check" size={17}/><span><strong>Chỉ nội dung đã công khai</strong><small>Không lộ bản nháp hoặc hồ sơ đang duyệt.</small></span></div>
-        <div><Icon name="link" size={17}/><span><strong>Có dấu vết nguồn</strong><small>Nội dung xuất bản phải qua điều kiện biên tập hiện hành.</small></span></div>
-        <div><Icon name="users" size={17}/><span><strong>Ba góc nhìn cùng tồn tại</strong><small>Góc nhìn bạn chọn chỉ đổi thứ tự ưu tiên.</small></span></div>
+      <div className="home-trust-rail ed-trust-rail" aria-label="Nguyên tắc hiển thị nội dung">
+        <span><Icon name="check" size={17}/> Chỉ nội dung đã công khai</span>
+        <span><Icon name="link" size={17}/> Có dấu vết nguồn</span>
+        <span><Icon name="users" size={17}/> Ba góc nhìn cùng tồn tại</span>
+        <Link to="/ngach">Khám phá kho ngách <Icon name="arrow" size={14}/></Link>
       </div>
     </div>
-
-    <section className="section section--editorial">
-      <div className="container">
-        <SectionHeading eyebrow="KỲ MỚI NHẤT" title="Nội dung mới đã xuất bản" description="Chỉ hiển thị chương, ca hiện trường, hỏi đáp và bài viết được API xác nhận công khai."/>
-        {feed.status === 'loading' && <StatusPanel status="loading" kind="articles"/>}
-        {feed.status === 'error' && <StatusPanel status="error" onRetry={feed.retry} description="Chưa lấy được kỳ nội dung từ máy chủ. Vui lòng thử lại."/>}
-        {feed.status === 'success' && <>
-          <div className="home-latest-chapter">
-            <div>
-              <span className="eyebrow">CHƯƠNG SÁCH MỚI NHẤT</span>
-              {latestChapter ? <>
-                <p className="home-latest-book">{latestChapter.bookTitle} · {latestChapter.contentLabelVi}</p>
-                <h3>{latestChapter.chapterTitle || latestChapter.displayLabel}</h3>
-                <p>{latestChapter.articleTitle}</p>
-                <Link className="text-link" to={chapterPath(latestChapter.bookSlug, latestChapter.chapterNo)}>Đọc chương đã xuất bản <Icon name="arrow" size={17}/></Link>
-              </> : <><h3>Chưa có chương sách được xuất bản</h3><p>Chương chỉ xuất hiện sau khi được duyệt và công bố. Nội dung chưa xuất bản không hiển thị ở đây.</p></>}
-            </div>
-            <span className="home-latest-index">{latestChapter ? String(latestChapter.chapterNo).padStart(2, '0') : '—'}</span>
-          </div>
-
-          <div className="home-feed-grid">
-            <section>
-              <SectionHeading eyebrow="GHI CHÉP ĐÃ ẨN DANH" title="Hiện trường" action="Xem tất cả" to="/hien-truong"/>
-              {fieldNotes.length ? <div className="home-feed-cards">{fieldNotes.slice(0, 3).map((item) => <Link className="home-feed-card" to={'/hien-truong/' + encodeURIComponent(item.slug)} key={item.id}>
-                <span className="eyebrow">CA ĐÃ XUẤT BẢN</span><h3>{item.title}</h3><p>{item.excerpt || item.phenomenon}</p><span className="text-link">Đọc ca hiện trường <Icon name="arrow" size={16}/></span>
-              </Link>)}</div> : <StatusPanel status="empty" compact title="Chưa có ca hiện trường công khai" description="Ca chỉ hiển thị sau khi được duyệt, ẩn danh và xác nhận quyền ảnh."/>}
-            </section>
-            <section>
-              <SectionHeading eyebrow="CÂU TRẢ LỜI ĐÃ DUYỆT" title="Hỏi đáp" action="Mở Hỏi đáp" to="/hoi-dap"/>
-              {questions.length ? <Link className="home-feature-question" to={'/hoi-dap/' + questions[0].id}>
-                <span className="eyebrow">HỎI ĐÁP / ĐÃ XUẤT BẢN</span><h3>{questions[0].description}</h3><p>{questions[0].answer}</p><span className="text-link">Đọc câu trả lời <Icon name="arrow" size={16}/></span>
-              </Link> : <StatusPanel status="empty" compact title="Chưa có câu trả lời công khai" description="Câu hỏi và câu trả lời chỉ xuất hiện sau khi được duyệt."/>}
-            </section>
-          </div>
-
-          <section className="home-feed-articles">
-            <SectionHeading eyebrow="BÀI VIẾT" title="Góc nhìn được ưu tiên" description="Bài của góc nhìn bạn chọn được xếp trước; bài đã xuất bản của hai phía còn lại vẫn được giữ nguyên." action="Xem tất cả bài viết" to="/bai-viet"/>
-            {articles.length ? <div className="articles-grid">{articles.slice(0, 3).map((article) => <FeedArticle article={article} key={article.id}/>)}</div> : <StatusPanel status="empty" compact title="Chưa có bài viết công khai" description="Bài viết sẽ xuất hiện sau khi được biên tập và xuất bản."/>}
-          </section>
-        </>}
+    <section className="ed-manifesto">
+      <EditorialPhoto fallback={PREVIEW_IMAGES.manifesto}/>
+      <div>
+        <span className="ed-overline">TRI THỨC NGÀNH XÂY</span>
+        <h2>Từ bản vẽ đến công trình,<br/>kết nối tri thức và thực tế.</h2>
+        <p>CONSPACE chia sẻ, lưu trữ và hệ thống hóa tri thức ngành xây, dành cho chủ nhà, kiến trúc sư, nhà thầu và những người quan tâm.</p>
+        <Link className="ed-text-link" to="/ve-conspace">Về CONSPACE <Icon name="arrow" size={16}/></Link>
       </div>
     </section>
-
-    <section className="section section--blue" id="kho-ngach">
-      <div className="container">
-        <div className="taxonomy-header">
-          <SectionHeading eyebrow="BẢN ĐỒ CHUYÊN MÔN" title="Kho ngách và mảng kiến trúc" description="Danh mục lấy trực tiếp từ API. Những ngách chưa có hồ sơ nguồn sẽ không được tự tạo." action="Mở toàn bộ danh mục" to="/ngach"/>
-          {niches.status === 'success' && <div className="taxonomy-totals" aria-label="Số danh mục hiện có">
-            <div><strong>{design.length.toLocaleString('vi-VN')}</strong><span>Mảng kiến trúc</span></div>
-            <div><strong>{construction.length.toLocaleString('vi-VN')}</strong><span>Ngách thi công</span></div>
-          </div>}
-        </div>
-        <div className="taxonomy-two-col">
-          <div className="taxonomy-area">
-            <div className="taxonomy-area-head"><span className="taxonomy-round"><Icon name="draft" size={22}/></span><div><h3>Mảng kiến trúc</h3><p>Phân theo loại công trình đã xác nhận</p></div><Link to="/ngach?group=design" aria-label="Xem mảng kiến trúc"><Icon name="upRight" size={19}/></Link></div>
-            {niches.status === 'success' && design.length ? <div className="design-tile-grid">{design.map((item, index) => <Link key={item.id} to={'/mang/' + encodeURIComponent(item.slug)} className="design-tile"><span>{String(index + 1).padStart(2, '0')}</span><strong>{item.name}</strong><Icon name="upRight" size={17}/></Link>)}</div> : <StatusPanel status={niches.status === 'error' ? 'error' : niches.status === 'loading' ? 'loading' : 'empty'} onRetry={niches.retry} compact title="Chưa có mảng kiến trúc từ API"/>}
-          </div>
-          <div className="taxonomy-area taxonomy-area--construction">
-            <div className="taxonomy-area-head"><span className="taxonomy-round"><Icon name="hardhat" size={22}/></span><div><h3>Ngách thi công</h3><p>Chỉ tên ngách có nguồn đã nhập</p></div><Link to="/ngach?group=construction" aria-label="Xem ngách thi công"><Icon name="upRight" size={19}/></Link></div>
-            {niches.status === 'success' && construction.length ? <div className="construction-list">{construction.slice(0, 6).map((item, index) => <Link key={item.id} to={'/ngach/' + encodeURIComponent(item.slug)} className="construction-list-item"><span>{String(index + 1).padStart(2, '0')}</span><strong>{item.name}</strong><Icon name="upRight" size={17}/></Link>)}</div> : <StatusPanel status={niches.status === 'error' ? 'error' : niches.status === 'loading' ? 'loading' : 'empty'} onRetry={niches.retry} compact title="Chưa có ngách thi công được xác nhận"/>}
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section className="section section--explore">
-      <div className="container">
-        <SectionHeading eyebrow="ĐI TIẾP TỪ ĐÂY" title="Đọc, quan sát và tự tra cứu" description="Các chuyên mục cốt lõi của CONSPACE, không mở hồ sơ hoặc dịch vụ chưa vận hành."/>
-        <div className="explore-grid">{SECTION_LINKS.map((item, index) => <Link to={item.to} key={item.to} className={'explore-card explore-card--' + index}>
-          <span className="explore-top"><span>{item.eyebrow}</span><Icon name="upRight" size={20}/></span>
-          <span className="explore-icon"><Icon name={item.icon} size={33} strokeWidth={1.35}/></span>
-          <h3>{item.title}</h3><p>{item.description}</p>
-        </Link>)}</div>
-      </div>
-    </section>
-    <section className="editorial-band"><div className="container editorial-band-inner"><div><span className="eyebrow">NGUYÊN TẮC CỦA CHÚNG TÔI</span><h2>Không đứng về một phía.<br/>Đứng về phía <em>sự thật.</em></h2></div><div><p>Không PR trả tiền, không xếp hạng nhà thầu, không suy diễn từ dữ liệu thiếu nguồn. Mọi quan điểm đều cần được đặt trong hoàn cảnh của cả ba phía.</p><Link to="/quy-tac-noi-dung" className="button button--light">Đọc nguyên tắc biên tập <Icon name="upRight" size={18}/></Link></div></div></section>
-  </>;
+  </main>;
 }

@@ -93,7 +93,7 @@ export function Header() {
   const selected = READERS.find((role) => role.id === reader);
   return (
     <>
-      <div className="utility-strip"><div className="container utility-inner"><span>TRI THỨC XÂY DỰNG TỪ BA GÓC NHÌN</span><Link to="/quy-tac-noi-dung">Nguyên tắc nội dung <Icon name="upRight" size={13} /></Link></div></div>
+      <div className="utility-strip"><div className="container utility-inner"><span>CONSPACE — Tạp chí &amp; Thư viện ngành xây</span><div className="utility-links"><Link to="/ve-conspace">Về CONSPACE</Link><Link to="/quy-tac-noi-dung">Quy tắc nội dung</Link><Link to="/lien-he">Liên hệ</Link></div></div></div>
       <header className="site-header">
         <div className="container header-inner">
           <Brand />
