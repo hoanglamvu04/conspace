@@ -253,3 +253,15 @@ test('editorial header stays shared across public pages and homepage uses functi
   assert.ok(ui.includes('CONSPACE — Tạp chí &amp; Thư viện ngành xây'));
   assert.ok(ui.includes('utility-links'));
 });
+
+test('editorial Vietnamese typography uses a complete serif and avoids Georgia glyph fallback', () => {
+  const editorial = readFileSync(new URL('../editorial.css', import.meta.url), 'utf8');
+  const html = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+  const styles = readFileSync(new URL('../styles.css', import.meta.url), 'utf8');
+  assert.ok(editorial.includes('--ed-serif: "Noto Serif", "Times New Roman", Cambria, serif;'));
+  assert.ok(html.includes('family=Noto+Serif:ital,wght@0,400;0,600;0,700;1,400;1,700'));
+  assert.ok(html.includes('display=swap'));
+  assert.ok(!editorial.includes('--ed-serif: Georgia'));
+  assert.ok(!styles.includes('"Noto Serif", Georgia'));
+  assert.match(editorial, /\.ed-articles-heading h2\s*\{[^}]*letter-spacing: normal;/);
+});

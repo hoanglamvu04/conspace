@@ -11,7 +11,8 @@
   --ed-accent: #315e76;
   --ed-accent-deep: #21485e;
   --ed-line: #d9e0e4;
-  --ed-serif: Georgia, "Times New Roman", serif;
+  /* Vietnamese-complete editorial face; system fallback works offline on Windows. */
+  --ed-serif: "Noto Serif", "Times New Roman", Cambria, serif;
 }
 body { background: var(--ed-white); }
 .container { width: min(calc(100% - 72px), 1320px); }
@@ -113,7 +114,7 @@ body { background: var(--ed-white); }
   font-size: clamp(31px,3.3vw,48px);
   font-weight: 700;
   line-height: 1.07;
-  letter-spacing: -.034em;
+  letter-spacing: normal;
   margin: 14px 0 17px;
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -213,7 +214,7 @@ body { background: var(--ed-white); }
   font-size: clamp(25px,2.4vw,32px);
   font-weight: 700;
   line-height: 1.04;
-  letter-spacing: -.035em;
+  letter-spacing: normal;
   color: #1b2830;
   margin: 0;
   max-width: 185px;
@@ -263,7 +264,7 @@ body { background: var(--ed-white); }
 .ed-articles-heading { display: flex; gap: 22px; align-items: center; margin-bottom: 20px; }
 .ed-articles-heading h2 {
   font: bold clamp(27px,2.5vw,35px)/1.1 var(--ed-serif);
-  letter-spacing: -.04em;
+  letter-spacing: normal;
   margin: 0;
   white-space: nowrap;
 }
@@ -294,7 +295,7 @@ body { background: var(--ed-white); }
 .ed-main-summary { min-width: 0; padding: 6px 0; display: flex; flex-direction: column; align-items: flex-start; }
 .ed-main-summary h3 {
   font: bold clamp(20px,1.6vw,24px)/1.17 var(--ed-serif);
-  letter-spacing: -.025em;
+  letter-spacing: normal;
   margin: 10px 0 13px;
 }
 .ed-main-summary h3 a:hover { color: var(--ed-accent); }
@@ -375,7 +376,7 @@ body { background: var(--ed-white); }
 .ed-manifesto > div:last-child { display: flex; flex-direction: column; justify-content: center; align-items: flex-start; padding: 26px clamp(30px,5vw,80px); }
 .ed-manifesto h2 {
   font: italic clamp(27px,2.8vw,43px)/1.08 var(--ed-serif);
-  letter-spacing: -.03em;
+  letter-spacing: normal;
   color: #1e2c35;
   margin: 12px 0;
 }
@@ -489,7 +490,7 @@ body { background: var(--ed-white); }
   font-family: var(--ed-serif);
   color: var(--ed-ink);
   font-weight: 700;
-  letter-spacing: -.032em;
+  letter-spacing: normal;
 }
 .page-intro h1 { font-size: clamp(34px,3.6vw,52px); }
 .page-intro-description, .section-head p { color: #637887; }

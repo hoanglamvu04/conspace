@@ -55,6 +55,9 @@ export async function runPublicBrowserAcceptance({ env = process.env, log = cons
       await tab.waitFor('!!document.querySelector(".editorial-home .ed-hero h1") && !!document.querySelector(".ed-niche-section")', 'editorial homepage layout');
       assert.equal(await tab.evaluate('getComputedStyle(document.querySelector(".desktop-nav")).display !== "none"'), true);
       assert.equal(await tab.evaluate(`document.querySelectorAll('.desktop-nav a[href="/bai-viet"]').length`), 1, 'Article link must appear in desktop header');
+      await tab.waitFor('!!document.querySelector(".ed-articles-heading h2")', 'Vietnamese editorial headline');
+      assert.equal(await tab.evaluate('getComputedStyle(document.querySelector(".ed-articles-heading h2")).fontFamily.includes("Noto Serif")'), true, 'Editorial headings must use Vietnamese-capable serif');
+      assert.equal(await tab.evaluate('getComputedStyle(document.querySelector(".ed-articles-heading h2")).letterSpacing'), 'normal', 'Do not compress accented Vietnamese headings');
     });
 
     await step('Published article loads and unapproved article stays hidden', async () => {
