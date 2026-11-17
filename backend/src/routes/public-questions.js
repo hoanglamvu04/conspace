@@ -69,14 +69,31 @@ export function createPublicQuestionsRouter(db=pool,mediaService=createMediaServ
   }));
 
   router.get('/',asyncHandler(async(req,res)=>{
-    const result=await db.query(
-      "SELECT q.id,q.description,n.slug AS \"niche\",a.body AS answer,a.published_at AS \"publishedAt\", " +
-      "COALESCE((SELECT json_agg('/api/v1/media/' || m.id::text ORDER BY qm.position) FROM conspace.reader_question_media qm JOIN conspace.media_assets m ON m.id=qm.media_id WHERE qm.question_id=q.id AND m.rights_confirmed=true AND m.deleted_at IS NULL),'[]'::json) AS images " +
-      "FROM conspace.reader_questions q JOIN conspace.question_answers a ON a.question_id=q.id "+
-      "LEFT JOIN conspace.niches n ON n.id=q.guessed_niche_id "+
-      "WHERE q.status='PUBLISHED' AND a.status='PUBLISHED' AND a.approved_by_user_id IS NOT NULL AND a.approved_at IS NOT NULL AND a.published_at<=now() ORDER BY a.published_at DESC LIMIT 50"
-    );
-    res.json({ok:true,data:result.rows});
+    const {page,limit}=validate(z.strictObject({
+      page:z.coerce.number().int().min(1).max(1000).default(1),
+      limit:z.coerce.number().int().min(1).max(50).default(30),
+    }),req.query);
+    const visibility=[
+      'FROM conspace.reader_questions q JOIN conspace.question_answers a ON a.question_id=q.id',
+      "WHERE q.status='PUBLISHED' AND a.status='PUBLISHED'",
+      'AND a.approved_by_user_id IS NOT NULL AND a.approved_at IS NOT NULL AND a.published_at<=now()',
+    ].join(' ');
+    const [rows,count]=await Promise.all([
+      db.query([
+        'SELECT q.id,q.description,n.slug AS "niche",a.body AS answer,a.published_at AS "publishedAt",',
+        "COALESCE((SELECT json_agg('/api/v1/media/' || m.id::text ORDER BY qm.position)",
+        'FROM conspace.reader_question_media qm JOIN conspace.media_assets m ON m.id=qm.media_id',
+        "WHERE qm.question_id=q.id AND m.rights_confirmed=true AND m.deleted_at IS NULL),'[]'::json) AS images",
+        'FROM conspace.reader_questions q JOIN conspace.question_answers a ON a.question_id=q.id',
+        'LEFT JOIN conspace.niches n ON n.id=q.guessed_niche_id',
+        "WHERE q.status='PUBLISHED' AND a.status='PUBLISHED'",
+        'AND a.approved_by_user_id IS NOT NULL AND a.approved_at IS NOT NULL AND a.published_at<=now()',
+        'ORDER BY a.published_at DESC,q.id DESC LIMIT $1 OFFSET $2',
+      ].join(' '),[limit,(page-1)*limit]),
+      db.query('SELECT count(*)::integer AS total '+visibility),
+    ]);
+    const total=count.rows[0]?.total??0;
+    res.json({ok:true,data:rows.rows,meta:{total,page,limit,hasMore:page*limit<total}});
   }));
 
   router.get('/:id',asyncHandler(async(req,res)=>{

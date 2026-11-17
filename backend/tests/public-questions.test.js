@@ -80,3 +80,40 @@ test('public questions list filters to published question AND published answer',
   assert.match(query.sql,/q\.status='PUBLISHED'/);
   assert.match(query.sql,/a\.status='PUBLISHED'/);
 });
+
+test('public Q&A paging provides a real total, deterministic order and only published records',async(t)=>{
+  const calls=[];
+  const record={id:'22222222-2222-4222-8222-222222222222',description:'Câu hỏi đã xuất bản',answer:'Đã duyệt'};
+  const db={query:async(sql,params=[])=>{
+    calls.push({sql,params});
+    if(sql.startsWith('SELECT count('))return {rows:[{total:35}]};
+    return {rows:[record]};
+  }};
+  const base=await serverFor(t,db,{save:async()=>{},cleanup:async()=>{}});
+  const response=await fetch(base+'/api/v1/questions?page=2&limit=10');
+  assert.equal(response.status,200);
+  const body=await response.json();
+  assert.deepEqual(body.data,[record]);
+  assert.deepEqual(body.meta,{total:35,page:2,limit:10,hasMore:true});
+  const list=calls.find(c=>c.sql.includes('LIMIT $1 OFFSET $2'));
+  assert.deepEqual(list?.params,[10,10]);
+  assert.match(list.sql,/ORDER BY a\.published_at DESC,q\.id DESC/);
+  for(const c of calls){
+    assert.match(c.sql,/q\.status='PUBLISHED'/);
+    assert.match(c.sql,/a\.status='PUBLISHED'/);
+    assert.match(c.sql,/a\.approved_by_user_id IS NOT NULL/);
+    assert.match(c.sql,/a\.approved_at IS NOT NULL/);
+    assert.match(c.sql,/a\.published_at<=now\(\)/);
+  }
+});
+
+test('public Q&A rejects invalid and unexpected paging arguments',async(t)=>{
+  const db=dbMock();
+  const base=await serverFor(t,db,{save:async()=>{},cleanup:async()=>{}});
+  for(const query of ['page=0','page=1001','limit=0','limit=51','page=1&admin=true']){
+    const response=await fetch(base+'/api/v1/questions?'+query);
+    assert.equal(response.status,400,query);
+    assert.equal((await response.json()).error.code,'VALIDATION_ERROR');
+  }
+  assert.equal(db.calls.length,0);
+});
