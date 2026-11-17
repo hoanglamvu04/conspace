@@ -117,11 +117,13 @@ export async function runPublicBrowserAcceptance({ env = process.env, log = cons
       assert.equal(await tab.evaluate('document.documentElement.scrollWidth <= window.innerWidth + 2'), true, 'Horizontal overflow on mobile homepage');
     });
 
-    await step('Mobile Search and Q&A pages have no horizontal overflow', async () => {
-      for (const path of ['/tra-nhanh?q=demo', '/hoi-dap', '/hoi-dap/gui-cau-hoi']) {
+    await step('Mobile Public Web subpages preserve editorial typography without overflow', async () => {
+      for (const path of ['/bai-viet', '/tu-sach', '/ngach', '/hien-truong', '/hoi-dap', '/hoi-dap/gui-cau-hoi', '/tra-nhanh?q=demo', '/ket-noi', '/ve-conspace', '/lien-he']) {
         await tab.visit(frontend, path);
         await tab.waitFor('!!document.querySelector("main") && !!document.querySelector("h1")', 'mobile route ' + path);
-        await pause(300);
+        await tab.waitFor('!!document.querySelector(".page-intro h1")', 'editorial page title ' + path);
+        await pause(250);
+        assert.equal(await tab.evaluate('getComputedStyle(document.querySelector(".page-intro h1")).fontFamily.includes("Noto Serif")'), true, 'Vietnamese editorial serif missing on ' + path);
         assert.equal(await tab.evaluate('document.documentElement.scrollWidth <= window.innerWidth + 2'), true, 'Mobile overflow on ' + path);
       }
     });

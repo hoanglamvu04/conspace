@@ -265,3 +265,24 @@ test('editorial Vietnamese typography uses a complete serif and avoids Georgia g
   assert.ok(!styles.includes('"Noto Serif", Georgia'));
   assert.match(editorial, /\.ed-articles-heading h2\s*\{[^}]*letter-spacing: normal;/);
 });
+
+test('all live public subpages use the approved editorial design without touching CMS', () => {
+  const stylesheet = readFileSync(new URL('../public-pages.css', import.meta.url), 'utf8');
+  const entry = readFileSync(new URL('../main.jsx', import.meta.url), 'utf8');
+  assert.ok(entry.includes("import './public-pages.css'"));
+  for (const selector of [
+    '#main-content .page-intro', '#main-content .article-layout',
+    '#main-content .niche-directory-grid', '#main-content .public-design-grid',
+    '#main-content .public-book-grid', '#main-content .public-chapter-row',
+    '#main-content .public-content-grid', '#main-content .public-question-detail',
+    '#main-content .public-term-detail', '#main-content .lookup-controls',
+    '#main-content .connection-choice-grid', '#main-content .public-contact-panel',
+    '.about-manifesto', '#main-content .public-question-form',
+  ]) {
+    assert.ok(stylesheet.includes(selector), 'Missing shared treatment for ' + selector);
+  }
+  assert.ok(stylesheet.includes('font-family: var(--pub-serif)'));
+  assert.ok(stylesheet.includes('Noto Serif'));
+  assert.ok(stylesheet.includes('@media (max-width: 610px)'));
+  assert.ok(!stylesheet.includes('body .admin-'), 'Public design must not style private CMS directly');
+});
