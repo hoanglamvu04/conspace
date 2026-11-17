@@ -1,20 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiUrl, getJson, requireList } from '../lib/api.js';
 import { mergePriorityPages, sortByPriorityIds } from '../lib/readerLens.js';
+import { visibleResourceState, visibleArticleState } from '../lib/resourceState.js';
 
 export function useResource(url, options = {}) {
   const enabled = options.enabled ?? true;
   const list = options.list ?? true;
   const [revision, setRevision] = useState(0);
-  const [state, setState] = useState({ status: enabled ? 'loading' : 'idle', data: list ? [] : null, error: null });
+  const activeKey = enabled && url ? `${list ? 'list' : 'detail'}:${url}` : null;
+  const [state, setState] = useState(() => ({ key: activeKey, status: activeKey ? 'loading' : 'idle', data: list ? [] : null, error: null, meta: null }));
 
   useEffect(() => {
-    if (!enabled || !url) {
-      setState({ status: 'idle', data: list ? [] : null, error: null });
+    if (!activeKey) {
+      setState({ key: null, status: 'idle', data: list ? [] : null, error: null, meta: null });
       return undefined;
     }
     const controller = new AbortController();
-    setState({ status: 'loading', data: list ? [] : null, error: null });
+    setState({ key: activeKey, status: 'loading', data: list ? [] : null, error: null, meta: null });
     getJson(url, { signal: controller.signal })
       .then((payload) => {
         if (controller.signal.aborted) return;
@@ -22,16 +24,16 @@ export function useResource(url, options = {}) {
         if (!list && (!data || typeof data !== 'object' || Array.isArray(data))) {
           throw new Error('Nội dung không hợp lệ.');
         }
-        setState({ status: 'success', data, error: null, meta: payload.meta || {} });
+        setState({ key: activeKey, status: 'success', data, error: null, meta: payload.meta || {} });
       })
       .catch((error) => {
-        if (!controller.signal.aborted) setState({ status: 'error', data: list ? [] : null, error });
+        if (!controller.signal.aborted) setState({ key: activeKey, status: 'error', data: list ? [] : null, error, meta: null });
       });
     return () => controller.abort();
-  }, [url, enabled, list, revision]);
+  }, [url, activeKey, list, revision]);
 
   const retry = useCallback(() => setRevision((current) => current + 1), []);
-  return { ...state, retry };
+  return { ...visibleResourceState(state, activeKey, list), retry };
 }
 
 export function useNiches(group) {
@@ -60,7 +62,8 @@ export function useTerms(query, enabled = true) {
 
 export function useArticles(role, niche, limit = 9, tag = null) {
   const [revision, setRevision] = useState(0);
-  const [state, setState] = useState({ status: 'loading', data: [], error: null, nextCursor: null, loadingMore: false });
+  const requestKey = JSON.stringify([role ?? null, niche ?? null, limit, tag ?? null]);
+  const [state, setState] = useState(() => ({ requestKey, status: 'loading', data: [], error: null, nextCursor: null, loadingMore: false }));
   const controllerRef = useRef(null);
   const nextAllRef = useRef(null);
   const nextPriorityRef = useRef(null);
@@ -74,7 +77,7 @@ export function useArticles(role, niche, limit = 9, tag = null) {
     nextPriorityRef.current = null;
     priorityIdsRef.current = new Set();
     busyRef.current = false;
-    setState({ status: 'loading', data: [], error: null, nextCursor: null, loadingMore: false });
+    setState({ requestKey, status: 'loading', data: [], error: null, nextCursor: null, loadingMore: false });
     const allUrl = apiUrl('/articles', { niche, tag, limit });
     const priorityUrl = role ? apiUrl('/articles', { role, niche, tag, limit }) : null;
     Promise.all([
@@ -88,12 +91,12 @@ export function useArticles(role, niche, limit = 9, tag = null) {
       nextAllRef.current = typeof allPayload.meta?.nextCursor === 'string' && allPayload.meta.nextCursor ? allPayload.meta.nextCursor : null;
       nextPriorityRef.current = typeof priorityPayload?.meta?.nextCursor === 'string' && priorityPayload.meta.nextCursor ? priorityPayload.meta.nextCursor : null;
       const merged = sortByPriorityIds(mergePriorityPages(priorityData, allData), priorityIdsRef.current);
-      setState({ status: 'success', data: merged, error: null, nextCursor: nextAllRef.current, loadingMore: false });
+      setState({ requestKey, status: 'success', data: merged, error: null, nextCursor: nextAllRef.current, loadingMore: false });
     }).catch((error) => {
-      if (!controller.signal.aborted) setState({ status: 'error', data: [], error, nextCursor: null, loadingMore: false });
+      if (!controller.signal.aborted) setState({ requestKey, status: 'error', data: [], error, nextCursor: null, loadingMore: false });
     });
     return () => { controller.abort(); controllerRef.current = null; };
-  }, [role, niche, tag, limit, revision]);
+  }, [role, niche, tag, limit, revision, requestKey]);
 
   const loadMore = useCallback(async () => {
     const controller = controllerRef.current;
@@ -132,5 +135,5 @@ export function useArticles(role, niche, limit = 9, tag = null) {
   }, [role, niche, tag, limit]);
 
   const retry = useCallback(() => setRevision((current) => current + 1), []);
-  return { ...state, retry, loadMore };
+  return { ...visibleArticleState(state, requestKey), retry, loadMore };
 }
