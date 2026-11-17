@@ -50,7 +50,7 @@ test('books, field notes, reader questions and quick search use real public API 
   assert.ok(publicPages.includes('useFieldNotes(null, 12, offset, reader)'), 'Field notes must use the selected reader lens.');
   assert.ok(publicPages.includes('publishedChapterCount'));
   assert.ok(publicPages.includes('repairCostSource'));
-  assert.ok(publicPages.includes("role, niche: niche || undefined"), 'Search must send the selected reader lens and niche filter to Backend.');
+  assert.ok(publicPages.includes('q:query,type,role,niche:niche||undefined'), 'Search must send the selected reader lens and niche filter to Backend.');
   assert.ok(publicPages.includes('results.meta?.facets'), 'Search must expose backend facets in the public UI.');
   assert.ok(publicPages.includes("'/tu-dien/' + encodeURIComponent(item.slug)"), 'Published term results must open a dedicated dictionary detail page.');
 });
