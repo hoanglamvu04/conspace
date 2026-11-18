@@ -75,6 +75,19 @@ export async function runPublicBrowserAcceptance({ env = process.env, log = cons
       await tab.waitFor('!!document.querySelector(".public-term-definition")', 'published Dictionary definition');
     });
 
+    await step('Published fictional Field Notes and Q&A appear on their public indexes', async () => {
+      await tab.visit(frontend, '/hien-truong');
+      await tab.waitFor('document.querySelectorAll(".public-field-card").length >= 10', 'local seeded Field Notes');
+      const fields=await tab.evaluate('document.querySelectorAll(".public-field-card").length');
+      assert.ok(fields >= 10,'Published field fixtures should be visible to readers');
+
+      await tab.visit(frontend, '/hoi-dap');
+      await tab.waitFor('document.querySelectorAll(".public-question-card").length >= 20', 'local seeded Q&A');
+      const questions=await tab.evaluate('document.querySelectorAll(".public-question-card").length');
+      assert.ok(questions >= 20,'Published QA fixtures should be visible to readers');
+      assert.equal(await tab.evaluate('document.querySelector(".public-question-card")?.textContent.includes("[DEMO]")'), true);
+    });
+
     await step('Quick Search results and article filter work in browser', async () => {
       await tab.visit(frontend, '/tra-nhanh?q=demo');
       await tab.waitFor('!!document.querySelector(".public-search-results")', 'published search results');

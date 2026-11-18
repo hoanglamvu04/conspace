@@ -153,6 +153,49 @@ jobs:
           } finally { await closeDatabase(); }
           JS
 
+      - name: Field Notes + Q&A local demo seed, repeatability and public visibility
+        env:
+          NODE_ENV: development
+          DEMO_SEED_CONFIRM: LOCAL_DEMO_ONLY
+          DEMO_USER_PASSWORD: ci-only-fieldqa-demo-credential-1234
+        run: |
+          set -euo pipefail
+          npm run db:seed-demo-field-qa --prefix backend
+          npm run db:seed-demo-field-qa --prefix backend
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import { pool, closeDatabase } from './backend/src/database/pool.js';
+          try {
+            const f=await pool.query(
+              "SELECT COUNT(*)::integer AS total FROM conspace.field_notes f "+
+              "JOIN conspace.articles a ON a.id=f.article_id "+
+              "WHERE a.slug LIKE 'demo-fieldqa-%' AND a.status='PUBLISHED' "+
+              "AND a.approved_by IS NOT NULL AND a.approved_at IS NOT NULL "+
+              "AND a.published_at<=now() AND f.unit_anonymized=true "+
+              "AND f.address_anonymized=true AND f.photo_rights_confirmed=true"
+            );
+            const q=await pool.query(
+              "SELECT COUNT(*)::integer AS total FROM conspace.reader_questions q "+
+              "JOIN conspace.question_answers qa ON qa.question_id=q.id "+
+              "WHERE q.description LIKE '[DEMO] %' "+
+              "AND q.moderation_note LIKE '[DEMO] Câu hỏi hư cấu do seed tạo%' "+
+              "AND q.status='PUBLISHED' AND qa.status='PUBLISHED' "+
+              "AND qa.approved_by_user_id IS NOT NULL AND qa.approved_at IS NOT NULL "+
+              "AND qa.published_at<=now() AND q.contact_ciphertext IS NULL"
+            );
+            const media=await pool.query(
+              "SELECT COUNT(*)::integer AS total FROM conspace.field_note_media fm "+
+              "JOIN conspace.field_notes f ON f.id=fm.field_note_id "+
+              "JOIN conspace.articles a ON a.id=f.article_id "+
+              "WHERE a.slug LIKE 'demo-fieldqa-%'"
+            );
+            assert.equal(f.rows[0].total,16,'16 visible fictional field notes');
+            assert.equal(q.rows[0].total,24,'24 published fictional answers');
+            assert.equal(media.rows[0].total,0,'No simulated media rights');
+            console.log('PASS: Field Notes/Q&A seed visible, repeatable and without fake media/contacts');
+          } finally { await closeDatabase(); }
+          JS
+
       - name: Install frontend dependencies
         id: frontend_install
         run: npm ci --prefix frontend --ignore-scripts --no-audit --no-fund
@@ -183,6 +226,15 @@ jobs:
         run: |
           set -euo pipefail
           npm run db:seed-demo --prefix backend
+          # The smaller workflow fixture must not delete full-content or Field/Q&A demo questions.
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import { pool, closeDatabase } from './backend/src/database/pool.js';
+          try {
+            const q=await pool.query("SELECT COUNT(*)::integer AS total FROM conspace.reader_questions WHERE moderation_note LIKE '[DEMO] Câu hỏi hư cấu do seed tạo%'");
+            assert.equal(q.rows[0].total,24,'Acceptance seed must preserve 24 field/QA demo questions');
+          } finally { await closeDatabase(); }
+          JS
           (cd backend && exec node src/server.js) > "$RUNNER_TEMP/conspace-browser-api.log" 2>&1 &
           api_pid=$!
           (cd frontend && exec node node_modules/vite/bin/vite.js) > "$RUNNER_TEMP/conspace-browser-web.log" 2>&1 &

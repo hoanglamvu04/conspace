@@ -6,6 +6,7 @@ import { assertDedicatedDatabase } from './migrate.js';
 import { hashPassword } from '../security/password.js';
 
 const DEMO_SOURCE='DEMO ONLY: synthetic local CONSPACE fixture; never use as editorial evidence';
+const ACCEPTANCE_QUESTION='[DEMO] Câu hỏi mô phỏng để thử Q&A và phản hồi reviewer.';
 const DEMO_EMAILS=Object.freeze({
   editor:'editor.demo@conspace.local',
   reviewer:'reviewer.demo@conspace.local',
@@ -54,7 +55,9 @@ async function resetDemoEntities(client){
     await client.query('DELETE FROM conspace.terms WHERE id=$1',[id]);
   }
 
-  const questions=await client.query("SELECT q.id,a.id AS answer_id FROM conspace.reader_questions q LEFT JOIN conspace.question_answers a ON a.question_id=q.id WHERE q.description LIKE '[DEMO]%'");
+  // This acceptance seed owns ONE synthetic question, not every [DEMO] question.
+  // Broad deletion erased the full-site and Field/Q&A demo datasets on reruns.
+  const questions=await client.query("SELECT q.id,a.id AS answer_id FROM conspace.reader_questions q LEFT JOIN conspace.question_answers a ON a.question_id=q.id WHERE q.description=$1",[ACCEPTANCE_QUESTION]);
   for(const row of questions.rows){
     if(row.answer_id){
       await client.query("DELETE FROM conspace.editorial_reviews WHERE entity_type='QUESTION_ANSWER' AND entity_id=$1",[row.answer_id]);
@@ -268,7 +271,7 @@ export async function seedDemo(db=pool,options={}){
 
     const question=await client.query(
       "INSERT INTO conspace.reader_questions(description,guessed_niche_id,status,moderation_note) VALUES($1,$2,'IN_REVIEW',$3) RETURNING id",
-      ['[DEMO] Câu hỏi mô phỏng để thử Q&A và phản hồi reviewer.',niche.id,'[DEMO] Chỉ dùng local']
+      [ACCEPTANCE_QUESTION,niche.id,'[DEMO] Chỉ dùng local']
     );
     const answer=await client.query(
       "INSERT INTO conspace.question_answers(question_id,body,status,requires_chief_review,sensitivity_flags,sensitivity_assessed,created_by_user_id,updated_by_user_id,submitted_at) VALUES($1,$2,'NEEDS_CHANGES',false,'{}',true,$3,$3,now()-interval '1 hour') RETURNING id",

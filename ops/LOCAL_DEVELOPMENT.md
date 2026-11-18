@@ -161,3 +161,29 @@ Check examples after restarting Backend/Frontend:
     http://127.0.0.1:5176/tra-nhanh
 
 This is a dataset for preview and testing only. It must never be treated as production editorial material, search engine content or evidence of compliance. No migration or VPS deployment.
+
+## Local-only Field Notes and Q&A content (without full-site seed)
+
+The independent command db:seed-demo-field-qa adds 16 [DEMO] fictional Field Notes and 24 [DEMO] reader questions with published sample answers across the existing eight verified architectural category slots (HOUSE, LUXURY, F&B, STAY, OFFICE, FACTORY, PROJECT, SACRED). It **does not create any other construction niches, books or articles outside these Field Notes**, and does not modify CMS content that already exists. It marks all records as simulations, never as real reported field cases, standards or professional advice. No real photos, site addresses, private contacts, prices or unsupported technical claims are inserted. Dummy approval metadata exists only to let the local public API render sample records; it does NOT represent actual editorial review.
+
+Run from Windows CMD with local PostgreSQL started (DATABASE_URL must point to local conspace using conspace_app):
+
+    cd /d D:\conspace
+    docker start conspace-db-local
+    npm.cmd run db:migrate --prefix backend
+    npm.cmd run db:seed --prefix backend
+    set "NODE_ENV=development"
+    set "DEMO_SEED_CONFIRM=LOCAL_DEMO_ONLY"
+    set /p DEMO_USER_PASSWORD=Nhap mat khau demo local (toi thieu 14 ky tu):
+    npm.cmd run db:seed-demo-field-qa --prefix backend
+    set DEMO_USER_PASSWORD=
+
+Do not paste or screenshot the password. Run the command again safely if needed; it does not create duplicates, rotate existing credentials, delete prior demo posts, or overwrite editorial changes. The older db:seed-demo reset was narrowed to its own Q&A acceptance fixture and will no longer remove these reader examples on subsequent runs.
+
+Check after Backend/Frontend restart:
+
+    http://127.0.0.1:5176/hien-truong
+    http://127.0.0.1:5176/hoi-dap
+    http://127.0.0.1:5176/mang/house
+
+CMS users can inspect the content only in local development. Never deploy the [DEMO] fixtures or use them as genuine published content. No new migration and no VPS changes.
