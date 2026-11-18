@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {searchResultKey,appendUniqueSearchResults,hasMoreQuestionPage,hasMoreFieldPage,questionAnswerTeaser} from './publicPagination.js';
+import {searchResultKey,appendUniqueSearchResults,hasMoreQuestionPage,hasMoreFieldPage,questionAnswerTeaser,normalizePublicContentFilters,buildPublicContentFilterParams} from './publicPagination.js';
 
 test('search key distinguishes reader lens, filter and search term',()=>{
   const baseline=searchResultKey('chống thấm','homeowner','all','');
@@ -43,4 +43,16 @@ test('published Q&A cards show a concise answer with the full detail untouched',
   assert.ok(teaser.endsWith('…'));
   assert.ok(!teaser.includes('  '));
   assert.equal(questionAnswerTeaser(null), '');
+});
+
+
+test('shared Field/Q&A URL filters keep shareable safe fields and avoid one-letter searches', () => {
+  const { q, niche } = normalizePublicContentFilters('q=ch%E1%BB%91ng+th%E1%BA%A5m&niche=house&admin=true');
+  assert.equal(q, 'chống thấm');
+  assert.equal(niche, 'house');
+  const values = buildPublicContentFilterParams({q, niche, admin:'true'});
+  assert.equal(values.toString(), 'q=ch%E1%BB%91ng+th%E1%BA%A5m&niche=house');
+  assert.deepEqual(normalizePublicContentFilters('?q=a&niche=%2Fadmin'), {q:'',niche:''});
+  assert.deepEqual(normalizePublicContentFilters('q=%25_%5C&niche=f-b'), {q:'%_\\',niche:'f-b'});
+  assert.equal(buildPublicContentFilterParams({q:'',niche:''}).toString(),'');
 });

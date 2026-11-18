@@ -187,3 +187,15 @@ Check after Backend/Frontend restart:
     http://127.0.0.1:5176/mang/house
 
 CMS users can inspect the content only in local development. Never deploy the [DEMO] fixtures or use them as genuine published content. No new migration and no VPS changes.
+
+
+## Test the Field Notes and Q&A discovery flow
+
+After running `db:seed-demo-field-qa`, start local Backend and Frontend and open:
+
+- `http://127.0.0.1:5176/hien-truong?niche=house` — Field Notes filtered by HOUSE
+- `http://127.0.0.1:5176/hien-truong?q=gi%C6%B0%E1%BB%9Dng&niche=house` — a single bedroom-related fictional case
+- `http://127.0.0.1:5176/hoi-dap?niche=house` — published HOUSE answers
+- `http://127.0.0.1:5176/hoi-dap?q=gi%C6%B0%E1%BB%9Dng&niche=house` — one matching fictional Q&A, whose detail page links to its related published Field Note
+
+Use the clear-filter action to return to all content; scroll down to `Xem thêm câu hỏi` to check page 2. No new migration and no extra seed needed after the code update. This is a UI test using synthetic, labeled data only, not guidance for a real project.

@@ -579,3 +579,105 @@
   #main-content .public-field-card,
   #main-content .public-question-card { transition: none; }
 }
+
+
+/* Field Notes & Q&A: a compact editorial catalogue with real API-backed filters. */
+#main-content .public-content-filters {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(190px, .48fr) auto;
+  align-items: end;
+  gap: 14px 19px;
+  margin: 0 0 27px;
+  padding: 20px 22px;
+  background: #f4f7f8;
+  border: 1px solid var(--pub-rule);
+  border-radius: 3px;
+}
+#main-content .public-filter-field { display: grid; gap: 8px; min-width: 0; }
+#main-content .public-filter-field label {
+  color: #395a6b;
+  font-size: 11px;
+  font-weight: 780;
+  letter-spacing: .025em;
+}
+#main-content .public-filter-input {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-height: 43px;
+  background: #fff;
+  padding: 0 12px;
+  border: 1px solid #cbdae1;
+  border-radius: 3px;
+  color: #557b8e;
+}
+#main-content .public-filter-input:focus-within {
+  border-color: var(--pub-accent);
+  box-shadow: 0 0 0 3px rgba(49, 94, 118, .11);
+}
+#main-content .public-filter-input input {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-size: 13px;
+  padding: 10px 0;
+  color: var(--pub-ink);
+}
+#main-content .public-filter-field select {
+  width: 100%;
+  min-height: 43px;
+  padding: 8px 31px 8px 12px;
+  border: 1px solid #cbdae1;
+  border-radius: 3px;
+  background: #fff;
+  font-size: 13px;
+  color: #284958;
+}
+#main-content .public-filter-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: end;
+  align-items: center;
+  gap: 11px;
+  min-height: 43px;
+}
+#main-content .public-filter-actions .button { min-height: 43px; white-space: nowrap; }
+#main-content .public-filter-clear,
+#main-content .public-filter-notice button {
+  padding: 8px 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  background: transparent;
+  color: var(--pub-accent);
+  font-size: 12px;
+  font-weight: 760;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+#main-content .public-filter-notice { margin: 0; grid-column: 1 / -1; color: #7c5960; font-size: 12px; }
+#main-content .public-related-field {
+  margin: 23px 0 6px;
+  padding: 20px 24px;
+  border: 1px solid var(--pub-rule);
+  border-left: 3px solid var(--pub-accent);
+  border-radius: 0;
+  background: #fff;
+}
+#main-content .public-related-field p { margin: 8px 0 10px; font-size: 13px; line-height: 1.65; color: var(--pub-subtle); }
+#main-content .public-related-field .text-link { display: inline-flex; align-items: center; gap: 7px; }
+@media (max-width: 1020px) {
+  #main-content .public-content-filters { grid-template-columns: minmax(170px, 1fr) minmax(180px, .7fr); }
+  #main-content .public-filter-actions { justify-content: start; grid-column: 1 / -1; }
+}
+@media (max-width: 610px) {
+  #main-content .public-content-filters { grid-template-columns: 1fr; padding: 16px; gap: 15px; }
+  #main-content .public-filter-actions { grid-column: 1; }
+  #main-content .public-filter-actions .button { flex: 1; justify-content: center; }
+  #main-content .public-filter-query, #main-content .public-filter-niche { min-width: 0; }
+  #main-content .public-related-field { padding: 17px 19px; }
+}

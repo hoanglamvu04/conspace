@@ -117,3 +117,61 @@ test('public Q&A rejects invalid and unexpected paging arguments',async(t)=>{
   }
   assert.equal(db.calls.length,0);
 });
+
+
+test('public Q&A niche and literal keyword filter both list and published-only total',async(t)=>{
+  const calls=[];
+  const db={query:async(sql,params=[])=>{
+    calls.push({sql,params});
+    return {rows:sql.startsWith('SELECT count(')?[{total:1}]:[]};
+  }};
+  const base=await serverFor(t,db,{save:async()=>{},cleanup:async()=>{}});
+  const res=await fetch(base+'/api/v1/questions?page=1&limit=12&niche=house&q='+encodeURIComponent('%_\\'));
+  assert.equal(res.status,200);
+  const data=await res.json();
+  assert.equal(data.meta.total,1);
+  assert.deepEqual(calls[0].params,[12,0,'house','%_\\']);
+  assert.deepEqual(calls[1].params,['house','%_\\']);
+  assert.ok(calls[0].sql.includes('AND n.slug=$3'));
+  assert.ok(calls[1].sql.includes('AND n.slug=$1'));
+  assert.ok(calls[0].sql.includes('strpos(lower(q.description),lower($4::text))>0'));
+  assert.ok(calls[1].sql.includes('strpos(lower(q.description),lower($2::text))>0'));
+  assert.ok(!calls[0].sql.includes('ILIKE'), 'Do not treat wildcard characters as search operators');
+  for(const c of calls){
+    assert.ok(c.sql.includes("q.status='PUBLISHED'"));
+    assert.ok(c.sql.includes("a.status='PUBLISHED'"));
+    assert.ok(c.sql.includes('a.approved_by_user_id IS NOT NULL'));
+  }
+});
+
+test('public Q&A search validates keywords and niche slugs',async(t)=>{
+  const db=dbMock();
+  const base=await serverFor(t,db,{save:async()=>{},cleanup:async()=>{}});
+  for(const query of ['q=a','q='+encodeURIComponent('a'.repeat(101)),'niche=%2Fadmin','niche=INVALID']){
+    const response=await fetch(base+'/api/v1/questions?'+query);
+    assert.equal(response.status,400,query);
+  }
+  assert.equal(db.calls.length,0);
+});
+
+test('public answer crosslink exposes only approved compliant FIELD_CASE slugs, never raw draft IDs',async(t)=>{
+  const calls=[];
+  const db={query:async(sql,params=[])=>{
+    calls.push({sql,params});
+    return {rows:[{id:'11111111-1111-4111-8111-111111111111',description:'Câu hỏi giả lập',answer:'Nội dung đã xuất bản',relatedFieldSlug:'demo-fieldqa-house-cua-va-tu-am-tuong'}]};
+  }};
+  const base=await serverFor(t,db,{save:async()=>{},cleanup:async()=>{}});
+  const result=await fetch(base+'/api/v1/questions/11111111-1111-4111-8111-111111111111');
+  assert.equal(result.status,200);
+  const body=await result.json();
+  assert.equal(body.data.relatedFieldSlug,'demo-fieldqa-house-cua-va-tu-am-tuong');
+  assert.ok(!('relatedArticleId' in body.data));
+  const sql=calls[0].sql;
+  for(const requirement of [
+    "ra.content_type='FIELD_CASE'", "ra.status='PUBLISHED'",
+    'ra.approved_by IS NOT NULL','ra.approved_at IS NOT NULL',
+    'ra.published_at<=now()', 'rf.unit_anonymized=true',
+    'rf.address_anonymized=true','rf.photo_rights_confirmed=true',
+    "q.status='PUBLISHED'","a.status='PUBLISHED'",
+  ]) assert.ok(sql.includes(requirement),requirement);
+});

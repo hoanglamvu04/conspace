@@ -4,13 +4,14 @@ import { formatDate, safeMediaUrl } from '../config.js';
 import { useReader } from '../context/ReaderContext.jsx';
 import { useFieldNotes, useNiches, useQuestions, useResource } from '../hooks/useResources.js';
 import { apiUrl, getJson, postJson, requireList } from '../lib/api.js';
-import { searchResultKey, appendUniqueSearchResults, hasMoreQuestionPage, hasMoreFieldPage, questionAnswerTeaser } from '../lib/publicPagination.js';
+import { searchResultKey, appendUniqueSearchResults, hasMoreQuestionPage, hasMoreFieldPage, questionAnswerTeaser, normalizePublicContentFilters, buildPublicContentFilterParams } from '../lib/publicPagination.js';
 import { chapterPath, chapterDisplayLabel, nichePathForSlug } from '../lib/contentModel.js';
 import { useSeoMetadata } from '../lib/seo.js';
 import { sortByLens } from '../lib/readerLens.js';
 import { Markdown } from '../components/Markdown.jsx';
 import { Breadcrumbs, PageIntro, ReaderSwitch, SectionHeading, StatusPanel } from '../components/UI.jsx';
 import { Icon } from '../components/Icons.jsx';
+import { PublicContentFilters } from '../components/PublicContentFilters.jsx';
 
 function usePageMeta(title, description, options={}) {
   useSeoMetadata({
@@ -193,26 +194,37 @@ export function ChapterDetail({ bookSlug }) {
 }
 
 export function FieldNotes() {
-  const [offset, setOffset] = useState(0);
-  const [items, setItems] = useState([]);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { q, niche } = normalizePublicContentFilters(searchParams);
   const { reader } = useReader();
-  const records = useFieldNotes(null, 12, offset, reader);
-  useEffect(() => {
-    setOffset(0);
-    setItems([]);
-  }, [reader]);
+  const filterKey = JSON.stringify([niche, q, reader]);
+  const [offset, setOffset] = useState(0);
+  const [results, setResults] = useState({ key: filterKey, items: [] });
+  const records = useFieldNotes(niche || null, 12, offset, reader, q || null);
+  const items = results.key === filterKey ? results.items : [];
+
+  useEffect(() => setOffset(0), [filterKey]);
   useEffect(() => {
     if (records.status !== 'success' || records.meta?.offset !== offset) return;
-    setItems((current) => offset === 0
-      ? records.data
-      : [...current, ...records.data.filter((item) => !current.some((old) => old.id === item.id))]);
-  }, [records.status, records.data, records.meta, offset]);
+    setResults((current) => {
+      const earlier = current.key === filterKey ? current.items : [];
+      const next = offset === 0 ? records.data
+        : [...earlier, ...records.data.filter((item) => !earlier.some((old) => old.id === item.id))];
+      return { key: filterKey, items: next };
+    });
+  }, [records.status, records.data, records.meta, offset, filterKey]);
+
   const hasMore = records.status === 'success' && hasMoreFieldPage(records.meta, offset, records.data.length);
+  function applyFilters(next) {
+    setOffset(0);
+    setSearchParams(buildPublicContentFilterParams(next));
+  }
 
   return <>
     <PageIntro eyebrow="GHI CHÉP / HIỆN TRƯỜNG" title="Hiện trường" description="Từ hiện tượng đến nguyên nhân gốc và mốc nghiệm thu có thể ngăn vấn đề. Ca công khai phải được ẩn danh và có quyền sử dụng tư liệu."/>
     <main className="container content-page">
       <Breadcrumbs items={[{ label: 'Hiện trường' }]}/>
+      <PublicContentFilters kind="field" q={q} niche={niche} onApply={applyFilters}/>
       {records.status === 'loading' && offset === 0 && <StatusPanel status="loading" kind="articles"/>}
       {records.status === 'error' && offset === 0 && <StatusPanel status="error" onRetry={records.retry}/>}
       {items.length > 0 && <>
@@ -225,7 +237,9 @@ export function FieldNotes() {
           <span className="text-link">Đọc phân tích <Icon name="arrow" size={16}/></span>
         </Link>)}</div>
       </>}
-      {records.status === 'success' && offset === 0 && !records.data.length && <StatusPanel status="empty" title="Chưa có ca hiện trường công khai" description="Kho hiện trường chỉ hiển thị ca đã được duyệt, ẩn danh đơn vị/địa chỉ và xác nhận quyền sử dụng ảnh."/>}
+      {records.status === 'success' && offset === 0 && !records.data.length && <StatusPanel status="empty"
+        title={q || niche ? 'Không tìm thấy ca hiện trường phù hợp' : 'Chưa có ca hiện trường công khai'}
+        description={q || niche ? 'Thử từ khóa khác hoặc xóa bộ lọc để xem toàn bộ ca.' : 'Kho hiện trường chỉ hiển thị ca đã được duyệt, ẩn danh đơn vị/địa chỉ và xác nhận quyền sử dụng ảnh.'}/>}
       {records.status === 'loading' && offset > 0 && <p className="results-count" role="status">Đang tải thêm ca hiện trường...</p>}
       {records.status === 'error' && offset > 0 && <p className="inline-error" role="alert">{records.error?.message || 'Chưa thể tải thêm ca hiện trường.'} <button type="button" onClick={records.retry}>Thử lại</button></p>}
       {hasMore && <div className="pagination-actions"><button type="button" className="button button--outline" disabled={records.status === 'loading'} onClick={() => setOffset((value) => value + records.data.length)}>{records.status === 'loading' ? 'Đang tải...' : 'Xem thêm ca hiện trường'} <Icon name="arrow" size={17}/></button></div>}
@@ -280,16 +294,30 @@ export function FieldNoteDetail() {
 }
 
 export function Questions() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { q, niche } = normalizePublicContentFilters(searchParams);
+  const filterKey = JSON.stringify([niche, q]);
   const [page, setPage] = useState(1);
-  const [items, setItems] = useState([]);
-  const questions = useQuestions(page, 30);
+  const [results, setResults] = useState({ key: filterKey, items: [] });
+  const questions = useQuestions(page, 12, niche || null, q || null);
+  const items = results.key === filterKey ? results.items : [];
+
+  useEffect(() => setPage(1), [filterKey]);
   useEffect(() => {
     if (questions.status !== 'success' || questions.meta?.page !== page) return;
-    setItems((current) => page === 1
-      ? questions.data
-      : [...current, ...questions.data.filter((item) => !current.some((old) => old.id === item.id))]);
-  }, [questions.status, questions.data, questions.meta, page]);
+    setResults((current) => {
+      const earlier = current.key === filterKey ? current.items : [];
+      const next = page === 1 ? questions.data
+        : [...earlier, ...questions.data.filter((item) => !earlier.some((old) => old.id === item.id))];
+      return { key: filterKey, items: next };
+    });
+  }, [questions.status, questions.data, questions.meta, page, filterKey]);
+
   const hasMore = questions.status === 'success' && hasMoreQuestionPage(questions.meta, page);
+  function applyFilters(next) {
+    setPage(1);
+    setSearchParams(buildPublicContentFilterParams(next));
+  }
 
   return <>
     <PageIntro eyebrow="CONSPACE / HỎI ĐÁP" title="Hỏi đáp" description="Câu hỏi được gửi ẩn danh. Chỉ câu hỏi có câu trả lời đã duyệt và xuất bản mới xuất hiện công khai."/>
@@ -301,15 +329,18 @@ export function Questions() {
         <div><strong>02</strong><span><b>Tòa soạn phân loại</b><small>Ngách có thể được hiệu chỉnh trước khi trả lời.</small></span></div>
         <div><strong>03</strong><span><b>Chỉ bản đã duyệt mới công khai</b><small>Câu hỏi chưa trả lời hoặc chưa duyệt không xuất hiện ở đây.</small></span></div>
       </div>
+      <PublicContentFilters kind="qa" q={q} niche={niche} onApply={applyFilters}/>
       {questions.status === 'loading' && page === 1 && <StatusPanel status="loading" kind="articles"/>}
       {questions.status === 'error' && page === 1 && <StatusPanel status="error" onRetry={questions.retry}/>}
       {items.length > 0 && <>
         <p className="results-count" role="status">{items.length} / {questions.meta?.total ?? items.length} câu hỏi đã có câu trả lời công khai</p>
         <div className="public-content-grid">{items.map((item) => <Link className="public-question-card" to={'/hoi-dap/' + item.id} key={item.id}>
-          <span className="eyebrow">ĐÃ CÓ CÂU TRẢ LỜI · {formatDate(item.publishedAt)}</span><h2>{item.description}</h2><p>{questionAnswerTeaser(item.answer)}</p>{item.niche && <small>Ngách: {item.niche}</small>}<span className="text-link">Đọc trả lời <Icon name="arrow" size={16}/></span>
+          <span className="eyebrow">ĐÃ CÓ CÂU TRẢ LỜI · {formatDate(item.publishedAt)}</span><h2>{item.description}</h2><p>{questionAnswerTeaser(item.answer)}</p>{item.niche && <small>Lĩnh vực: {item.niche}</small>}<span className="text-link">Đọc trả lời <Icon name="arrow" size={16}/></span>
         </Link>)}</div>
       </>}
-      {questions.status === 'success' && page === 1 && !questions.data.length && <StatusPanel status="empty" title="Chưa có câu trả lời công khai" description="Câu hỏi chưa được trả lời hoặc chưa qua kiểm duyệt sẽ không xuất hiện trên trang này."/>}
+      {questions.status === 'success' && page === 1 && !questions.data.length && <StatusPanel status="empty"
+        title={q || niche ? 'Không tìm thấy câu hỏi phù hợp' : 'Chưa có câu trả lời công khai'}
+        description={q || niche ? 'Thử từ khóa hoặc lĩnh vực khác, hoặc xóa bộ lọc.' : 'Câu hỏi chưa được trả lời hoặc chưa qua kiểm duyệt sẽ không xuất hiện trên trang này.'}/>}
       {questions.status === 'loading' && page > 1 && <p className="results-count" role="status">Đang tải thêm câu hỏi...</p>}
       {questions.status === 'error' && page > 1 && <p className="inline-error" role="alert">{questions.error?.message || 'Chưa thể tải thêm câu hỏi.'} <button type="button" onClick={questions.retry}>Thử lại</button></p>}
       {hasMore && <div className="pagination-actions"><button type="button" className="button button--outline" disabled={questions.status === 'loading'} onClick={() => setPage((value) => value + 1)}>{questions.status === 'loading' ? 'Đang tải...' : 'Xem thêm câu hỏi'} <Icon name="arrow" size={17}/></button></div>}
@@ -337,6 +368,11 @@ export function QuestionDetail() {
       {data.niche && <p className="public-question-niche">Lĩnh vực liên quan: <Link to={nichePathForSlug(data.niche, nicheDirectory.status === 'success' ? nicheDirectory.data : [])}>{data.niche}</Link></p>}
       {images.length > 0 && <div className="public-field-images">{images.map((src, index) => { const url = safeMediaUrl(src); return url ? <figure key={src}><img src={url} alt={'Ảnh câu hỏi đã xác nhận quyền sử dụng ' + (index + 1)} loading="lazy"/></figure> : null; })}</div>}
       <section className="public-answer"><span className="eyebrow">CÂU TRẢ LỜI ĐÃ DUYỆT</span><Markdown body={data.answer}/><p className="public-answer-date">Xuất bản {formatDate(data.publishedAt)}</p></section>
+       {data.relatedFieldSlug && <aside className="public-related-field">
+         <span className="eyebrow">ĐỌC THÊM / HIỆN TRƯỜNG</span>
+         <p>Có hồ sơ hiện trường đã xuất bản liên quan đến nội dung câu hỏi.</p>
+         <Link className="text-link" to={'/hien-truong/' + encodeURIComponent(data.relatedFieldSlug)}>Xem ca hiện trường liên quan <Icon name="arrow" size={16}/></Link>
+       </aside>}
       <div className="question-detail-actions"><Link className="button button--outline" to="/hoi-dap">Xem câu hỏi khác</Link><Link className="button button--primary" to="/hoi-dap/gui-cau-hoi">Gửi câu hỏi của bạn <Icon name="arrow" size={16}/></Link></div>
     </article>
   </main>;

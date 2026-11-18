@@ -82,10 +82,35 @@ export async function runPublicBrowserAcceptance({ env = process.env, log = cons
       assert.ok(fields >= 10,'Published field fixtures should be visible to readers');
 
       await tab.visit(frontend, '/hoi-dap');
-      await tab.waitFor('document.querySelectorAll(".public-question-card").length >= 20', 'local seeded Q&A');
-      const questions=await tab.evaluate('document.querySelectorAll(".public-question-card").length');
-      assert.ok(questions >= 20,'Published QA fixtures should be visible to readers');
+      await tab.waitFor('document.querySelectorAll(".public-question-card").length === 12', 'first paginated Q&A page');
+      assert.equal(await tab.evaluate('document.querySelectorAll(".public-question-card").length'), 12);
       assert.equal(await tab.evaluate('document.querySelector(".public-question-card")?.textContent.includes("[DEMO]")'), true);
+      await tab.evaluate('document.querySelector(".pagination-actions button").click()');
+      await tab.waitFor('document.querySelectorAll(".public-question-card").length >= 20', 'second Q&A page without duplicates');
+      const ids=await tab.evaluate('[...document.querySelectorAll(".public-question-card")].map(x=>x.getAttribute("href"))');
+      assert.equal(new Set(ids).size,ids.length,'Q&A pagination must deduplicate cards');
+    });
+
+    await step('Field and Q&A filters use real published records and offer safe related-case navigation', async () => {
+      await tab.visit(frontend, '/hien-truong?q=gi%C6%B0%E1%BB%9Dng&niche=house');
+      await tab.waitFor('document.querySelectorAll(".public-field-card").length === 1', 'filtered bedroom field-note');
+      assert.equal(await tab.evaluate('new URLSearchParams(location.search).get("niche")'), 'house');
+
+      await tab.visit(frontend, '/hoi-dap?q=gi%C6%B0%E1%BB%9Dng&niche=house');
+      await tab.waitFor('document.querySelectorAll(".public-question-card").length === 1', 'filtered bedroom Q&A');
+      const detailPath=await tab.evaluate('document.querySelector(".public-question-card").getAttribute("href")');
+      assert.ok(detailPath.startsWith('/hoi-dap/'),'Filtered Q&A uses an actual published item');
+      await tab.visit(frontend, detailPath);
+      await tab.waitFor('!!document.querySelector(".public-related-field a")', 'visibility-gated related Field Note');
+      const fieldLink=await tab.evaluate('document.querySelector(".public-related-field a").getAttribute("href")');
+      assert.ok(fieldLink.includes('/demo-fieldqa-house-'));
+      await tab.visit(frontend, fieldLink);
+      await tab.waitFor('!!document.querySelector(".field-case-summary")', 'crosslinked published Field Note');
+
+      await tab.visit(frontend, '/hoi-dap?niche=house');
+      await tab.waitFor('document.querySelectorAll(".public-question-card").length >= 3', 'niche filter');
+      await tab.evaluate('document.querySelector(".public-filter-clear").click()');
+      await tab.waitFor('location.search === "" && document.querySelectorAll(".public-question-card").length === 12', 'clear Q&A filters');
     });
 
     await step('Quick Search results and article filter work in browser', async () => {

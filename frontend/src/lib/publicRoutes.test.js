@@ -286,3 +286,18 @@ test('all live public subpages use the approved editorial design without touchin
   assert.ok(stylesheet.includes('@media (max-width: 610px)'));
   assert.ok(!stylesheet.includes('body .admin-'), 'Public design must not style private CMS directly');
 });
+
+
+test('Field Notes and Q&A indexes expose server-filtered catalogue controls and published cross-links',()=>{
+  const filters = readFileSync(new URL('../components/PublicContentFilters.jsx', import.meta.url), 'utf8');
+  assert.ok(publicPages.includes('<PublicContentFilters kind="field"'));
+  assert.ok(publicPages.includes('<PublicContentFilters kind="qa"'));
+  assert.ok(publicPages.includes('normalizePublicContentFilters(searchParams)'));
+  assert.ok(publicPages.includes('buildPublicContentFilterParams(next)'));
+  assert.ok(publicPages.includes('useQuestions(page, 12, niche || null, q || null)'));
+  assert.ok(publicPages.includes('useFieldNotes(niche || null, 12, offset, reader, q || null)'));
+  assert.ok(publicPages.includes('relatedFieldSlug'));
+  assert.ok(publicPages.includes("'/hien-truong/' + encodeURIComponent(data.relatedFieldSlug)"));
+  assert.ok(filters.includes('useNiches()'));
+  assert.ok(filters.includes('Xóa bộ lọc'));
+});

@@ -60,10 +60,29 @@ export function createPublishingRouter(db=pool){
   res.json({ok:true,data:{...niche,lens:q.role??null,preferredAudienceRole:q.role??'homeowner',sections,articles:articles.rows,fieldNotes:fieldNotes.rows,chapters:chapters.rows,relatedNiches:related.rows}});
  }));
  router.get('/field-notes',handle(async(req,res)=>{
-  const q=validate(z.strictObject({niche:slug.optional(),role:role.optional(),limit:z.coerce.number().int().min(1).max(50).default(12),offset:z.coerce.number().int().min(0).default(0)}),req.query);
-  const pred='FROM conspace.field_notes f JOIN conspace.articles a ON a.id=f.article_id WHERE '+publishedArticle+' AND '+checkedField+' AND ($1::text IS NULL OR EXISTS(SELECT 1 FROM conspace.article_niches an JOIN conspace.niches n ON n.id=an.niche_id AND n.is_active=true WHERE an.article_id=a.id AND n.slug=$1))';
-  const rows=await db.query('SELECT f.id,a.id AS "articleId",a.slug,a.title,a.excerpt,a.published_at AS "publishedAt",f.phenomenon,f.root_cause AS "rootCause",f.intervention_point AS "interventionPoint" '+pred+' ORDER BY CASE WHEN $2::text IS NOT NULL AND a.audience_role=$2 THEN 0 ELSE 1 END,a.published_at DESC,a.id DESC LIMIT $3 OFFSET $4',[q.niche??null,q.role??null,q.limit,q.offset]);
-  const total=await db.query('SELECT count(*)::integer AS total '+pred,[q.niche??null]);
+  const q=validate(z.strictObject({
+    niche:slug.optional(),role:role.optional(),
+    q:z.string().trim().min(2).max(100).optional(),
+    limit:z.coerce.number().int().min(1).max(50).default(12),
+    offset:z.coerce.number().int().min(0).default(0)
+  }),req.query);
+  const pred='FROM conspace.field_notes f JOIN conspace.articles a ON a.id=f.article_id WHERE '+publishedArticle+' AND '+checkedField+
+    ' AND ($1::text IS NULL OR EXISTS(SELECT 1 FROM conspace.article_niches an JOIN conspace.niches n ON n.id=an.niche_id AND n.is_active=true WHERE an.article_id=a.id AND n.slug=$1))';
+  // Search is bound as literal text, not an ILIKE wildcard, so "%" and "_" cannot broaden results.
+  const search='strpos(lower(a.title || \' \' || a.excerpt || \' \' || f.phenomenon || \' \' || f.intervention_point),lower(';
+  const listPred=pred+(q.q?' AND '+search+'$5::text))>0':'');
+  const countPred=pred+(q.q?' AND '+search+'$2::text))>0':'');
+  const listParams=[q.niche??null,q.role??null,q.limit,q.offset];
+  const countParams=[q.niche??null];
+  if(q.q){listParams.push(q.q);countParams.push(q.q);}
+  const rows=await db.query(
+    'SELECT f.id,a.id AS "articleId",a.slug,a.title,a.excerpt,a.published_at AS "publishedAt",'+
+    'f.phenomenon,f.root_cause AS "rootCause",f.intervention_point AS "interventionPoint" '+
+    listPred+
+    ' ORDER BY CASE WHEN $2::text IS NOT NULL AND a.audience_role=$2 THEN 0 ELSE 1 END,a.published_at DESC,a.id DESC LIMIT $3 OFFSET $4',
+    listParams
+  );
+  const total=await db.query('SELECT count(*)::integer AS total '+countPred,countParams);
   res.json({ok:true,data:rows.rows,meta:{total:total.rows[0].total,limit:q.limit,offset:q.offset,preferredAudienceRole:q.role??'homeowner'}});
  }));
  router.get('/field-notes/:key',handle(async(req,res)=>{

@@ -200,3 +200,41 @@ test('field-note detail prefers article slug and keeps legacy UUID lookup compat
  assert.equal((await legacy.json()).data.slug,'demo-field-case');
  assert.equal(calls[1].params[0],id);
 });
+
+
+test('field-note keyword search is literal and keeps total consistent with niche-filtered list',async(t)=>{
+  const calls=[];
+  const db={query:async(sql,params=[])=>{
+    calls.push({sql,params});
+    return {rows:sql.startsWith('SELECT count(')?[{total:0}]:[]};
+  }};
+  const base=await serverFor(t,'/api/v1',createPublishingRouter(db));
+  const res=await fetch(base+'/api/v1/field-notes?niche=house&q='+encodeURIComponent('%_\\')+'&role=architect&limit=12&offset=0');
+  assert.equal(res.status,200);
+  assert.equal((await res.json()).meta.total,0);
+  assert.deepEqual(calls[0].params,['house','architect',12,0,'%_\\']);
+  assert.deepEqual(calls[1].params,['house','%_\\']);
+  assert.ok(calls[0].sql.includes('AND n.slug=$1'));
+  assert.ok(calls[0].sql.includes('strpos(lower('));
+  assert.ok(calls[1].sql.includes('strpos(lower('));
+  assert.ok(calls[0].sql.includes('$5::text'));
+  assert.ok(calls[1].sql.includes('$2::text'));
+  assert.ok(!calls[0].sql.includes('ILIKE'));
+  for(const call of calls){
+    assert.ok(call.sql.includes('f.unit_anonymized=true'));
+    assert.ok(call.sql.includes('f.address_anonymized=true'));
+    assert.ok(call.sql.includes('f.photo_rights_confirmed=true'));
+    assert.ok(call.sql.includes("a.status='PUBLISHED'"));
+  }
+});
+
+test('field-note search rejects invalid keywords before reaching DB',async(t)=>{
+  const calls=[];
+  const db={query:async(sql)=>{calls.push(sql);return {rows:[]};}};
+  const base=await serverFor(t,'/api/v1',createPublishingRouter(db));
+  for(const query of ['q=x','q='+encodeURIComponent('a'.repeat(101)),'niche=%2Fadmin']){
+    const result=await fetch(base+'/api/v1/field-notes?'+query);
+    assert.equal(result.status,400,query);
+  }
+  assert.equal(calls.length,0);
+});

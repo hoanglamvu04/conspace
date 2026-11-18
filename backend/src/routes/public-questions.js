@@ -69,28 +69,40 @@ export function createPublicQuestionsRouter(db=pool,mediaService=createMediaServ
   }));
 
   router.get('/',asyncHandler(async(req,res)=>{
-    const {page,limit}=validate(z.strictObject({
+    const {page,limit,niche,q}=validate(z.strictObject({
       page:z.coerce.number().int().min(1).max(1000).default(1),
       limit:z.coerce.number().int().min(1).max(50).default(30),
+      niche:z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/).max(120).optional(),
+      q:z.string().trim().min(2).max(100).optional(),
     }),req.query);
     const visibility=[
       'FROM conspace.reader_questions q JOIN conspace.question_answers a ON a.question_id=q.id',
+      'LEFT JOIN conspace.niches n ON n.id=q.guessed_niche_id',
       "WHERE q.status='PUBLISHED' AND a.status='PUBLISHED'",
       'AND a.approved_by_user_id IS NOT NULL AND a.approved_at IS NOT NULL AND a.published_at<=now()',
     ].join(' ');
+    const listParams=[limit,(page-1)*limit];
+    const countParams=[];
+    let listFilters='';
+    let countFilters='';
+    if(niche){
+      listFilters+=' AND n.slug=$'+listParams.push(niche);
+      countFilters+=' AND n.slug=$'+countParams.push(niche);
+    }
+    if(q){
+      listFilters+=' AND strpos(lower(q.description),lower($'+listParams.push(q)+'::text))>0';
+      countFilters+=' AND strpos(lower(q.description),lower($'+countParams.push(q)+'::text))>0';
+    }
     const [rows,count]=await Promise.all([
       db.query([
         'SELECT q.id,q.description,n.slug AS "niche",a.body AS answer,a.published_at AS "publishedAt",',
         "COALESCE((SELECT json_agg('/api/v1/media/' || m.id::text ORDER BY qm.position)",
         'FROM conspace.reader_question_media qm JOIN conspace.media_assets m ON m.id=qm.media_id',
         "WHERE qm.question_id=q.id AND m.rights_confirmed=true AND m.deleted_at IS NULL),'[]'::json) AS images",
-        'FROM conspace.reader_questions q JOIN conspace.question_answers a ON a.question_id=q.id',
-        'LEFT JOIN conspace.niches n ON n.id=q.guessed_niche_id',
-        "WHERE q.status='PUBLISHED' AND a.status='PUBLISHED'",
-        'AND a.approved_by_user_id IS NOT NULL AND a.approved_at IS NOT NULL AND a.published_at<=now()',
+        visibility,listFilters,
         'ORDER BY a.published_at DESC,q.id DESC LIMIT $1 OFFSET $2',
-      ].join(' '),[limit,(page-1)*limit]),
-      db.query('SELECT count(*)::integer AS total '+visibility),
+      ].join(' '),listParams),
+      db.query('SELECT count(*)::integer AS total '+visibility+countFilters,countParams),
     ]);
     const total=count.rows[0]?.total??0;
     res.json({ok:true,data:rows.rows,meta:{total,page,limit,hasMore:page*limit<total}});
@@ -99,10 +111,12 @@ export function createPublicQuestionsRouter(db=pool,mediaService=createMediaServ
   router.get('/:id',asyncHandler(async(req,res)=>{
     const id=validate(z.strictObject({id:z.string().uuid()}),req.params).id;
     const result=await db.query(
-      "SELECT q.id,q.description,n.slug AS \"niche\",a.body AS answer,a.published_at AS \"publishedAt\",a.related_article_id AS \"relatedArticleId\", " +
+      "SELECT q.id,q.description,n.slug AS \"niche\",a.body AS answer,a.published_at AS \"publishedAt\",CASE WHEN rf.id IS NOT NULL THEN ra.slug ELSE NULL END AS \"relatedFieldSlug\", " +
       "COALESCE((SELECT json_agg('/api/v1/media/' || m.id::text ORDER BY qm.position) FROM conspace.reader_question_media qm JOIN conspace.media_assets m ON m.id=qm.media_id WHERE qm.question_id=q.id AND m.rights_confirmed=true AND m.deleted_at IS NULL),'[]'::json) AS images " +
       "FROM conspace.reader_questions q JOIN conspace.question_answers a ON a.question_id=q.id "+
       "LEFT JOIN conspace.niches n ON n.id=q.guessed_niche_id "+
+      "LEFT JOIN conspace.articles ra ON ra.id=a.related_article_id AND ra.content_type='FIELD_CASE' AND ra.status='PUBLISHED' AND ra.approved_by IS NOT NULL AND ra.approved_at IS NOT NULL AND ra.published_at<=now() "+
+      "LEFT JOIN conspace.field_notes rf ON rf.article_id=ra.id AND rf.unit_anonymized=true AND rf.address_anonymized=true AND rf.photo_rights_confirmed=true "+
       "WHERE q.id=$1 AND q.status='PUBLISHED' AND a.status='PUBLISHED' AND a.approved_by_user_id IS NOT NULL AND a.approved_at IS NOT NULL AND a.published_at<=now() LIMIT 1",
       [id]
     );

@@ -48,12 +48,12 @@ export function useBooks(role = 'homeowner') {
   return useResource(apiUrl('/books', { role }));
 }
 
-export function useFieldNotes(niche = null, limit = 12, offset = 0, role = 'homeowner') {
-  return useResource(apiUrl('/field-notes', { niche, limit, offset, role }));
+export function useFieldNotes(niche = null, limit = 12, offset = 0, role = 'homeowner', q = null) {
+  return useResource(apiUrl('/field-notes', { niche, limit, offset, role, q }));
 }
 
-export function useQuestions(page = 1, limit = 30) {
-  return useResource(apiUrl('/questions', { page, limit }));
+export function useQuestions(page = 1, limit = 30, niche = null, q = null) {
+  return useResource(apiUrl('/questions', { page, limit, niche, q }));
 }
 
 export function useTerms(query, enabled = true) {
